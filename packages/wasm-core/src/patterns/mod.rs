@@ -226,8 +226,9 @@ static SQL_TABLES_REGEX: Lazy<Regex> = Lazy::new(|| {
 
 static SQL_STRINGS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"'(?:[^'\\]|\\.)*'").unwrap());
 
-static SQL_IDENTIFIERS_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"`[^`]+`|\[[^\]]+\]|"[^"]+""#).unwrap());
+static SQL_IDENTIFIERS_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?i)(?:SELECT|WHERE|AND|OR|ON|SET|ORDER\s+BY|GROUP\s+BY|HAVING|AS|,)\s*(`[^`]+`|\[[^\]]+\])|(`[^`]+`|\[[^\]]+\])\s*\.\s*(`[^`]+`|\[[^\]]+\])"#).unwrap()
+});
 
 static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
     vec![

@@ -43,5 +43,5 @@ export const BUILTIN_PATTERNS: Record<string, string> = {
   timestamp_unix: String.raw`\b1[0-9]{9}(?:[0-9]{3})?\b`,
   sql_tables: String.raw`(?i)(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+(` + "`[^`]+`" + String.raw`|\[[^\]]+\]|"[^"]+"|[a-zA-Z_][a-zA-Z0-9_]*)`,
   sql_strings: String.raw`'(?:[^'\\]|\\.)*'`,
-  sql_identifiers: "`[^`]+`" + String.raw`|\[[^\]]+\]`,
+  sql_identifiers: String.raw`(?i)(?:SELECT|WHERE|AND|OR|ON|SET|ORDER\s+BY|GROUP\s+BY|HAVING|AS|,)\s*(` + "`[^`]+`" + String.raw`|\[[^\]]+\])|(` + "`[^`]+`" + String.raw`|\[[^\]]+\])\s*\.\s*(` + "`[^`]+`" + String.raw`|\[[^\]]+\])`,
 }

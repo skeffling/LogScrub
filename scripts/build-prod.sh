@@ -26,12 +26,28 @@ echo ""
 echo "=== Build Complete ==="
 echo ""
 echo "Production files are in: $ROOT_DIR/dist/"
+
+if [ -f ".env" ] && grep -q "FTP_HOST" .env; then
+  echo ""
+  read -p "Upload to FTP? [y/N] " -n 1 -r
+  echo ""
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "[5/5] Uploading to FTP..."
+    node scripts/deploy.mjs
+    echo ""
+    echo "=== Deployment Complete ==="
+  fi
+else
+  echo ""
+  echo "To deploy via FTP:"
+  echo "  1. Create .env with FTP_HOST, FTP_USER, FTP_PASSWORD"
+  echo "  2. Run: npm run deploy"
+fi
+
 echo ""
-echo "To deploy:"
-echo "  1. Upload contents of dist/ to your web server"
-echo "  2. Ensure your server sets these headers (for SharedArrayBuffer):"
-echo "     Cross-Origin-Opener-Policy: same-origin"
-echo "     Cross-Origin-Embedder-Policy: require-corp"
+echo "Note: Ensure your server sets these headers (for SharedArrayBuffer):"
+echo "  Cross-Origin-Opener-Policy: same-origin"
+echo "  Cross-Origin-Embedder-Policy: require-corp"
 echo ""
 echo "To preview locally:"
 echo "  npm run preview"

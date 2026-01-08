@@ -79,6 +79,38 @@ pub fn eth_address_check(addr: &str) -> bool {
     cleaned.len() == 40 && cleaned.chars().all(|c| c.is_ascii_hexdigit())
 }
 
+pub fn ssn_check(ssn: &str) -> bool {
+    let digits: Vec<&str> = ssn.split('-').collect();
+    if digits.len() != 3 {
+        return false;
+    }
+
+    let area: u32 = match digits[0].parse() {
+        Ok(n) => n,
+        Err(_) => return false,
+    };
+    let group: u32 = match digits[1].parse() {
+        Ok(n) => n,
+        Err(_) => return false,
+    };
+    let serial: u32 = match digits[2].parse() {
+        Ok(n) => n,
+        Err(_) => return false,
+    };
+
+    if area == 0 || area == 666 || (area >= 900 && area <= 999) {
+        return false;
+    }
+    if group == 0 {
+        return false;
+    }
+    if serial == 0 {
+        return false;
+    }
+
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -122,5 +154,21 @@ mod tests {
             "0x742d35Cc6634C0532925a3b844Bc9e7595f8bE8f"
         ));
         assert!(!eth_address_check("0xinvalid"));
+    }
+
+    #[test]
+    fn test_valid_ssn() {
+        assert!(ssn_check("123-45-6789"));
+        assert!(ssn_check("001-01-0001"));
+    }
+
+    #[test]
+    fn test_invalid_ssn() {
+        assert!(!ssn_check("000-45-6789"));
+        assert!(!ssn_check("666-45-6789"));
+        assert!(!ssn_check("900-45-6789"));
+        assert!(!ssn_check("999-45-6789"));
+        assert!(!ssn_check("123-00-6789"));
+        assert!(!ssn_check("123-45-0000"));
     }
 }

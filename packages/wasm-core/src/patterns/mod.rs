@@ -57,7 +57,7 @@ static JWT_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+").unwrap());
 
 static PHONE_US_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\b(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b").unwrap()
+    Regex::new(r"\b(?:\+?1[-.\s]?)?(?:\([0-9]{3}\)[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}|[0-9]{3}[-.\s][0-9]{3}[-.\s]?[0-9]{4})\b").unwrap()
 });
 
 static PHONE_UK_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -122,7 +122,7 @@ static POSTCODE_US_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\b[0-9]{5}(?:-[0-9]{4})?\b").unwrap());
 
 static PASSPORT_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)\b(?:passport[:\s#]*)?[A-Z]{1,2}[0-9]{6,9}\b").unwrap());
+    Lazy::new(|| Regex::new(r"(?i)\bpassport[:\s#]*[A-Z]{1,2}[0-9]{6,9}\b").unwrap());
 
 static DRIVERS_LICENSE_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)\b(?:d\.?l\.?|driver'?s?[ \t]*(?:license|lic))[: \t#]*[A-Z0-9]{5,15}\b")
@@ -215,7 +215,7 @@ static DATETIME_CLF_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 static TIMESTAMP_UNIX_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\b1[0-9]{9}(?:[0-9]{3})?\b").unwrap());
+    Lazy::new(|| Regex::new(r"\b1[0-7][0-9]{8}(?:[0-9]{3})?\b").unwrap());
 
 static VIN_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[A-HJ-NPR-Z0-9]{17}\b").unwrap());
 
@@ -268,7 +268,7 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "ssn",
             regex: &SSN_REGEX,
-            validator: None,
+            validator: Some(validators::ssn_check),
         },
         PatternDef {
             id: "credit_card",

@@ -263,6 +263,23 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     return offsets
   }, [inputLines])
 
+  const changedLines = useMemo(() => {
+    const lines = new Set<number>()
+    const reps = output ? replacements : analysisReplacements
+    for (const r of reps) {
+      if (r.start >= 0) {
+        for (let i = 0; i < lineOffsets.length; i++) {
+          const lineStart = lineOffsets[i]
+          const lineEnd = i < lineOffsets.length - 1 ? lineOffsets[i + 1] - 1 : Infinity
+          if (r.start <= lineEnd && r.end > lineStart) {
+            lines.add(i)
+          }
+        }
+      }
+    }
+    return lines
+  }, [replacements, analysisReplacements, lineOffsets, output])
+
   const handleDownload = () => {
     if (!output) return
     const blob = new Blob([output], { type: 'text/plain' })
@@ -336,20 +353,26 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     }
   }
 
-  const renderNonVirtualLines = (lines: string[], type: 'input' | 'output' | 'analysis', reps: ReplacementInfo[]) => (
+  const renderNonVirtualLines = (lines: string[], type: 'input' | 'output' | 'analysis', reps: ReplacementInfo[], changed?: Set<number>) => (
     <div className="flex min-w-fit">
-      <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-500 text-right select-none border-r dark:border-gray-700 py-2">
-        {lines.map((_, i) => (
-          <div
-            key={i}
-            className={`px-2 font-mono text-sm cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 h-5 flex items-center justify-end ${
-              selectedLine === i ? 'bg-yellow-200 dark:bg-yellow-900' : ''
-            }`}
-            onClick={() => handleLineClick(i)}
-          >
-            {i + 1}
-          </div>
-        ))}
+      <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-900 text-right select-none border-r dark:border-gray-700 py-2">
+        {lines.map((_, i) => {
+          const hasChange = changed?.has(i)
+          const lineColor = hasChange
+            ? (type === 'output' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')
+            : 'text-gray-500 dark:text-gray-500'
+          return (
+            <div
+              key={i}
+              className={`px-2 font-mono text-sm cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 h-5 flex items-center justify-end ${lineColor} ${
+                selectedLine === i ? 'bg-yellow-200 dark:bg-yellow-900' : ''
+              }`}
+              onClick={() => handleLineClick(i)}
+            >
+              {i + 1}
+            </div>
+          )
+        })}
       </div>
       <div className="flex-1 p-2">
         {lines.map((line, i) => (
@@ -478,6 +501,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 showDiff={true}
                 type="analysis"
                 scrollRef={inputContainerRef}
+                changedLines={changedLines}
               />
             </div>
           ) : (
@@ -485,7 +509,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               ref={inputContainerRef}
               className="flex-1 min-h-0 border-2 border-purple-400 dark:border-purple-600 rounded-lg overflow-auto bg-white dark:bg-gray-800"
             >
-              {renderNonVirtualLines(inputLines, 'analysis', analysisReplacements)}
+              {renderNonVirtualLines(inputLines, 'analysis', analysisReplacements, changedLines)}
             </div>
           )
         ) : useVirtualScrolling ? (
@@ -500,6 +524,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               type="input"
               scrollRef={inputContainerRef}
               onScroll={() => handleScroll('input')}
+              changedLines={changedLines}
             />
           </div>
         ) : (
@@ -508,7 +533,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             onScroll={() => handleScroll('input')}
             className="flex-1 min-h-0 border dark:border-gray-600 rounded-lg overflow-auto bg-white dark:bg-gray-800"
           >
-            {renderNonVirtualLines(inputLines, 'input', replacements)}
+            {renderNonVirtualLines(inputLines, 'input', replacements, changedLines)}
           </div>
         )}
       </div>
@@ -573,6 +598,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               type="output"
               scrollRef={outputContainerRef}
               onScroll={() => handleScroll('output')}
+              changedLines={changedLines}
             />
           </div>
         ) : (
@@ -581,7 +607,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             onScroll={() => handleScroll('output')}
             className="flex-1 min-h-0 border dark:border-gray-600 rounded-lg overflow-auto bg-gray-50 dark:bg-gray-900"
           >
-            {renderNonVirtualLines(outputLines, 'output', replacements)}
+            {renderNonVirtualLines(outputLines, 'output', replacements, changedLines)}
           </div>
         )}
       </div>

@@ -34,7 +34,7 @@ function saveUiPreference<T>(key: string, value: T): void {
 
 function App() {
   const { 
-    input, setInput, output, isProcessing, processText, setFileName, fileName,
+    input, setInput, output, setOutput, isProcessing, processText, setFileName, fileName,
     processingProgress, cancelProcessing, canCancel,
     analyzeText, isAnalyzing, analysisReplacements, clearAnalysis,
     replacements
@@ -101,7 +101,9 @@ function App() {
 
   const handleClear = () => {
     setInput('')
+    setOutput('')
     setFileName(null)
+    clearAnalysis()
   }
 
   const handleDownload = () => {

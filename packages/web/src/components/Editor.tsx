@@ -430,7 +430,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 </button>
               ) : (
                 <button
-                  onClick={() => analyzeText(input)}
+                  onClick={() => { analyzeText(input); window.umami?.track('analyze') }}
                   disabled={isAnalyzing}
                   className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 flex items-center gap-1 disabled:opacity-50"
                   title="Preview what will be detected without sanitizing - also suggests disabled rules that would match"

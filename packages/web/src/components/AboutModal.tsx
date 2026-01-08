@@ -122,6 +122,13 @@ export function AboutModal({ onClose }: AboutModalProps) {
           </ul>
         </div>
         
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Analytics</h3>
+          <p className="text-sm">
+            We use <a href="https://umami.is" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Umami</a>, a privacy-focused analytics tool, to track only page views and the number of Sanitize/Analyze actions. No personal data, cookies, or tracking identifiers are collected.
+          </p>
+        </div>
+        
         <div className="pt-4 border-t dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Built with React, TypeScript, Rust/WebAssembly, Tailwind CSS, and Zustand. Press ESC to close.

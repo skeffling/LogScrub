@@ -42,6 +42,7 @@ function App() {
   const handleProcess = useCallback(() => {
     if (input.trim() && !isProcessing) {
       processText(input)
+      window.umami?.track('sanitize')
     }
   }, [input, isProcessing, processText])
 

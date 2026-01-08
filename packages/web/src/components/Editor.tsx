@@ -236,6 +236,12 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     setShowDiff(showDiffProp)
   }, [showDiffProp])
 
+  useEffect(() => {
+    if (output && replacements.length > 0) {
+      setShowDiff(true)
+    }
+  }, [output, replacements.length])
+
   useImperativeHandle(ref, () => ({
     scrollToLine: (line: number) => {
       const scrollTop = line * LINE_HEIGHT

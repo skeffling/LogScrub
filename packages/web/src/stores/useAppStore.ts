@@ -225,7 +225,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   stats: {},
   matches: {},
   replacements: [],
-  consistencyMode: false,
+  consistencyMode: true,
   rules: DEFAULT_RULES,
   customRules: loadCustomRulesFromStorage(),
   plainTextPatterns: loadPlainTextPatternsFromStorage(),

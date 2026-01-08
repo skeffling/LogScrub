@@ -94,7 +94,7 @@ const TIMESTAMP_PATTERNS: Array<{ regex: RegExp; parser: (m: RegExpExecArray) =>
     format: 'apache-error'
   },
   {
-    regex: /\[(\d{2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2})\s*([+-]\d{4})?\]/g,
+    regex: /\[(\d{1,2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2})\s*([+-]\d{4})?\]/g,
     parser: (m) => new Date(
       parseInt(m[3]), parseMonth(m[2]), parseInt(m[1]),
       parseInt(m[4]), parseInt(m[5]), parseInt(m[6])

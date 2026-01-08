@@ -120,11 +120,12 @@ interface VirtualizedListProps {
   scrollRef?: React.MutableRefObject<HTMLDivElement | null>
   onScroll?: () => void
   className?: string
+  changedLines?: Set<number>
 }
 
 function VirtualizedList({ 
   lines, lineOffsets, replacements, selectedLine, onLineClick, 
-  showDiff, type, scrollRef, onScroll, className 
+  showDiff, type, scrollRef, onScroll, className, changedLines 
 }: VirtualizedListProps) {
   const internalRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -170,13 +171,17 @@ function VirtualizedList({
           className="flex absolute w-full"
           style={{ top: startIndex * LINE_HEIGHT }}
         >
-          <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-500 text-right select-none border-r dark:border-gray-700 z-10">
+          <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-900 text-right select-none border-r dark:border-gray-700 z-10">
             {visibleLines.map((_, i) => {
               const lineNum = startIndex + i
+              const hasChange = changedLines?.has(lineNum)
+              const lineColor = hasChange
+                ? (type === 'output' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')
+                : 'text-gray-500 dark:text-gray-500'
               return (
                 <div
                   key={lineNum}
-                  className={`px-2 font-mono text-sm cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-end ${
+                  className={`px-2 font-mono text-sm cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-end ${lineColor} ${
                     selectedLine === lineNum ? 'bg-yellow-200 dark:bg-yellow-900' : ''
                   }`}
                   style={{ height: LINE_HEIGHT }}

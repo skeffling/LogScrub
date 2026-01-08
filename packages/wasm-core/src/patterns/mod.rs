@@ -207,6 +207,10 @@ static DATETIME_ISO_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\b(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])[T\s](?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:?[0-9]{2})?\b").unwrap()
 });
 
+static DATETIME_CLF_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\[?\d{1,2}/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/\d{4}:\d{2}:\d{2}:\d{2}\s*[+-]?\d{4}\]?").unwrap()
+});
+
 static TIMESTAMP_UNIX_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\b1[0-9]{9}(?:[0-9]{3})?\b").unwrap());
 
@@ -416,6 +420,11 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "datetime_iso",
             regex: &DATETIME_ISO_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "datetime_clf",
+            regex: &DATETIME_CLF_REGEX,
             validator: None,
         },
         PatternDef {

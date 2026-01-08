@@ -157,6 +157,7 @@ const DEFAULT_RULES: Record<string, Rule> = {
   date_iso: { label: 'Date (ISO)', enabled: false, strategy: 'label' },
   time: { label: 'Time', enabled: false, strategy: 'label' },
   datetime_iso: { label: 'DateTime (ISO)', enabled: false, strategy: 'label' },
+  datetime_clf: { label: 'DateTime (CLF)', enabled: false, strategy: 'label' },
   timestamp_unix: { label: 'Unix Timestamp', enabled: false, strategy: 'label' },
 }
 

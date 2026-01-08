@@ -87,6 +87,7 @@ interface RuleRowProps {
   label: string
   enabled: boolean
   strategy: ReplacementStrategy
+  matchCount?: number
   onToggle: () => void
   onStrategyChange: (strategy: ReplacementStrategy) => void
   onViewPattern: () => void
@@ -94,7 +95,7 @@ interface RuleRowProps {
 }
 
 const RuleRow = memo(function RuleRow({
-  label, enabled, strategy, onToggle, onStrategyChange, onViewPattern, onEditTemplate
+  label, enabled, strategy, matchCount, onToggle, onStrategyChange, onViewPattern, onEditTemplate
 }: RuleRowProps) {
   return (
     <div className="flex items-center justify-between gap-2">
@@ -106,6 +107,11 @@ const RuleRow = memo(function RuleRow({
           className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
         />
         <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{label}</span>
+        {matchCount !== undefined && matchCount > 0 && (
+          <span className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full">
+            {matchCount}
+          </span>
+        )}
       </label>
       
       <button
@@ -580,6 +586,7 @@ export function RulePanel() {
                         label={rule.label}
                         enabled={rule.enabled}
                         strategy={rule.strategy}
+                        matchCount={displayStats[id]}
                         onToggle={() => toggleRule(id)}
                         onStrategyChange={(newStrategy) => {
                           setRuleStrategy(id, newStrategy)
@@ -616,6 +623,11 @@ export function RulePanel() {
                       className="rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500 dark:bg-gray-700"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{rule.label}</span>
+                    {displayStats[rule.id] > 0 && (
+                      <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full">
+                        {displayStats[rule.id]}
+                      </span>
+                    )}
                   </label>
                   
                   <button
@@ -672,6 +684,11 @@ export function RulePanel() {
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate" title={pattern.text}>
                       {pattern.label}
                     </span>
+                    {displayStats[pattern.id] > 0 && (
+                      <span className="text-xs px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 rounded-full">
+                        {displayStats[pattern.id]}
+                      </span>
+                    )}
                   </label>
                   
                   <button

@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { decompress_gzip, decompress_zip, compress_zip } from '../wasm-core/wasm_core'
 import { useAppStore, type ReplacementInfo } from '../stores/useAppStore'
 
 interface EditorProps {
@@ -305,16 +306,57 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     await navigator.clipboard.writeText(output)
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processCompressedFile = async (file: File): Promise<{ content: string; name: string }> => {
+    const ext = file.name.toLowerCase()
+    const buffer = await file.arrayBuffer()
+    const data = new Uint8Array(buffer)
+    
+    if (ext.endsWith('.zip')) {
+      const content = decompress_zip(data)
+      const baseName = file.name.replace(/\.zip$/i, '')
+      return { content, name: baseName }
+    }
+    
+    if (ext.endsWith('.gz') || ext.endsWith('.gzip')) {
+      const content = decompress_gzip(data)
+      const baseName = file.name.replace(/\.(gz|gzip)$/i, '')
+      return { content, name: baseName }
+    }
+    
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (ev) => resolve({ content: ev.target?.result as string, name: file.name })
+      reader.readAsText(file)
+    })
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        onInputChange(ev.target?.result as string)
-        setFileName(file.name)
+      try {
+        const { content, name } = await processCompressedFile(file)
+        onInputChange(content)
+        setFileName(name)
+      } catch (err) {
+        console.error('Failed to read file:', err)
+        alert('Failed to read file. Make sure it\'s a valid text, zip, or gzip file.')
       }
-      reader.readAsText(file)
     }
+  }
+
+  const handleDownloadZip = () => {
+    if (!output) return
+    const baseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'sanitized_output'
+    const zipData = compress_zip(output, `${baseName}.txt`)
+    const blob = new Blob([zipData], { type: 'application/zip' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${baseName}.zip`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const handleScroll = useCallback((source: 'input' | 'output') => {
@@ -348,17 +390,19 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     e.stopPropagation()
   }
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     const file = e.dataTransfer.files[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        onInputChange(ev.target?.result as string)
-        setFileName(file.name)
+      try {
+        const { content, name } = await processCompressedFile(file)
+        onInputChange(content)
+        setFileName(name)
+      } catch (err) {
+        console.error('Failed to read file:', err)
+        alert('Failed to read file. Make sure it\'s a valid text, zip, or gzip file.')
       }
-      reader.readAsText(file)
     }
   }
 
@@ -417,7 +461,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           <div className="flex gap-2">
             <label 
               className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer"
-              title="Upload a log file (.log, .txt, .json, .xml, .csv). Files over 50MB may be slower to process."
+              title="Upload a log file (.log, .txt, .json, .xml, .csv, .zip, .gz). Compressed files are automatically extracted."
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -426,7 +470,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               <input
                 type="file"
                 onChange={handleFileUpload}
-                accept=".log,.txt,.json,.xml,.csv"
+                accept=".log,.txt,.json,.xml,.csv,.zip,.gz,.gzip"
                 className="hidden"
               />
             </label>
@@ -538,11 +582,22 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               <button
                 onClick={handleDownload}
                 className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                title="Download as plain text"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                Download
+                .txt
+              </button>
+              <button
+                onClick={handleDownloadZip}
+                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                title="Download as compressed zip"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                .zip
               </button>
             </div>
           )}

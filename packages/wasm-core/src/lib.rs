@@ -1,10 +1,16 @@
 mod patterns;
 mod validators;
 
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use patterns::{Match, PiiDetector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::io::{Cursor, Read, Write};
 use wasm_bindgen::prelude::*;
+use zip::write::FileOptions;
+use zip::ZipArchive;
 
 #[derive(Debug, Deserialize)]
 struct RuleConfig {
@@ -231,4 +237,69 @@ fn generate_fake(pii_type: &str, _original: &str, count: usize) -> String {
         "timestamp_unix" => format!("{}", 946684800 + count * 86400),
         _ => format!("[REDACTED-{}]", count),
     }
+}
+
+#[wasm_bindgen]
+pub fn decompress_gzip(data: &[u8]) -> Result<String, JsValue> {
+    let mut decoder = GzDecoder::new(data);
+    let mut result = String::new();
+    decoder
+        .read_to_string(&mut result)
+        .map_err(|e| JsValue::from_str(&format!("Gzip decompression failed: {}", e)))?;
+    Ok(result)
+}
+
+#[wasm_bindgen]
+pub fn compress_gzip(text: &str) -> Result<Vec<u8>, JsValue> {
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
+    encoder
+        .write_all(text.as_bytes())
+        .map_err(|e| JsValue::from_str(&format!("Gzip compression failed: {}", e)))?;
+    encoder
+        .finish()
+        .map_err(|e| JsValue::from_str(&format!("Gzip finish failed: {}", e)))
+}
+
+#[wasm_bindgen]
+pub fn decompress_zip(data: &[u8]) -> Result<String, JsValue> {
+    let cursor = Cursor::new(data);
+    let mut archive = ZipArchive::new(cursor)
+        .map_err(|e| JsValue::from_str(&format!("Failed to read zip: {}", e)))?;
+
+    for i in 0..archive.len() {
+        let mut file = archive
+            .by_index(i)
+            .map_err(|e| JsValue::from_str(&format!("Failed to read zip entry: {}", e)))?;
+
+        let name = file.name().to_string();
+        if file.is_dir() || name.starts_with("__MACOSX") || name.starts_with('.') {
+            continue;
+        }
+
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)
+            .map_err(|e| JsValue::from_str(&format!("Failed to read file contents: {}", e)))?;
+        return Ok(contents);
+    }
+
+    Err(JsValue::from_str("No text files found in zip"))
+}
+
+#[wasm_bindgen]
+pub fn compress_zip(text: &str, filename: &str) -> Result<Vec<u8>, JsValue> {
+    let mut buffer = Cursor::new(Vec::new());
+    {
+        let mut zip = zip::ZipWriter::new(&mut buffer);
+        let options = FileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated)
+            .unix_permissions(0o644);
+
+        zip.start_file(filename, options)
+            .map_err(|e| JsValue::from_str(&format!("Failed to start zip file: {}", e)))?;
+        zip.write_all(text.as_bytes())
+            .map_err(|e| JsValue::from_str(&format!("Failed to write to zip: {}", e)))?;
+        zip.finish()
+            .map_err(|e| JsValue::from_str(&format!("Failed to finish zip: {}", e)))?;
+    }
+    Ok(buffer.into_inner())
 }

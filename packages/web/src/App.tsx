@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Header } from './components/Header'
 import { Editor } from './components/Editor'
 import { RulePanel } from './components/RulePanel'
@@ -8,6 +8,7 @@ import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
 import { Modal } from './components/Modal'
 import { useAppStore } from './stores/useAppStore'
+import { compress_zip } from './wasm-core/wasm_core'
 
 function loadUiPreference<T>(key: string, defaultValue: T): T {
   try {
@@ -27,7 +28,8 @@ function App() {
   const { 
     input, setInput, output, isProcessing, processText, setFileName, fileName,
     processingProgress, cancelProcessing, canCancel,
-    analyzeText, isAnalyzing, analysisReplacements, clearAnalysis
+    analyzeText, isAnalyzing, analysisReplacements, clearAnalysis,
+    replacements
   } = useAppStore()
   const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
   const [fullscreenView, setFullscreenView] = useState(false)
@@ -38,12 +40,22 @@ function App() {
   const [showGoToLine, setShowGoToLine] = useState(false)
   const [syncScroll, setSyncScroll] = useState(() => loadUiPreference('syncScroll', true))
   const [showStats, setShowStats] = useState(false)
+  const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
   const editorRef = useRef<{ scrollToLine: (line: number) => void } | null>(null)
 
   useEffect(() => { saveUiPreference('showRules', showRules) }, [showRules])
   useEffect(() => { saveUiPreference('constrainWidth', constrainWidth) }, [constrainWidth])
   useEffect(() => { saveUiPreference('showDiffHighlight', showDiffHighlight) }, [showDiffHighlight])
   useEffect(() => { saveUiPreference('syncScroll', syncScroll) }, [syncScroll])
+
+  useEffect(() => {
+    if (fullscreenView) {
+      window.history.pushState({ fullscreen: true }, '')
+      const handlePopState = () => setFullscreenView(false)
+      window.addEventListener('popstate', handlePopState)
+      return () => window.removeEventListener('popstate', handlePopState)
+    }
+  }, [fullscreenView])
 
   const handleProcess = useCallback(() => {
     if (input.trim() && !isProcessing) {
@@ -64,6 +76,21 @@ function App() {
     const a = document.createElement('a')
     a.href = url
     a.download = fileName ? `sanitized_${fileName}` : 'sanitized_output.txt'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleDownloadZip = () => {
+    if (!output) return
+    const baseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'sanitized_output'
+    const zipData = compress_zip(output, `${baseName}.txt`)
+    const blob = new Blob([zipData], { type: 'application/zip' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${baseName}.zip`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -99,31 +126,98 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleProcess, output, isProcessing, canCancel, cancelProcessing, showGoToLine])
 
+  const fullscreenLines = useMemo(() => output.split('\n'), [output])
+  
+  const highlightFullscreenLine = useCallback((line: string): React.ReactNode => {
+    if (!fullscreenHighlight || replacements.length === 0) return line || ' '
+    
+    const parts: React.ReactNode[] = []
+    let remaining = line
+    let keyIndex = 0
+    const patterns = replacements.map(r => ({ pattern: r.replacement, type: r.pii_type }))
+
+    while (remaining.length > 0) {
+      let earliestMatch: { index: number; length: number; type: string } | null = null
+      for (const p of patterns) {
+        const idx = remaining.indexOf(p.pattern)
+        if (idx !== -1 && (earliestMatch === null || idx < earliestMatch.index)) {
+          earliestMatch = { index: idx, length: p.pattern.length, type: p.type }
+        }
+      }
+      if (earliestMatch === null) {
+        parts.push(<span key={`rest-${keyIndex++}`}>{remaining}</span>)
+        break
+      }
+      if (earliestMatch.index > 0) {
+        parts.push(<span key={`text-${keyIndex++}`}>{remaining.slice(0, earliestMatch.index)}</span>)
+      }
+      parts.push(
+        <span key={`hl-${keyIndex++}`} className="bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded px-0.5" title={earliestMatch.type}>
+          {remaining.slice(earliestMatch.index, earliestMatch.index + earliestMatch.length)}
+        </span>
+      )
+      remaining = remaining.slice(earliestMatch.index + earliestMatch.length)
+    }
+    return parts.length > 0 ? parts : (line || ' ')
+  }, [fullscreenHighlight, replacements])
+
   if (fullscreenView) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Sanitized Output {fileName && <span className="text-gray-500 dark:text-gray-400 text-sm">({fileName})</span>}
+            <span className="ml-2 text-xs text-gray-400">({fullscreenLines.length.toLocaleString()} lines)</span>
           </h2>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-4">
             <button
-              onClick={handleDownload}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              onClick={() => setFullscreenHighlight(!fullscreenHighlight)}
+              className={`text-sm flex items-center gap-1 ${fullscreenHighlight ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}
+              title="Toggle highlighting of replaced values"
             >
-              Download
+              <span className={`w-2 h-2 rounded-full ${fullscreenHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
+              Highlight
             </button>
             <button
-              onClick={() => setFullscreenView(false)}
+              onClick={handleDownload}
+              className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border dark:border-gray-600 rounded"
+              title="Download as plain text"
+            >
+              .txt
+            </button>
+            <button
+              onClick={handleDownloadZip}
+              className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border dark:border-gray-600 rounded"
+              title="Download as compressed zip"
+            >
+              .zip
+            </button>
+            <button
+              onClick={() => { window.history.back() }}
               className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
             >
               Close
             </button>
           </div>
         </div>
-        <pre className="flex-1 p-4 font-mono text-sm overflow-auto whitespace-pre-wrap bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-          {output}
-        </pre>
+        <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
+          <div className="flex min-w-fit">
+            <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-800 text-right select-none border-r dark:border-gray-700 py-2">
+              {fullscreenLines.map((_, i) => (
+                <div key={i} className="px-3 font-mono text-sm text-gray-500 dark:text-gray-500 h-5 flex items-center justify-end">
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+            <div className="flex-1 p-2">
+              {fullscreenLines.map((line, i) => (
+                <div key={i} className="font-mono text-sm whitespace-pre text-gray-900 dark:text-gray-100 h-5">
+                  {highlightFullscreenLine(line)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

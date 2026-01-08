@@ -220,6 +220,15 @@ static LICENSE_PLATE_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\b[A-Z]{2}[0-9]{2}\s?[A-Z]{3}\b|\b[A-Z]{1,3}\s?[0-9]{1,4}\s?[A-Z]{0,3}\b").unwrap()
 });
 
+static SQL_TABLES_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?i)(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+(`[^`]+`|\[[^\]]+\]|"[^"]+"|[a-zA-Z_][a-zA-Z0-9_]*)"#).unwrap()
+});
+
+static SQL_STRINGS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"'(?:[^'\\]|\\.)*'").unwrap());
+
+static SQL_IDENTIFIERS_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"`[^`]+`|\[[^\]]+\]|"[^"]+""#).unwrap());
+
 static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
     vec![
         PatternDef {
@@ -430,6 +439,21 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "timestamp_unix",
             regex: &TIMESTAMP_UNIX_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sql_tables",
+            regex: &SQL_TABLES_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sql_strings",
+            regex: &SQL_STRINGS_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sql_identifiers",
+            regex: &SQL_IDENTIFIERS_REGEX,
             validator: None,
         },
     ]

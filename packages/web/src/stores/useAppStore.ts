@@ -159,6 +159,9 @@ const DEFAULT_RULES: Record<string, Rule> = {
   datetime_iso: { label: 'DateTime (ISO)', enabled: false, strategy: 'label' },
   datetime_clf: { label: 'DateTime (CLF)', enabled: false, strategy: 'label' },
   timestamp_unix: { label: 'Unix Timestamp', enabled: false, strategy: 'label' },
+  sql_tables: { label: 'SQL Tables', enabled: false, strategy: 'label' },
+  sql_strings: { label: 'SQL Strings', enabled: false, strategy: 'label' },
+  sql_identifiers: { label: 'SQL Identifiers', enabled: false, strategy: 'label' },
 }
 
 const PRESETS_STORAGE_KEY = 'logscrub_presets'

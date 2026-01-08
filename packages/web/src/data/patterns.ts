@@ -41,4 +41,7 @@ export const BUILTIN_PATTERNS: Record<string, string> = {
   datetime_iso: String.raw`\b(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])[T\s](?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:?[0-9]{2})?\b`,
   datetime_clf: String.raw`\[?\d{1,2}/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/\d{4}:\d{2}:\d{2}:\d{2}\s*[+-]?\d{4}\]?`,
   timestamp_unix: String.raw`\b1[0-9]{9}(?:[0-9]{3})?\b`,
+  sql_tables: String.raw`(?i)(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+(` + "`[^`]+`" + String.raw`|\[[^\]]+\]|"[^"]+"|[a-zA-Z_][a-zA-Z0-9_]*)`,
+  sql_strings: String.raw`'(?:[^'\\]|\\.)*'`,
+  sql_identifiers: "`[^`]+`" + String.raw`|\[[^\]]+\]`,
 }

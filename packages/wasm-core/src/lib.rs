@@ -59,7 +59,7 @@ pub fn sanitize(text: &str, rules_json: &str, consistency_mode: bool) -> String 
         *stats.entry(m.pii_type.clone()).or_insert(0) += 1;
         found_matches
             .entry(m.pii_type.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(m.value.clone());
     }
 

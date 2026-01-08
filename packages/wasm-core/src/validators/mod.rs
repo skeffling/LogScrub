@@ -98,7 +98,7 @@ pub fn ssn_check(ssn: &str) -> bool {
         Err(_) => return false,
     };
 
-    if area == 0 || area == 666 || (area >= 900 && area <= 999) {
+    if area == 0 || area == 666 || (900..=999).contains(&area) {
         return false;
     }
     if group == 0 {

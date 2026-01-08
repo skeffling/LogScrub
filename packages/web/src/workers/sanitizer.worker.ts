@@ -332,7 +332,6 @@ function processCustomRules(
         matches[rule.id].push(match[0])
       }
     } catch {
-      console.warn(`Invalid regex pattern for rule ${rule.id}: ${rule.pattern}`)
     }
   }
 

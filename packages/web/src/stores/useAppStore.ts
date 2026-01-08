@@ -493,8 +493,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!cancelRequested) {
         set({ output: result.output, stats: result.stats, matches: result.matches || {}, replacements: result.replacements || [] })
       }
-    } catch (error) {
-      console.error('Processing failed:', error)
+    } catch {
     } finally {
       set({ isProcessing: false, processingProgress: 0, canCancel: false })
     }
@@ -607,8 +606,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           showSuggestions: suggestions.length > 0
         })
       }
-    } catch (error) {
-      console.error('Analysis failed:', error)
+    } catch {
     } finally {
       set({ isAnalyzing: false, processingProgress: 0, canCancel: false })
     }

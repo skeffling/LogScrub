@@ -374,8 +374,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
         const { content, name } = await processCompressedFile(file)
         onInputChange(content)
         setFileName(name)
-      } catch (err) {
-        console.error('Failed to read file:', err)
+      } catch {
         alert('Failed to read file. Make sure it\'s a valid text, zip, or gzip file.')
       }
     }
@@ -453,8 +452,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
         const { content, name } = await processCompressedFile(file)
         onInputChange(content)
         setFileName(name)
-      } catch (err) {
-        console.error('Failed to read file:', err)
+      } catch {
         alert('Failed to read file. Make sure it\'s a valid text, zip, or gzip file.')
       }
     }

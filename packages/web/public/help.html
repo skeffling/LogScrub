@@ -249,6 +249,7 @@
         <li><a href="#analyze-mode">Analyze Mode</a></li>
         <li><a href="#audit-reports">Audit Reports</a></li>
         <li><a href="#keyboard-shortcuts">Keyboard Shortcuts</a></li>
+        <li><a href="#network-captures">Working with Network Captures</a></li>
         <li><a href="#file-size">File Size &amp; Performance</a></li>
         <li><a href="#privacy">Privacy &amp; Security</a></li>
       </ul>
@@ -979,6 +980,64 @@ User [EMAIL-3] logged in</div>
           <td>Cancel processing / Close dialogs</td>
         </tr>
       </table>
+    </section>
+
+    <section id="network-captures">
+      <h2>Working with Network Captures</h2>
+      <p>LogScrub can scrub network packet captures (PCAP files), but they must first be converted to text format.</p>
+
+      <h3>Converting PCAP to Text</h3>
+      <p>Use standard packet analysis tools to export your capture as readable text:</p>
+
+      <h4>Using tcpdump</h4>
+      <pre>tcpdump -r capture.pcap -tttt > capture.txt</pre>
+      <p>The <code>-tttt</code> flag prints full timestamps. Add <code>-v</code> or <code>-vv</code> for more detail.</p>
+
+      <h4>Using tshark (Wireshark CLI)</h4>
+      <pre>tshark -r capture.pcap > capture.txt</pre>
+      <p>For specific protocols or fields:</p>
+      <pre>tshark -r capture.pcap -T fields -e ip.src -e ip.dst -e tcp.port > capture.txt</pre>
+
+      <h4>Using Wireshark</h4>
+      <ol>
+        <li>Open the PCAP file in Wireshark</li>
+        <li>Go to <strong>File → Export Packet Dissections → As Plain Text</strong></li>
+        <li>Save the text file, then upload to LogScrub</li>
+      </ol>
+
+      <h3>What Gets Detected</h3>
+      <p>Network capture text typically contains:</p>
+      <table class="rule-table">
+        <tr>
+          <th>Data Type</th>
+          <th>Detection Rule</th>
+          <th>Example</th>
+        </tr>
+        <tr>
+          <td>IP addresses with ports</td>
+          <td>IPv4, IPv6</td>
+          <td><code>192.168.1.1:8080</code>, <code>[::1]:443</code></td>
+        </tr>
+        <tr>
+          <td>MAC addresses</td>
+          <td>MAC Address</td>
+          <td><code>00:1A:2B:3C:4D:5E</code></td>
+        </tr>
+        <tr>
+          <td>Hostnames in DNS/HTTP</td>
+          <td>Hostname, URL</td>
+          <td><code>api.example.com</code></td>
+        </tr>
+        <tr>
+          <td>HTTP headers</td>
+          <td>Various token rules</td>
+          <td>Auth tokens, cookies, etc.</td>
+        </tr>
+      </table>
+
+      <div class="tip">
+        <strong>Tip:</strong> IP addresses with port numbers (like <code>192.168.1.1:8080</code> or <code>[2001:db8::1]:443</code>) are automatically matched by the IPv4 and IPv6 rules.
+      </div>
     </section>
 
     <section id="file-size">

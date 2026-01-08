@@ -469,7 +469,7 @@ function App() {
                     Clear
                   </button>
                 )}
-                {analysisReplacements.length > 0 && !output ? (
+                {analysisReplacements.length > 0 && !output && (
                   <button
                     onClick={clearAnalysis}
                     className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2"
@@ -480,12 +480,13 @@ function App() {
                     </svg>
                     Clear Preview
                   </button>
-                ) : (
+                )}
+                {!output && analysisReplacements.length === 0 && (
                   <button
                     onClick={() => { analyzeText(input); window.umami?.track('analyze') }}
-                    disabled={isAnalyzing || !input.trim() || !!output}
+                    disabled={isAnalyzing || !input.trim()}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    title="Preview what will be detected without sanitizing"
+                    title="Preview what will be detected without scrubbing"
                   >
                     {isAnalyzing ? (
                       <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">

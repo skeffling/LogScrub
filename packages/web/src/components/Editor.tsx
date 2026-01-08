@@ -513,7 +513,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
       <div className="flex flex-col min-h-0">
         <div className="flex items-center justify-between mb-2 flex-shrink-0">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Original {fileName && <span className="text-gray-500 dark:text-gray-400">({fileName})</span>}
+            Original {fileName && <span className="text-gray-500 dark:text-gray-400" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
             {useVirtualScrolling && inputLines.length > VIRTUAL_THRESHOLD && (
               <span className="ml-2 text-xs text-gray-400">
                 ({(showChangedOnly ? filteredInputLines.length : inputLines.length).toLocaleString()} lines{showChangedOnly && ` of ${inputLines.length.toLocaleString()}`})

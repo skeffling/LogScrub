@@ -337,7 +337,7 @@ function App() {
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Scrubbed Output {fileName && <span className="text-gray-500 dark:text-gray-400 text-sm">({fileName})</span>}
+            Scrubbed Output {fileName && <span className="text-gray-500 dark:text-gray-400 text-sm" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
             <span className="ml-2 text-xs text-gray-400">
               ({filteredFullscreenLines.length.toLocaleString()} lines{fullscreenChangedOnly && ` of ${fullscreenLines.length.toLocaleString()}`})
             </span>

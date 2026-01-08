@@ -143,20 +143,25 @@ export function TimeShift() {
           )}
 
           {timeShift.enabled && (
-            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-300">
-              {timeShift.mode === 'offset' ? (
-                <>
-                  Timestamps will be shifted by{' '}
-                  <strong>
-                    {timeShift.offsetHours >= 0 ? '+' : ''}{timeShift.offsetHours}h {timeShift.offsetMinutes >= 0 ? '+' : ''}{timeShift.offsetMinutes}m
-                  </strong>
-                </>
-              ) : (
-                <>
-                  First timestamp will become{' '}
-                  <strong>{timeShift.startDate || 'not set'} {timeShift.startTime || ''}</strong>
-                </>
-              )}
+            <div className="space-y-2">
+              <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-300">
+                {timeShift.mode === 'offset' ? (
+                  <>
+                    Timestamps will be shifted by{' '}
+                    <strong>
+                      {timeShift.offsetHours >= 0 ? '+' : ''}{timeShift.offsetHours}h {timeShift.offsetMinutes >= 0 ? '+' : ''}{timeShift.offsetMinutes}m
+                    </strong>
+                  </>
+                ) : (
+                  <>
+                    First timestamp will become{' '}
+                    <strong>{timeShift.startDate || 'not set'} {timeShift.startTime || ''}</strong>
+                  </>
+                )}
+              </div>
+              <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-xs text-gray-600 dark:text-gray-400">
+                Date/time detection rules are automatically skipped when Time Shift is enabled.
+              </div>
             </div>
           )}
         </div>

@@ -388,9 +388,14 @@ self.onmessage = async (e: MessageEvent) => {
       
       const { text, rules, customRules = [], plainTextPatterns = [], consistencyMode, timeShift } = e.data.payload as ProcessRequest
       
+      const TIMESTAMP_RULES = ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'timestamp_unix']
+      const filteredRules = timeShift?.enabled 
+        ? rules.filter(r => !TIMESTAMP_RULES.includes(r.id))
+        : rules
+      
       const wasmResult = sanitize(
         text,
-        JSON.stringify(rules),
+        JSON.stringify(filteredRules),
         consistencyMode
       )
       

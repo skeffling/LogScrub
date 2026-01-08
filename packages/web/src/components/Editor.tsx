@@ -225,7 +225,7 @@ function VirtualizedList({
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true }, ref) {
-  const { fileName, setFileName, replacements, analysisReplacements, analysisStats, analyzeText, clearAnalysis, isAnalyzing } = useAppStore()
+  const { fileName, setFileName, replacements, analysisReplacements } = useAppStore()
   const inputContainerRef = useRef<HTMLDivElement | null>(null)
   const outputContainerRef = useRef<HTMLDivElement | null>(null)
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
@@ -418,39 +418,6 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 <span className={`w-2 h-2 rounded-full ${showDiff ? 'bg-blue-500' : 'bg-gray-400'}`} />
                 Diff
               </button>
-            )}
-            {input && !output && (
-              analysisReplacements.length > 0 ? (
-                <button
-                  onClick={clearAnalysis}
-                  className="text-xs text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 flex items-center gap-1"
-                  title="Clear the analysis preview and return to editing mode"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Clear Preview ({Object.values(analysisStats).reduce((a, b) => a + b, 0)} matches)
-                </button>
-              ) : (
-                <button
-                  onClick={() => { analyzeText(input); window.umami?.track('analyze') }}
-                  disabled={isAnalyzing}
-                  className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 flex items-center gap-1 disabled:opacity-50"
-                  title="Preview what will be detected without sanitizing - also suggests disabled rules that would match"
-                >
-                  {isAnalyzing ? (
-                    <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  )}
-                  {isAnalyzing ? 'Analyzing...' : 'Analyze'}
-                </button>
-              )
             )}
             <label 
               className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer"

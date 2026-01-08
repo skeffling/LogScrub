@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle, startTransition } from 'react'
 import init, { decompress_gzip, decompress_zip, compress_zip, compress_gzip } from '../wasm-core/wasm_core'
 import { useAppStore, type ReplacementInfo } from '../stores/useAppStore'
 
@@ -25,7 +25,7 @@ export interface EditorHandle {
 
 const LINE_HEIGHT = 20
 const VIRTUAL_THRESHOLD = 500
-const OVERSCAN = 10
+const OVERSCAN = 30
 
 function highlightLine(line: string, lineStart: number, replacements: ReplacementInfo[], type: 'original' | 'output'): React.ReactNode {
   const lineEnd = lineStart + line.length
@@ -140,6 +140,8 @@ function VirtualizedList({
   const internalRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [containerHeight, setContainerHeight] = useState(400)
+  const rafRef = useRef<number | null>(null)
+  const lastScrollTop = useRef(0)
 
   useEffect(() => {
     if (scrollRef && internalRef.current) {
@@ -159,9 +161,25 @@ function VirtualizedList({
     return () => observer.disconnect()
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
+
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    setScrollTop(e.currentTarget.scrollTop)
+    const newScrollTop = e.currentTarget.scrollTop
+    lastScrollTop.current = newScrollTop
     onScroll?.()
+    
+    if (rafRef.current) return
+    
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null
+      startTransition(() => {
+        setScrollTop(lastScrollTop.current)
+      })
+    })
   }, [onScroll])
 
   const totalHeight = lines.length * LINE_HEIGHT
@@ -176,10 +194,10 @@ function VirtualizedList({
       className={`overflow-auto ${className || ''}`}
       style={{ height: '100%' }}
     >
-      <div style={{ height: totalHeight, position: 'relative' }}>
+      <div style={{ height: totalHeight, position: 'relative', contain: 'strict' }}>
         <div 
           className="inline-flex absolute min-w-full"
-          style={{ top: startIndex * LINE_HEIGHT }}
+          style={{ transform: `translateY(${startIndex * LINE_HEIGHT}px)`, willChange: 'transform' }}
         >
           <div className="flex-shrink-0 sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 text-right select-none border-r dark:border-gray-700">
             {visibleLines.map((_, i) => {

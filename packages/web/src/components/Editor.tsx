@@ -178,10 +178,10 @@ function VirtualizedList({
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
         <div 
-          className="flex absolute w-full"
+          className="inline-flex absolute min-w-full"
           style={{ top: startIndex * LINE_HEIGHT }}
         >
-          <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-900 text-right select-none border-r dark:border-gray-700 z-10">
+          <div className="flex-shrink-0 sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 text-right select-none border-r dark:border-gray-700">
             {visibleLines.map((_, i) => {
               const lineNum = startIndex + i
               const hasChange = changedLines?.has(lineNum)
@@ -202,7 +202,7 @@ function VirtualizedList({
               )
             })}
           </div>
-          <div className="flex-1 px-2">
+          <div className="px-2">
             {visibleLines.map((line, i) => {
               const lineNum = startIndex + i
               let content: React.ReactNode
@@ -434,8 +434,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   }
 
   const renderNonVirtualLines = (lines: string[], type: 'input' | 'output' | 'analysis', reps: ReplacementInfo[], changed?: Set<number>) => (
-    <div className="flex min-w-fit">
-      <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-900 text-right select-none border-r dark:border-gray-700 py-2">
+    <div className="inline-flex min-w-full">
+      <div className="flex-shrink-0 sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 text-right select-none border-r dark:border-gray-700 py-2">
         {lines.map((_, i) => {
           const hasChange = changed?.has(i)
           const lineColor = hasChange
@@ -454,7 +454,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           )
         })}
       </div>
-      <div className="flex-1 p-2">
+      <div className="p-2">
         {lines.map((line, i) => (
           <div
             key={i}

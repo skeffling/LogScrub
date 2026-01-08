@@ -86,12 +86,20 @@ const TIMESTAMP_PATTERNS: Array<{ regex: RegExp; parser: (m: RegExpExecArray) =>
     format: 'iso'
   },
   {
+    regex: /\[([A-Za-z]{3})\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})\]/g,
+    parser: (m) => new Date(
+      parseInt(m[7]), parseMonth(m[2]), parseInt(m[3]),
+      parseInt(m[4]), parseInt(m[5]), parseInt(m[6])
+    ),
+    format: 'apache-error'
+  },
+  {
     regex: /\[(\d{2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2})\s*([+-]\d{4})?\]/g,
     parser: (m) => new Date(
       parseInt(m[3]), parseMonth(m[2]), parseInt(m[1]),
       parseInt(m[4]), parseInt(m[5]), parseInt(m[6])
     ),
-    format: 'apache'
+    format: 'apache-access'
   },
   {
     regex: /([A-Za-z]{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})/g,
@@ -121,13 +129,16 @@ const TIMESTAMP_PATTERNS: Array<{ regex: RegExp; parser: (m: RegExpExecArray) =>
 function formatTimestamp(date: Date, format: string): string {
   const pad = (n: number, len = 2) => String(n).padStart(len, '0')
   const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   
   switch (format) {
     case 'iso':
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}Z`
     case 'date-iso':
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-    case 'apache':
+    case 'apache-error':
+      return `[${DAY_NAMES[date.getDay()]} ${MONTH_NAMES[date.getMonth()]} ${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${date.getFullYear()}]`
+    case 'apache-access':
       return `[${pad(date.getDate())}/${MONTH_NAMES[date.getMonth()]}/${date.getFullYear()}:${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} +0000]`
     case 'syslog':
       return `${MONTH_NAMES[date.getMonth()]} ${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`

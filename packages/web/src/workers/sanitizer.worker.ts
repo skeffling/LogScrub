@@ -102,6 +102,14 @@ const TIMESTAMP_PATTERNS: Array<{ regex: RegExp; parser: (m: RegExpExecArray) =>
     format: 'apache-access'
   },
   {
+    regex: /(\d{1,2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2})\s*([+-]\d{4})?/g,
+    parser: (m) => new Date(
+      parseInt(m[3]), parseMonth(m[2]), parseInt(m[1]),
+      parseInt(m[4]), parseInt(m[5]), parseInt(m[6])
+    ),
+    format: 'clf-datetime'
+  },
+  {
     regex: /([A-Za-z]{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})/g,
     parser: (m) => {
       const now = new Date()
@@ -140,6 +148,8 @@ function formatTimestamp(date: Date, format: string): string {
       return `[${DAY_NAMES[date.getDay()]} ${MONTH_NAMES[date.getMonth()]} ${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${date.getFullYear()}]`
     case 'apache-access':
       return `[${pad(date.getDate())}/${MONTH_NAMES[date.getMonth()]}/${date.getFullYear()}:${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} +0000]`
+    case 'clf-datetime':
+      return `${pad(date.getDate())}/${MONTH_NAMES[date.getMonth()]}/${date.getFullYear()}:${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} +0000`
     case 'syslog':
       return `${MONTH_NAMES[date.getMonth()]} ${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     case 'us-datetime':

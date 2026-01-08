@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+*.local
+packages/wasm-core/target/
+packages/wasm-core/pkg/

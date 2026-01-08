@@ -1,0 +1,304 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Header } from './components/Header'
+import { Editor } from './components/Editor'
+import { RulePanel } from './components/RulePanel'
+import { TimeShift } from './components/TimeShift'
+import { AboutModal } from './components/AboutModal'
+import { Suggestions } from './components/Suggestions'
+import { useAppStore } from './stores/useAppStore'
+
+function loadUiPreference<T>(key: string, defaultValue: T): T {
+  try {
+    const stored = localStorage.getItem(`logscrub_${key}`)
+    if (stored !== null) return JSON.parse(stored) as T
+  } catch {}
+  return defaultValue
+}
+
+function saveUiPreference<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(`logscrub_${key}`, JSON.stringify(value))
+  } catch {}
+}
+
+function App() {
+  const { 
+    input, setInput, output, isProcessing, processText, setFileName, fileName,
+    processingProgress, cancelProcessing, canCancel
+  } = useAppStore()
+  const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
+  const [fullscreenView, setFullscreenView] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
+  const [constrainWidth, setConstrainWidth] = useState(() => loadUiPreference('constrainWidth', false))
+  const [showDiffHighlight, setShowDiffHighlight] = useState(() => loadUiPreference('showDiffHighlight', true))
+  const [goToLineValue, setGoToLineValue] = useState('')
+  const [showGoToLine, setShowGoToLine] = useState(false)
+  const editorRef = useRef<{ scrollToLine: (line: number) => void } | null>(null)
+
+  useEffect(() => { saveUiPreference('showRules', showRules) }, [showRules])
+  useEffect(() => { saveUiPreference('constrainWidth', constrainWidth) }, [constrainWidth])
+  useEffect(() => { saveUiPreference('showDiffHighlight', showDiffHighlight) }, [showDiffHighlight])
+
+  const handleProcess = useCallback(() => {
+    if (input.trim() && !isProcessing) {
+      processText(input)
+    }
+  }, [input, isProcessing, processText])
+
+  const handleClear = () => {
+    setInput('')
+    setFileName(null)
+  }
+
+  const handleDownload = () => {
+    if (!output) return
+    const blob = new Blob([output], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName ? `sanitized_${fileName}` : 'sanitized_output.txt'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault()
+        handleProcess()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's' && output) {
+        e.preventDefault()
+        handleDownload()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+        e.preventDefault()
+        setShowGoToLine(true)
+      }
+      if (e.key === 'Escape') {
+        if (isProcessing && canCancel) {
+          cancelProcessing()
+        }
+        if (showGoToLine) {
+          setShowGoToLine(false)
+          setGoToLineValue('')
+        }
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleProcess, output, isProcessing, canCancel, cancelProcessing, showGoToLine])
+
+  if (fullscreenView) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+        <div className="flex items-center justify-between p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Sanitized Output {fileName && <span className="text-gray-500 dark:text-gray-400 text-sm">({fileName})</span>}
+          </h2>
+          <div className="flex gap-2">
+            <button
+              onClick={handleDownload}
+              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            >
+              Download
+            </button>
+            <button
+              onClick={() => setFullscreenView(false)}
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+        <pre className="flex-1 p-4 font-mono text-sm overflow-auto whitespace-pre-wrap bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+          {output}
+        </pre>
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      <Header onAboutClick={() => setShowAbout(true)} />
+      
+      <main className={`flex-1 flex flex-col mx-auto px-4 py-4 w-full min-h-0 overflow-hidden ${constrainWidth ? 'max-w-7xl' : ''}`}>
+        {isProcessing && processingProgress > 0 && (
+          <div className="mb-3 flex-shrink-0">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Processing...</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{processingProgress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+              <div 
+                className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${processingProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 flex-1 min-h-0 overflow-hidden">
+          {showRules && (
+            <aside className="lg:col-span-3 xl:col-span-3 2xl:col-span-2 min-h-0 overflow-hidden flex flex-col gap-4">
+              <RulePanel />
+              <div className="flex-shrink-0">
+                <TimeShift />
+              </div>
+            </aside>
+          )}
+          
+          <div className={`flex flex-col min-h-0 overflow-hidden ${showRules ? "lg:col-span-9 xl:col-span-9 2xl:col-span-10" : "lg:col-span-12"}`}>
+            <div className="flex flex-wrap justify-between items-center gap-2 mb-3 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowRules(!showRules)}
+                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  title={showRules ? 'Hide the detection rules panel' : 'Show the detection rules panel'}
+                >
+                  {showRules ? '◀ Hide Rules' : '▶ Show Rules'}
+                </button>
+                <button
+                  onClick={() => setConstrainWidth(!constrainWidth)}
+                  className="text-sm text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hidden xl:block"
+                  title={constrainWidth ? 'Use full width' : 'Constrain width'}
+                >
+                  {constrainWidth ? '⬌ Expand' : '⬄ Compact'}
+                </button>
+                {output && (
+                  <>
+                    <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
+                    <button
+                      onClick={() => setShowDiffHighlight(!showDiffHighlight)}
+                      className={`text-sm flex items-center gap-1 hidden md:flex ${showDiffHighlight ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}
+                      title="Toggle diff highlighting"
+                    >
+                      <span className={`w-2 h-2 rounded-full ${showDiffHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                      Highlight
+                    </button>
+                  </>
+                )}
+                <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
+                {showGoToLine ? (
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      const line = parseInt(goToLineValue, 10)
+                      if (!isNaN(line) && line > 0 && editorRef.current) {
+                        editorRef.current.scrollToLine(line - 1)
+                      }
+                      setShowGoToLine(false)
+                      setGoToLineValue('')
+                    }}
+                    className="flex items-center gap-1"
+                  >
+                    <input
+                      type="number"
+                      min="1"
+                      value={goToLineValue}
+                      onChange={(e) => setGoToLineValue(e.target.value)}
+                      placeholder="Line #"
+                      autoFocus
+                      className="w-20 px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                      onBlur={() => {
+                        if (!goToLineValue) setShowGoToLine(false)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setShowGoToLine(false)
+                          setGoToLineValue('')
+                        }
+                      }}
+                    />
+                    <button type="submit" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800">
+                      Go
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    onClick={() => setShowGoToLine(true)}
+                    className="text-sm text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hidden md:block"
+                    title="Go to line (⌘G)"
+                  >
+                    Go to Line
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {input && (
+                  <button
+                    onClick={handleClear}
+                    className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    title="Clear all input and output text"
+                  >
+                    Clear
+                  </button>
+                )}
+                {isProcessing && canCancel ? (
+                  <button
+                    onClick={cancelProcessing}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+                    title="Cancel the current processing operation (Escape)"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Cancel
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleProcess}
+                    disabled={isProcessing || !input.trim()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    title="Apply all enabled detection rules and sanitize the input text (⌘/Ctrl+Enter)"
+                  >
+                    {isProcessing && (
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                    )}
+                    {isProcessing ? 'Processing...' : 'Sanitize'}
+                    <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-xs bg-blue-500 rounded">⌘↵</kbd>
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex-shrink-0">
+              <Suggestions />
+            </div>
+            
+            <div className="flex-1 min-h-0 flex flex-col">
+              <Editor
+                ref={editorRef}
+                input={input}
+                output={output}
+                onInputChange={setInput}
+                onView={() => setFullscreenView(true)}
+                showDiff={showDiffHighlight}
+              />
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer className="flex-shrink-0 py-3 text-center text-xs text-gray-500 dark:text-gray-400 border-t dark:border-gray-700">
+        <span>100% client-side. Your data never leaves your browser.</span>
+        <span className="mx-2">•</span>
+        <span className="hidden sm:inline">
+          <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">⌘/Ctrl</kbd>+<kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Enter</kbd> to sanitize
+          <span className="mx-2">•</span>
+          <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">⌘/Ctrl</kbd>+<kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">S</kbd> to download
+        </span>
+      </footer>
+      
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+    </div>
+  )
+}
+
+export default App

@@ -1,0 +1,470 @@
+use crate::validators;
+use once_cell::sync::Lazy;
+use regex::Regex;
+
+#[derive(Debug, Clone)]
+pub struct Match {
+    pub pii_type: String,
+    pub value: String,
+    pub start: usize,
+    pub end: usize,
+}
+
+struct PatternDef {
+    id: &'static str,
+    regex: &'static Lazy<Regex>,
+    validator: Option<fn(&str) -> bool>,
+}
+
+static EMAIL_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b").unwrap());
+
+static IPV4_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b",
+    )
+    .unwrap()
+});
+
+static IPV6_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?i)\b(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}\b|(?i)\b(?:[0-9a-f]{1,4}:){1,7}:\b|(?i)\b(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}\b|(?i)\b(?:[0-9a-f]{1,4}:){1,5}(?::[0-9a-f]{1,4}){1,2}\b|(?i)\b(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}\b|(?i)\b::(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4}\b|(?i)\b[0-9a-f]{1,4}::(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4}\b"
+    ).unwrap()
+});
+
+static MAC_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b(?:[0-9A-F]{2}[:-]){5}[0-9A-F]{2}\b").unwrap());
+
+static HOSTNAME_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+(?:com|org|net|edu|gov|mil|co|io|dev|app|uk|de|fr|jp|cn|au|ca|us|info|biz)\b").unwrap()
+});
+
+static URL_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"https?://[^\s<>\[\]{}|\\^`\x00-\x1f\x7f]+").unwrap());
+
+static SSN_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[0-9]{3}-[0-9]{2}-[0-9]{4}\b").unwrap());
+
+static CREDIT_CARD_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b",
+    )
+    .unwrap()
+});
+
+static JWT_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+").unwrap());
+
+static PHONE_US_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b").unwrap()
+});
+
+static PHONE_UK_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:0[1-9][0-9]{8,9}|0[1-9][0-9]{2,4}[\s-][0-9]{3,4}[\s-]?[0-9]{3,4})\b").unwrap()
+});
+
+static PHONE_INTL_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\+[1-9][0-9]{1,3}[\s-]?[0-9]{6,14}\b").unwrap());
+
+static UUID_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b").unwrap()
+});
+
+static IBAN_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{7}(?:[A-Z0-9]?){0,16}\b").unwrap()
+});
+
+static AWS_ACCESS_KEY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b(?:AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}\b").unwrap());
+
+static AWS_SECRET_KEY_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?i)(?:aws.?secret|secret.?access)[^a-z0-9]*['"]?([a-z0-9/+=]{40})['"]?"#)
+        .unwrap()
+});
+
+static STRIPE_KEY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b(?:sk|pk)_(?:test|live)_[0-9a-zA-Z]{24,}\b").unwrap());
+
+static GCP_API_KEY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bAIza[0-9A-Za-z_-]{35}\b").unwrap());
+
+static GITHUB_TOKEN_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}\b").unwrap());
+
+static BEARER_TOKEN_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)bearer\s+[a-z0-9_-]+\.[a-z0-9_-]+\.?[a-z0-9_-]*").unwrap());
+
+static GENERIC_SECRET_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?i)(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|auth[_-]?token|access[_-]?token)\s*[:=]\s*['"]?([^\s'"]{8,})['"]?"#).unwrap()
+});
+
+static BTC_ADDRESS_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b(?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}\b").unwrap());
+
+static ETH_ADDRESS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b0x[a-fA-F0-9]{40}\b").unwrap());
+
+static GPS_COORD_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"-?(?:[1-8]?[0-9](?:\.[0-9]{4,})?|90(?:\.0+)?)\s*,\s*-?(?:1[0-7][0-9]|[1-9]?[0-9])(?:\.[0-9]{4,})?").unwrap()
+});
+
+static FILE_PATH_UNIX_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?:/(?:home|Users)/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9._-]+)+)").unwrap());
+
+static FILE_PATH_WIN_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)[a-z]:\\(?:Users|Documents and Settings)\\[^\s\\]+(?:\\[^\s\\]+)*").unwrap()
+});
+
+static POSTCODE_UK_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}\b").unwrap());
+
+static POSTCODE_US_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[0-9]{5}(?:-[0-9]{4})?\b").unwrap());
+
+static PASSPORT_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b(?:passport[:\s#]*)?[A-Z]{1,2}[0-9]{6,9}\b").unwrap());
+
+static DRIVERS_LICENSE_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)\b(?:d\.?l\.?|driver'?s?\s*(?:license|lic))[:\s#]*[A-Z0-9]{5,15}\b").unwrap()
+});
+
+static SESSION_ID_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?i)(?:session[_-]?id|sid|jsessionid|phpsessid|aspsessionid)[=:\s]*[a-z0-9_-]{16,}",
+    )
+    .unwrap()
+});
+
+static PRIVATE_KEY_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"-----BEGIN (?:RSA |DSA |EC |OPENSSH |PGP )?PRIVATE KEY-----").unwrap()
+});
+
+static SLACK_TOKEN_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bxox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*\b").unwrap());
+
+static BASIC_AUTH_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)basic\s+[a-z0-9+/]+=*").unwrap());
+
+static URL_CREDENTIALS_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)(?:https?|ftp)://[^:]+:[^@]+@[^\s/]+").unwrap());
+
+static NI_NUMBER_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)\b[A-CEGHJ-PR-TW-Z]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[A-D]\b").unwrap()
+});
+
+static TAX_ID_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[0-9]{2}-[0-9]{7}\b").unwrap());
+
+static MEDICARE_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[0-9]{3}-[0-9]{2}-[0-9]{4}-[A-Z]\b").unwrap());
+
+static SWIFT_BIC_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b").unwrap());
+
+static ROUTING_NUMBER_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[0-9]{9}\b").unwrap());
+
+static IP_CIDR_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/[0-9]{1,2}\b").unwrap()
+});
+
+static DB_CONNECTION_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)(?:mongodb|postgres|postgresql|mysql|redis|amqp|mssql)://[^\s]+").unwrap()
+});
+
+static NPM_TOKEN_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\bnpm_[A-Za-z0-9]{36}\b").unwrap());
+
+static HEROKU_KEY_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?i)heroku[a-z0-9_-]*[=:\s]+['"]?[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}['"]?"#).unwrap()
+});
+
+static SENDGRID_KEY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b").unwrap());
+
+static TWILIO_KEY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b(?:AC|SK)[a-f0-9]{32}\b").unwrap());
+
+static DOB_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:0[1-9]|[12][0-9]|3[01])[/-](?:0[1-9]|1[0-2])[/-](?:19|20)[0-9]{2}\b|\b(?:19|20)[0-9]{2}[/-](?:0[1-9]|1[0-2])[/-](?:0[1-9]|[12][0-9]|3[01])\b").unwrap()
+});
+
+static DATE_MDY_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12][0-9]|3[01])[/-](?:19|20)?[0-9]{2}\b")
+        .unwrap()
+});
+
+static DATE_DMY_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:0?[1-9]|[12][0-9]|3[01])[/-](?:0?[1-9]|1[0-2])[/-](?:19|20)?[0-9]{2}\b")
+        .unwrap()
+});
+
+static DATE_ISO_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])\b").unwrap()
+});
+
+static TIME_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:[01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?(?:\s*[AaPp][Mm])?\b").unwrap()
+});
+
+static DATETIME_ISO_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])[T\s](?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:?[0-9]{2})?\b").unwrap()
+});
+
+static TIMESTAMP_UNIX_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b1[0-9]{9}(?:[0-9]{3})?\b").unwrap());
+
+static VIN_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[A-HJ-NPR-Z0-9]{17}\b").unwrap());
+
+static LICENSE_PLATE_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b[A-Z]{2}[0-9]{2}\s?[A-Z]{3}\b|\b[A-Z]{1,3}\s?[0-9]{1,4}\s?[A-Z]{0,3}\b").unwrap()
+});
+
+static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
+    vec![
+        PatternDef {
+            id: "email",
+            regex: &EMAIL_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "ipv4",
+            regex: &IPV4_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "ipv6",
+            regex: &IPV6_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "mac_address",
+            regex: &MAC_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "hostname",
+            regex: &HOSTNAME_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "url",
+            regex: &URL_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "ssn",
+            regex: &SSN_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "credit_card",
+            regex: &CREDIT_CARD_REGEX,
+            validator: Some(validators::luhn_check),
+        },
+        PatternDef {
+            id: "jwt",
+            regex: &JWT_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "phone_us",
+            regex: &PHONE_US_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "phone_uk",
+            regex: &PHONE_UK_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "phone_intl",
+            regex: &PHONE_INTL_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "uuid",
+            regex: &UUID_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "iban",
+            regex: &IBAN_REGEX,
+            validator: Some(validators::iban_mod97_check),
+        },
+        PatternDef {
+            id: "aws_access_key",
+            regex: &AWS_ACCESS_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "aws_secret_key",
+            regex: &AWS_SECRET_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "stripe_key",
+            regex: &STRIPE_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "gcp_api_key",
+            regex: &GCP_API_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "github_token",
+            regex: &GITHUB_TOKEN_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "bearer_token",
+            regex: &BEARER_TOKEN_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "generic_secret",
+            regex: &GENERIC_SECRET_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "btc_address",
+            regex: &BTC_ADDRESS_REGEX,
+            validator: Some(validators::btc_address_check),
+        },
+        PatternDef {
+            id: "eth_address",
+            regex: &ETH_ADDRESS_REGEX,
+            validator: Some(validators::eth_address_check),
+        },
+        PatternDef {
+            id: "gps_coordinates",
+            regex: &GPS_COORD_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "file_path_unix",
+            regex: &FILE_PATH_UNIX_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "file_path_windows",
+            regex: &FILE_PATH_WIN_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "postcode_uk",
+            regex: &POSTCODE_UK_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "postcode_us",
+            regex: &POSTCODE_US_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "passport",
+            regex: &PASSPORT_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "drivers_license",
+            regex: &DRIVERS_LICENSE_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "session_id",
+            regex: &SESSION_ID_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "private_key",
+            regex: &PRIVATE_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "slack_token",
+            regex: &SLACK_TOKEN_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "basic_auth",
+            regex: &BASIC_AUTH_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "url_credentials",
+            regex: &URL_CREDENTIALS_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "date_mdy",
+            regex: &DATE_MDY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "date_dmy",
+            regex: &DATE_DMY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "date_iso",
+            regex: &DATE_ISO_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "time",
+            regex: &TIME_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "datetime_iso",
+            regex: &DATETIME_ISO_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "timestamp_unix",
+            regex: &TIMESTAMP_UNIX_REGEX,
+            validator: None,
+        },
+    ]
+});
+
+pub struct PiiDetector;
+
+impl PiiDetector {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn detect(&self, text: &str, enabled_rules: &[&str]) -> Vec<Match> {
+        let mut matches = Vec::new();
+
+        for pattern in PATTERNS.iter() {
+            if !enabled_rules.contains(&pattern.id) {
+                continue;
+            }
+
+            for cap in pattern.regex.find_iter(text) {
+                let value = cap.as_str();
+
+                if let Some(validator) = pattern.validator {
+                    if !validator(value) {
+                        continue;
+                    }
+                }
+
+                matches.push(Match {
+                    pii_type: pattern.id.to_string(),
+                    value: value.to_string(),
+                    start: cap.start(),
+                    end: cap.end(),
+                });
+            }
+        }
+
+        matches
+    }
+}
+
+impl Default for PiiDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}

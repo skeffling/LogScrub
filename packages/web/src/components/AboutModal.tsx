@@ -1,0 +1,133 @@
+import { Modal } from './Modal'
+
+interface AboutModalProps {
+  onClose: () => void
+}
+
+export function AboutModal({ onClose }: AboutModalProps) {
+  return (
+    <Modal onClose={onClose} maxWidth="max-w-3xl">
+      <div className="space-y-4 text-gray-700 dark:text-gray-300">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">About LogScrub</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <p>
+          <strong className="text-gray-900 dark:text-white">LogScrub</strong> is a privacy-first tool for sanitizing logs and text files by detecting and redacting Personally Identifiable Information (PII).
+        </p>
+        
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">100% Client-Side</h3>
+          <p className="text-sm">
+            All processing happens entirely in your browser. Your data never leaves your device and is never sent to any server.
+          </p>
+        </div>
+        
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">How to Use</h3>
+          <ol className="text-sm list-decimal list-inside space-y-1">
+            <li>Paste text or upload a log file</li>
+            <li>Select which PII types to detect</li>
+            <li>Choose replacement strategy per type (label, fake data, or redact)</li>
+            <li>Click "Sanitize" to process</li>
+            <li>Download or copy the sanitized output</li>
+          </ol>
+        </div>
+
+        <hr className="dark:border-gray-700" />
+        
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">How It Works Technically</h3>
+          <div className="text-sm space-y-3">
+            <div>
+              <h4 className="font-medium text-gray-800 dark:text-gray-200">Architecture</h4>
+              <p className="text-gray-600 dark:text-gray-400">
+                The app uses a hybrid architecture: React/TypeScript for the UI, and Rust compiled to WebAssembly (WASM) for high-performance pattern matching. Processing runs in a Web Worker to keep the UI responsive.
+              </p>
+            </div>
+            
+            <div className="bg-gray-100 dark:bg-gray-900 p-3 rounded font-mono text-xs">
+              <div>Browser → Web Worker → WASM (Rust) → Pattern Matching → Results</div>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-gray-800 dark:text-gray-200">Pattern Detection</h4>
+              <ul className="text-gray-600 dark:text-gray-400 list-disc list-inside space-y-1">
+                <li><strong>Regex Engine:</strong> Uses Rust's regex crate which guarantees linear-time matching (ReDoS-safe)</li>
+                <li><strong>50+ Patterns:</strong> Each PII type has a carefully crafted regex pattern</li>
+                <li><strong>Validators:</strong> Some patterns include checksum validation (Luhn for credit cards, Mod-97 for IBANs)</li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-gray-800 dark:text-gray-200">Processing Flow</h4>
+              <ol className="text-gray-600 dark:text-gray-400 list-decimal list-inside space-y-1">
+                <li>Text is sent to the Web Worker (off main thread)</li>
+                <li>WASM module loads and initializes regex patterns</li>
+                <li>Each enabled pattern scans the text, collecting matches with positions</li>
+                <li>Matches are validated (checksums where applicable)</li>
+                <li>Replacements are applied in reverse order (to preserve positions)</li>
+                <li>Results returned: sanitized text + stats + matched values</li>
+              </ol>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-gray-800 dark:text-gray-200">Why WASM?</h4>
+              <ul className="text-gray-600 dark:text-gray-400 list-disc list-inside space-y-1">
+                <li>10-100x faster than JavaScript regex for large files</li>
+                <li>Rust's regex crate prevents catastrophic backtracking</li>
+                <li>Memory-safe processing of untrusted input</li>
+                <li>Consistent performance across browsers</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <hr className="dark:border-gray-700" />
+        
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Replacement Strategies</h3>
+          <ul className="text-sm list-disc list-inside space-y-1">
+            <li><strong>Label</strong> - Replace with [EMAIL-1], [IPv4-2], etc. (sequential numbering)</li>
+            <li><strong>Fake</strong> - Replace with realistic fake data (user1@example.com, 192.0.2.1)</li>
+            <li><strong>Redact</strong> - Replace with blocks (████████)</li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Consistency Mode</h3>
+          <p className="text-sm">
+            When enabled, the same input value will always be replaced with the same output. This preserves relationships in your logs (e.g., the same email appearing multiple times gets the same replacement).
+          </p>
+        </div>
+        
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Checksum Validation</h3>
+          <p className="text-sm">
+            To reduce false positives, certain patterns validate matches using checksums:
+          </p>
+          <ul className="text-sm list-disc list-inside space-y-1 mt-1">
+            <li><strong>Credit Cards:</strong> Luhn algorithm</li>
+            <li><strong>IBANs:</strong> Mod-97 algorithm</li>
+            <li><strong>Bitcoin:</strong> Base58Check/Bech32 format validation</li>
+            <li><strong>Ethereum:</strong> Hex format validation</li>
+          </ul>
+        </div>
+        
+        <div className="pt-4 border-t dark:border-gray-700">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Built with React, TypeScript, Rust/WebAssembly, Tailwind CSS, and Zustand. Press ESC to close.
+          </p>
+        </div>
+      </div>
+    </Modal>
+  )
+}

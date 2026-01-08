@@ -1,0 +1,234 @@
+mod patterns;
+mod validators;
+
+use patterns::{Match, PiiDetector};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use wasm_bindgen::prelude::*;
+
+#[derive(Debug, Deserialize)]
+struct RuleConfig {
+    id: String,
+    strategy: String,
+    template: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+struct Replacement {
+    start: usize,
+    end: usize,
+    original: String,
+    replacement: String,
+    pii_type: String,
+}
+
+#[derive(Debug, Serialize)]
+struct SanitizeResult {
+    output: String,
+    stats: HashMap<String, usize>,
+    matches: HashMap<String, Vec<String>>,
+    replacements: Vec<Replacement>,
+}
+
+#[wasm_bindgen]
+pub fn sanitize(text: &str, rules_json: &str, consistency_mode: bool) -> String {
+    let rules: Vec<RuleConfig> = serde_json::from_str(rules_json).unwrap_or_default();
+    let enabled_rules: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+    let strategy_map: HashMap<&str, &str> = rules
+        .iter()
+        .map(|r| (r.id.as_str(), r.strategy.as_str()))
+        .collect();
+    let template_map: HashMap<&str, &str> = rules
+        .iter()
+        .filter_map(|r| r.template.as_ref().map(|t| (r.id.as_str(), t.as_str())))
+        .collect();
+
+    let detector = PiiDetector::new();
+    let matches = detector.detect(text, &enabled_rules);
+
+    let mut stats: HashMap<String, usize> = HashMap::new();
+    let mut found_matches: HashMap<String, Vec<String>> = HashMap::new();
+
+    for m in &matches {
+        *stats.entry(m.pii_type.clone()).or_insert(0) += 1;
+        found_matches
+            .entry(m.pii_type.clone())
+            .or_insert_with(Vec::new)
+            .push(m.value.clone());
+    }
+
+    let (output, replacements) = apply_replacements(
+        text,
+        &matches,
+        &strategy_map,
+        &template_map,
+        consistency_mode,
+    );
+
+    let result = SanitizeResult {
+        output,
+        stats,
+        matches: found_matches,
+        replacements,
+    };
+    serde_json::to_string(&result).unwrap_or_else(|_| "{}".to_string())
+}
+
+fn apply_template(template: &str, n: usize, pii_type: &str, original: &str) -> String {
+    template
+        .replace("{n}", &n.to_string())
+        .replace("{type}", pii_type)
+        .replace("{TYPE}", &pii_type.to_uppercase())
+        .replace("{original}", original)
+        .replace("{len}", &original.len().to_string())
+}
+
+fn apply_replacements(
+    text: &str,
+    matches: &[Match],
+    strategy_map: &HashMap<&str, &str>,
+    template_map: &HashMap<&str, &str>,
+    consistency_mode: bool,
+) -> (String, Vec<Replacement>) {
+    if matches.is_empty() {
+        return (text.to_string(), Vec::new());
+    }
+
+    let mut sorted_matches = matches.to_vec();
+    sorted_matches.sort_by(|a, b| a.start.cmp(&b.start));
+
+    let mut consistency_map: HashMap<String, String> = HashMap::new();
+    let mut type_counters: HashMap<String, usize> = HashMap::new();
+    let mut replacements: Vec<Replacement> = Vec::new();
+
+    for m in &sorted_matches {
+        let strategy = strategy_map
+            .get(m.pii_type.as_str())
+            .copied()
+            .unwrap_or("label");
+        let template = template_map.get(m.pii_type.as_str()).copied();
+
+        let replacement_text = if consistency_mode {
+            consistency_map
+                .entry(m.value.clone())
+                .or_insert_with(|| {
+                    generate_replacement(
+                        &m.pii_type,
+                        &m.value,
+                        strategy,
+                        template,
+                        &mut type_counters,
+                    )
+                })
+                .clone()
+        } else {
+            generate_replacement(
+                &m.pii_type,
+                &m.value,
+                strategy,
+                template,
+                &mut type_counters,
+            )
+        };
+
+        replacements.push(Replacement {
+            start: m.start,
+            end: m.end,
+            original: m.value.clone(),
+            replacement: replacement_text,
+            pii_type: m.pii_type.clone(),
+        });
+    }
+
+    sorted_matches.sort_by(|a, b| b.start.cmp(&a.start));
+    let mut result = text.to_string();
+    for m in sorted_matches {
+        let rep = replacements
+            .iter()
+            .find(|r| r.start == m.start && r.end == m.end)
+            .unwrap();
+        result.replace_range(m.start..m.end, &rep.replacement);
+    }
+
+    (result, replacements)
+}
+
+fn generate_replacement(
+    pii_type: &str,
+    original: &str,
+    strategy: &str,
+    template: Option<&str>,
+    counters: &mut HashMap<String, usize>,
+) -> String {
+    match strategy {
+        "template" => {
+            if let Some(tmpl) = template {
+                let count = counters
+                    .entry(format!("{}_template", pii_type))
+                    .or_insert(0);
+                *count += 1;
+                apply_template(tmpl, *count, pii_type, original)
+            } else {
+                format!("[{}]", pii_type.to_uppercase())
+            }
+        }
+        "label" => {
+            let count = counters.entry(pii_type.to_string()).or_insert(0);
+            *count += 1;
+            format!("[{}-{}]", pii_type.to_uppercase(), count)
+        }
+        "fake" => {
+            let count = counters.entry(format!("{}_fake", pii_type)).or_insert(0);
+            *count += 1;
+            generate_fake(pii_type, original, *count)
+        }
+        "redact" => "\u{2588}".repeat(original.len().min(16)),
+        _ => format!("[{}]", pii_type.to_uppercase()),
+    }
+}
+
+fn generate_fake(pii_type: &str, _original: &str, count: usize) -> String {
+    match pii_type {
+        "email" => format!("user{}@example.com", count),
+        "ipv4" => format!("192.0.2.{}", count.min(255)),
+        "ipv6" => format!("2001:db8::{}", count),
+        "mac_address" => format!("00:00:00:00:00:{:02X}", count.min(255)),
+        "hostname" => format!("example{}.com", count),
+        "url" => format!("https://example.com/path{}", count),
+        "credit_card" => format!("411111111111{:04}", count % 10000),
+        "ssn" => format!("000-00-{:04}", count % 10000),
+        "jwt" => format!("eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjAifQ.XXXXX{}", count),
+        "phone_us" | "phone_intl" => format!("+1-555-000-{:04}", count % 10000),
+        "phone_uk" => format!("01onal {:06}", count % 1000000),
+        "uuid" => format!("00000000-0000-0000-0000-{:012}", count),
+        "iban" => format!("GB00XXXX0000000000{:04}", count % 10000),
+        "aws_access_key" => format!("AKIAIOSFODNN{:08}", count),
+        "aws_secret_key" => format!("wJalrXUtnFEMI/K7MDENG/bPxRfiCY{:010}", count),
+        "stripe_key" => format!("sk_test_{:024}", count),
+        "gcp_api_key" => format!("AIzaSy{:033}", count),
+        "github_token" => format!("ghp_{:036}", count),
+        "bearer_token" => format!("Bearer XXXXX.XXXXX.{:05}", count),
+        "generic_secret" => format!("password: ****{}", count),
+        "btc_address" => format!("1FAKE{:028}", count),
+        "eth_address" => format!("0x{:040}", count),
+        "gps_coordinates" => format!("{}.0000, {}.0000", count % 90, count % 180),
+        "file_path_unix" => format!("/home/user/file{}.txt", count),
+        "file_path_windows" => format!("C:\\Users\\user\\file{}.txt", count),
+        "postcode_uk" => format!("SW{} 1AA", count % 100),
+        "postcode_us" => format!("{:05}", count % 100000),
+        "passport" => format!("X{:08}", count),
+        "drivers_license" => format!("DL: X{:07}", count),
+        "session_id" => format!("session_id={:016X}", count),
+        "private_key" => "-----BEGIN PRIVATE KEY-----".to_string(),
+        "slack_token" => format!("xoxb-{:010}-{:013}-XXXX", count, count),
+        "basic_auth" => format!("Basic XXXX{}", count),
+        "url_credentials" => format!("https://user{}:****@example.com", count),
+        "date_mdy" => format!("01/{:02}/2000", (count % 28) + 1),
+        "date_dmy" => format!("{:02}/01/2000", (count % 28) + 1),
+        "date_iso" => format!("2000-01-{:02}", (count % 28) + 1),
+        "time" => format!("{:02}:00:00", count % 24),
+        "datetime_iso" => format!("2000-01-{:02}T00:00:00Z", (count % 28) + 1),
+        "timestamp_unix" => format!("{}", 946684800 + count * 86400),
+        _ => format!("[REDACTED-{}]", count),
+    }
+}

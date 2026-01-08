@@ -544,6 +544,18 @@ export const useAppStore = create<AppState>((set, get) => ({
         const suggestions: RuleSuggestion[] = []
         const matches = result.matches || {}
         const stats = result.stats || {}
+        const allReplacements = result.replacements || []
+        
+        const extractSamplesWithContext = (piiType: string, maxSamples: number): string[] => {
+          const typeReplacements = allReplacements.filter(r => r.pii_type === piiType).slice(0, maxSamples)
+          return typeReplacements.map(r => {
+            const contextBefore = text.slice(Math.max(0, r.start - 20), r.start)
+            const contextAfter = text.slice(r.end, Math.min(text.length, r.end + 20))
+            const before = contextBefore.includes('\n') ? contextBefore.slice(contextBefore.lastIndexOf('\n') + 1) : contextBefore
+            const after = contextAfter.includes('\n') ? contextAfter.slice(0, contextAfter.indexOf('\n')) : contextAfter
+            return `${before.length < contextBefore.length ? '' : '…'}${before}${r.original}${after}${after.length < contextAfter.length ? '' : '…'}`
+          })
+        }
         
         Object.entries(stats).forEach(([id, count]) => {
           if (count > 0) {
@@ -557,7 +569,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             
             if (isDisabled) {
               const label = rule?.label || customRule?.label || plainText?.label || id
-              const samples = (matches[id] || []).slice(0, 3)
+              const samples = extractSamplesWithContext(id, 3)
               suggestions.push({ id, label, count, samples })
             }
           }

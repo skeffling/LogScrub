@@ -41,10 +41,10 @@ export function Suggestions() {
                       {suggestion.samples.map((sample, i) => (
                         <code 
                           key={i}
-                          className="text-xs px-1 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded truncate max-w-[150px]"
+                          className="text-xs px-1 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded truncate max-w-[200px]"
                           title={sample}
                         >
-                          {sample.length > 25 ? sample.slice(0, 25) + '...' : sample}
+                          {sample.length > 35 ? sample.slice(0, 35) + '…' : sample}
                         </code>
                       ))}
                     </div>

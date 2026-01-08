@@ -129,6 +129,13 @@ export function AboutModal({ onClose }: AboutModalProps) {
           </p>
         </div>
         
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Feedback</h3>
+          <p className="text-sm">
+            Have a suggestion or want to report a problem? Email us at <a href="mailto:skeffling@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">skeffling@gmail.com</a>
+          </p>
+        </div>
+        
         <div className="pt-4 border-t dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Built with React, TypeScript, Rust/WebAssembly, Tailwind CSS, and Zustand. Press ESC to close.

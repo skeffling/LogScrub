@@ -236,6 +236,7 @@
     <nav class="toc">
       <h2>Contents</h2>
       <ul>
+        <li><a href="#why-logscrub">Why Use LogScrub?</a></li>
         <li><a href="#getting-started">Getting Started</a></li>
         <li><a href="#how-it-works">How It Works</a></li>
         <li><a href="#replacement-strategies">Replacement Strategies</a></li>
@@ -243,12 +244,54 @@
         <li><a href="#custom-rules">Custom Rules</a></li>
         <li><a href="#plain-text-patterns">Plain Text Patterns</a></li>
         <li><a href="#presets">Presets</a></li>
+        <li><a href="#time-shift">Time Shift</a></li>
         <li><a href="#analyze-mode">Analyze Mode</a></li>
         <li><a href="#audit-reports">Audit Reports</a></li>
         <li><a href="#keyboard-shortcuts">Keyboard Shortcuts</a></li>
         <li><a href="#privacy">Privacy &amp; Security</a></li>
       </ul>
     </nav>
+
+    <section id="why-logscrub">
+      <h2>Why Use LogScrub?</h2>
+      <p>Every day, developers and IT professionals need to share logs for debugging, support tickets, bug reports, and collaboration. But logs often contain sensitive information that shouldn't be shared.</p>
+
+      <h3>Common Scenarios</h3>
+      
+      <div class="card">
+        <h4>Sharing Logs with AI Assistants</h4>
+        <p>AI tools like ChatGPT, Claude, and Copilot are incredibly useful for debugging and analyzing logs. But pasting raw logs means sending customer emails, IP addresses, API keys, and other sensitive data to third-party services.</p>
+        <p><strong>Solution:</strong> Sanitize your logs first. The AI can still understand error patterns, stack traces, and timing issues without seeing real customer data. A log showing <code>[EMAIL-1] failed to authenticate from [IPV4-1]</code> is just as useful for debugging as one with real values.</p>
+      </div>
+
+      <div class="card">
+        <h4>Filing Bug Reports &amp; Support Tickets</h4>
+        <p>When reporting issues to software vendors or open-source projects, you often need to include logs. These logs may contain your company's internal hostnames, user data, or credentials that were accidentally logged.</p>
+        <p><strong>Solution:</strong> LogScrub removes PII while preserving the structure and timing that developers need to diagnose issues.</p>
+      </div>
+
+      <div class="card">
+        <h4>Sharing with Colleagues &amp; Contractors</h4>
+        <p>Not everyone on your team needs to see production customer data. When sharing logs for code review or debugging, sanitizing first follows the principle of least privilege.</p>
+      </div>
+
+      <div class="card">
+        <h4>Compliance &amp; Data Protection</h4>
+        <p>Regulations like GDPR, HIPAA, and CCPA restrict how personal data can be shared and processed. Sanitizing logs before sharing helps maintain compliance and reduces your data exposure footprint.</p>
+      </div>
+
+      <h3>Why Client-Side Processing Matters</h3>
+      <p>Many log sanitization tools require uploading your logs to a server. This defeats the purpose — you're sharing sensitive data with yet another third party.</p>
+      <p>LogScrub processes everything in your browser using WebAssembly. Your logs never leave your device. You can even use it offline or on an air-gapped machine.</p>
+
+      <h3>Preserving Log Usefulness</h3>
+      <p>The goal isn't just to remove data — it's to keep logs useful for their intended purpose:</p>
+      <ul>
+        <li><strong>Consistency Mode</strong> ensures the same email always becomes <code>[EMAIL-1]</code>, so you can still trace a user's journey through the logs</li>
+        <li><strong>Time Shift</strong> lets you anonymize timestamps while preserving the relative timing between events</li>
+        <li><strong>Selective Rules</strong> let you keep non-sensitive data like UUIDs or timestamps when they're needed for debugging</li>
+      </ul>
+    </section>
 
     <section id="getting-started">
       <h2>Getting Started</h2>
@@ -771,6 +814,46 @@ User [EMAIL-3] logged in</div>
 
       <h3>Import/Export</h3>
       <p>Share configurations between computers or team members using JSON export/import.</p>
+    </section>
+
+    <section id="time-shift">
+      <h2>Time Shift</h2>
+      <p>Timestamps in logs can reveal when incidents occurred, work patterns, or timezone information. Time Shift lets you anonymize temporal data while preserving the relative timing between events.</p>
+
+      <div class="tip">
+        <strong>Note:</strong> Time Shift only appears when LogScrub detects timestamps in your input.
+      </div>
+
+      <h3>Supported Timestamp Formats</h3>
+      <p>LogScrub automatically detects common timestamp formats:</p>
+      <ul>
+        <li><strong>ISO 8601</strong> — <code>2024-01-15T10:30:00Z</code>, <code>2024-01-15T10:30:00.123+00:00</code></li>
+        <li><strong>ISO Date</strong> — <code>2024-01-15</code></li>
+        <li><strong>Apache/nginx</strong> — <code>[17/May/2015:10:05:03 +0000]</code></li>
+        <li><strong>Syslog</strong> — <code>Jan 15 10:30:00</code></li>
+        <li><strong>US Format</strong> — <code>01/15/2024 10:30:00</code></li>
+      </ul>
+
+      <h3>Offset Mode</h3>
+      <p>Shift all timestamps by a fixed amount. Useful when you want to obscure the actual date/time while keeping the duration between events accurate.</p>
+      <div class="example">
+        <div>
+          <div class="example-label">Original</div>
+          <div class="example-before">2024-01-15T10:30:00Z Request started
+2024-01-15T10:30:05Z Database query
+2024-01-15T10:30:07Z Response sent</div>
+        </div>
+        <div>
+          <div class="example-label">Shifted by -48 hours</div>
+          <div class="example-after">2024-01-13T10:30:00Z Request started
+2024-01-13T10:30:05Z Database query
+2024-01-13T10:30:07Z Response sent</div>
+        </div>
+      </div>
+
+      <h3>Start From Mode</h3>
+      <p>Set the first timestamp to a specific date/time. All subsequent timestamps shift by the same amount, preserving relative timing.</p>
+      <p>This is useful when you want logs to appear to start from a neutral date like <code>2000-01-01</code>.</p>
     </section>
 
     <section id="analyze-mode">

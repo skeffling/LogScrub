@@ -59,6 +59,15 @@ interface TimestampMatch {
   format: string
 }
 
+const MONTHS: Record<string, number> = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+}
+
+function parseMonth(str: string): number {
+  return MONTHS[str.toLowerCase().slice(0, 3)] ?? 0
+}
+
 const TIMESTAMP_PATTERNS: Array<{ regex: RegExp; parser: (m: RegExpExecArray) => Date | null; format: string }> = [
   {
     regex: /(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2}):(\d{2})(?:\.(\d{3}))?(?:Z|([+-])(\d{2}):?(\d{2}))?/g,
@@ -75,6 +84,22 @@ const TIMESTAMP_PATTERNS: Array<{ regex: RegExp; parser: (m: RegExpExecArray) =>
       return date
     },
     format: 'iso'
+  },
+  {
+    regex: /\[(\d{2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2})\s*([+-]\d{4})?\]/g,
+    parser: (m) => new Date(
+      parseInt(m[3]), parseMonth(m[2]), parseInt(m[1]),
+      parseInt(m[4]), parseInt(m[5]), parseInt(m[6])
+    ),
+    format: 'apache'
+  },
+  {
+    regex: /([A-Za-z]{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})/g,
+    parser: (m) => {
+      const now = new Date()
+      return new Date(now.getFullYear(), parseMonth(m[1]), parseInt(m[2]), parseInt(m[3]), parseInt(m[4]), parseInt(m[5]))
+    },
+    format: 'syslog'
   },
   {
     regex: /(\d{4})-(\d{2})-(\d{2})/g,
@@ -95,12 +120,17 @@ const TIMESTAMP_PATTERNS: Array<{ regex: RegExp; parser: (m: RegExpExecArray) =>
 
 function formatTimestamp(date: Date, format: string): string {
   const pad = (n: number, len = 2) => String(n).padStart(len, '0')
+  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   
   switch (format) {
     case 'iso':
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}Z`
     case 'date-iso':
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+    case 'apache':
+      return `[${pad(date.getDate())}/${MONTH_NAMES[date.getMonth()]}/${date.getFullYear()}:${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} +0000]`
+    case 'syslog':
+      return `${MONTH_NAMES[date.getMonth()]} ${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     case 'us-datetime':
       return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     case 'us-date':

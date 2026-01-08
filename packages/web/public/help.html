@@ -249,6 +249,7 @@
         <li><a href="#analyze-mode">Analyze Mode</a></li>
         <li><a href="#audit-reports">Audit Reports</a></li>
         <li><a href="#keyboard-shortcuts">Keyboard Shortcuts</a></li>
+        <li><a href="#file-size">File Size &amp; Performance</a></li>
         <li><a href="#privacy">Privacy &amp; Security</a></li>
       </ul>
     </nav>
@@ -920,6 +921,50 @@ User [EMAIL-3] logged in</div>
           <td>Cancel processing / Close dialogs</td>
         </tr>
       </table>
+    </section>
+
+    <section id="file-size">
+      <h2>File Size &amp; Performance</h2>
+      
+      <p>LogScrub runs entirely in your browser, so performance depends on your device's capabilities. Here's what to expect:</p>
+      
+      <table class="rule-table">
+        <tr>
+          <th>File Size</th>
+          <th>Performance</th>
+        </tr>
+        <tr>
+          <td><strong>&lt; 10 MB</strong></td>
+          <td>Fast, smooth processing</td>
+        </tr>
+        <tr>
+          <td><strong>10–50 MB</strong></td>
+          <td>Works well, may take a few seconds</td>
+        </tr>
+        <tr>
+          <td><strong>50–100 MB</strong></td>
+          <td>Slower processing, may take 10–30 seconds</td>
+        </tr>
+        <tr>
+          <td><strong>&gt; 100 MB</strong></td>
+          <td>May cause browser memory issues on some devices</td>
+        </tr>
+      </table>
+      
+      <h3>Technical Limits</h3>
+      <ul>
+        <li><strong>JavaScript string limit</strong> — Browsers typically support strings up to 512MB–1GB</li>
+        <li><strong>Browser tab memory</strong> — Usually 1–4GB depending on your device</li>
+        <li><strong>WebAssembly memory</strong> — Can use up to 4GB</li>
+      </ul>
+      
+      <h3>Tips for Large Files</h3>
+      <ul>
+        <li>Close other browser tabs to free up memory</li>
+        <li>Use a desktop browser rather than mobile for very large files</li>
+        <li>Consider splitting extremely large log files before processing</li>
+        <li>The virtual scrolling feature (for files with 500+ lines) helps keep the UI responsive</li>
+      </ul>
     </section>
 
     <section id="privacy">

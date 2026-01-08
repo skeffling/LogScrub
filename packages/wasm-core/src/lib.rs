@@ -101,7 +101,18 @@ fn apply_replacements(
     }
 
     let mut sorted_matches = matches.to_vec();
-    sorted_matches.sort_by(|a, b| a.start.cmp(&b.start));
+    sorted_matches.sort_by(|a, b| a.start.cmp(&b.start).then_with(|| b.end.cmp(&a.end)));
+
+    let mut filtered_matches: Vec<Match> = Vec::new();
+    for m in &sorted_matches {
+        let dominated = filtered_matches
+            .iter()
+            .any(|existing| existing.start <= m.start && existing.end >= m.end);
+        if !dominated {
+            filtered_matches.push(m.clone());
+        }
+    }
+    let mut sorted_matches = filtered_matches;
 
     let mut consistency_map: HashMap<String, String> = HashMap::new();
     let mut type_counters: HashMap<String, usize> = HashMap::new();

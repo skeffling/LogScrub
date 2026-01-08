@@ -147,7 +147,7 @@ static BASIC_AUTH_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)basic[ \t]+[a-z0-9+/]+=*").unwrap());
 
 static URL_CREDENTIALS_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)(?:https?|ftp)://[^:]+:[^@]+@[^\s/]+").unwrap());
+    Lazy::new(|| Regex::new(r#"(?i)(?:https?|ftp)://[^/:@\s"']+:[^@\s"']+@[^\s/"']+"#).unwrap());
 
 static DB_CONNECTION_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)(?:mongodb|postgres|postgresql|mysql|redis|amqp|mssql)://[^\s]+").unwrap()
@@ -491,5 +491,37 @@ impl PiiDetector {
 impl Default for PiiDetector {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod url_credential_tests {
+    use super::*;
+
+    #[test]
+    fn test_url_credentials_valid_match() {
+        let re = &URL_CREDENTIALS_REGEX;
+        assert!(re.is_match("http://user:pass@example.com"));
+        assert!(re.is_match("https://admin:secret123@api.example.com"));
+        assert!(re.is_match("ftp://user:p4ss@ftp.server.net"));
+    }
+
+    #[test]
+    fn test_url_credentials_no_false_positives() {
+        let re = &URL_CREDENTIALS_REGEX;
+        // Should NOT match normal URLs without credentials
+        assert!(!re.is_match("http://firebrick.ltd.uk/xml/test/"));
+        assert!(!re.is_match("https://www.example.com/path"));
+        assert!(!re.is_match(r#"xmlns="http://firebrick.ltd.uk/xml/test/""#));
+    }
+
+    #[test]
+    fn test_url_credentials_no_multiline_greed() {
+        let re = &URL_CREDENTIALS_REGEX;
+        // This was the bug - should NOT match across multiple lines/attributes
+        let xml = r#"xmlns="http://firebrick.ltd.uk/xml/test/"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        email="hostmaster@aa.net.uk""#;
+        assert!(!re.is_match(xml));
     }
 }

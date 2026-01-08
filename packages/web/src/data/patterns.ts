@@ -37,7 +37,7 @@ export const BUILTIN_PATTERNS: Record<string, string> = {
   twilio_key: String.raw`\b(?:AC|SK)[a-f0-9]{32}\b`,
   db_connection: String.raw`(?i)(?:mongodb|postgres|postgresql|mysql|redis|amqp|mssql)://[^\s]+`,
   basic_auth: String.raw`(?i)basic\s+[a-z0-9+/]+=*`,
-  url_credentials: String.raw`(?i)(?:https?|ftp)://[^:]+:[^@]+@[^\s/]+`,
+  url_credentials: String.raw`(?i)(?:https?|ftp)://[^/:@\s"']+:[^@\s"']+@[^\s/"']+`,
   date_mdy: String.raw`\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12][0-9]|3[01])[/-](?:19|20)?[0-9]{2}\b`,
   date_dmy: String.raw`\b(?:0?[1-9]|[12][0-9]|3[01])[/-](?:0?[1-9]|1[0-2])[/-](?:19|20)?[0-9]{2}\b`,
   date_iso: String.raw`\b(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])\b`,

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogScrub - Changelog</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      code { background: #2d2d44; }
+      h2 { border-color: #444; }
+    }
+    h1 { margin-bottom: 0.5rem; }
+    .subtitle { color: #666; margin-bottom: 2rem; }
+    h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.5rem; margin-top: 2rem; }
+    .date { color: #888; font-size: 0.9rem; }
+    ul { padding-left: 1.5rem; }
+    li { margin: 0.5rem 0; }
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    .tag { display: inline-block; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 3px; margin-left: 0.5rem; }
+    .tag-new { background: #d4edda; color: #155724; }
+    .tag-fix { background: #fff3cd; color: #856404; }
+    .tag-improve { background: #cce5ff; color: #004085; }
+    @media (prefers-color-scheme: dark) {
+      .tag-new { background: #1e4620; color: #8fd19e; }
+      .tag-fix { background: #4a3f06; color: #ffc107; }
+      .tag-improve { background: #0c3d6e; color: #6eb5ff; }
+      .subtitle, .date { color: #999; }
+    }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <a href="./" class="back">&larr; Back to LogScrub</a>
+  <h1>Changelog</h1>
+  <p class="subtitle">Release history and notable changes</p>
+
+  <h2>v0.2.0 <span class="date">January 2025</span></h2>
+  <ul>
+    <li><span class="tag tag-new">New</span> Smart suggestions show context around matches on hover</li>
+    <li><span class="tag tag-new">New</span> "No PII detected" message when analysis finds nothing</li>
+    <li><span class="tag tag-new">New</span> Version numbers and changelog</li>
+    <li><span class="tag tag-fix">Fix</span> URL credentials pattern no longer eats entire XML blocks</li>
+    <li><span class="tag tag-improve">Improve</span> Highlight toggle always visible (not just after scrubbing)</li>
+    <li><span class="tag tag-improve">Improve</span> Filename display truncated to 8 chars (hover for full name)</li>
+    <li><span class="tag tag-improve">Improve</span> Removed console statements for cleaner production</li>
+  </ul>
+
+  <h2>v0.1.0 <span class="date">December 2024</span></h2>
+  <ul>
+    <li><span class="tag tag-new">New</span> Initial release</li>
+    <li><span class="tag tag-new">New</span> 50+ PII detection patterns</li>
+    <li><span class="tag tag-new">New</span> Rust/WASM pattern matching engine</li>
+    <li><span class="tag tag-new">New</span> Virtual scrolling for large files</li>
+    <li><span class="tag tag-new">New</span> Zip/Gzip compression support</li>
+    <li><span class="tag tag-new">New</span> Consistency mode for repeatable replacements</li>
+    <li><span class="tag tag-new">New</span> Time shift feature for log timestamps</li>
+    <li><span class="tag tag-new">New</span> Custom regex rules</li>
+    <li><span class="tag tag-new">New</span> Rule presets (save/load/export)</li>
+  </ul>
+
+</body>
+</html>

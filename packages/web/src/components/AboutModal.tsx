@@ -9,7 +9,12 @@ export function AboutModal({ onClose }: AboutModalProps) {
     <Modal onClose={onClose} maxWidth="max-w-3xl">
       <div className="space-y-4 text-gray-700 dark:text-gray-300">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">About LogScrub</h2>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">About LogScrub</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              v{__APP_VERSION__} · <a href="changelog.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Changelog</a>
+            </p>
+          </div>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"

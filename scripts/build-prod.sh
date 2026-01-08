@@ -1,11 +1,12 @@
 #!/bin/bash
 set -e
 
-echo "=== LogScrub Production Build ==="
-echo ""
-
 cd "$(dirname "$0")/.."
 ROOT_DIR=$(pwd)
+
+VERSION=$(cat VERSION 2>/dev/null || echo "0.0.0")
+echo "=== LogScrub Production Build v${VERSION} ==="
+echo ""
 
 echo "[1/4] Building WASM module (optimized)..."
 cd packages/wasm-core

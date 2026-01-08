@@ -27,9 +27,8 @@ static IPV4_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 static IPV6_REGEX: Lazy<Regex> = Lazy::new(|| {
-    // Matches bare IPv6 addresses and bracketed IPv6 with optional port [ipv6]:port
     Regex::new(
-        r"(?i)\[(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}\](?::\d{1,5})?|(?i)\[(?:[0-9a-f]{1,4}:){1,7}:\](?::\d{1,5})?|(?i)\[(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}\](?::\d{1,5})?|(?i)\[(?:[0-9a-f]{1,4}:){1,5}(?::[0-9a-f]{1,4}){1,2}\](?::\d{1,5})?|(?i)\[(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}\](?::\d{1,5})?|(?i)\[::(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4}\](?::\d{1,5})?|(?i)\[[0-9a-f]{1,4}::(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4}\](?::\d{1,5})?|(?i)\[::1?\](?::\d{1,5})?|(?i)\b(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}\b|(?i)\b(?:[0-9a-f]{1,4}:){1,7}:\b|(?i)\b(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}\b|(?i)\b(?:[0-9a-f]{1,4}:){1,5}(?::[0-9a-f]{1,4}){1,2}\b|(?i)\b(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}\b|(?i)\b::(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4}\b|(?i)\b[0-9a-f]{1,4}::(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4}\b"
+        r"(?i)\[(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}\](?::\d{1,5})?|\[(?:[0-9a-f]{1,4}:){1,7}:\](?::\d{1,5})?|\[(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}\](?::\d{1,5})?|\[(?:[0-9a-f]{1,4}:){1,5}(?::[0-9a-f]{1,4}){1,2}\](?::\d{1,5})?|\[(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}\](?::\d{1,5})?|\[::(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4}\](?::\d{1,5})?|\[[0-9a-f]{1,4}::(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4}\](?::\d{1,5})?|\[::1?\](?::\d{1,5})?|fe80:(?::[0-9a-f]{0,4}){0,4}%[a-zA-Z0-9._-]+|::(?:ffff(?::0{1,4})?:)?(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(?:[0-9a-f]{1,4}:){1,4}:(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|\b(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}\b|\b(?:[0-9a-f]{1,4}:){1,7}:|\b(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}\b|\b(?:[0-9a-f]{1,4}:){1,5}(?::[0-9a-f]{1,4}){1,2}\b|\b(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}\b|::(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4}\b|\b[0-9a-f]{1,4}::(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4}\b"
     ).unwrap()
 });
 
@@ -518,10 +517,61 @@ mod url_credential_tests {
     #[test]
     fn test_url_credentials_no_multiline_greed() {
         let re = &URL_CREDENTIALS_REGEX;
-        // This was the bug - should NOT match across multiple lines/attributes
         let xml = r#"xmlns="http://firebrick.ltd.uk/xml/test/"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         email="hostmaster@aa.net.uk""#;
         assert!(!re.is_match(xml));
+    }
+}
+
+#[cfg(test)]
+mod ipv6_tests {
+    use super::*;
+
+    #[test]
+    fn test_ipv6_full_form() {
+        let re = &IPV6_REGEX;
+        assert!(re.is_match("2001:0db8:85a3:0000:0000:8a2e:0370:7334"));
+        assert!(re.is_match("2001:db8:85a3:0:0:8a2e:370:7334"));
+    }
+
+    #[test]
+    fn test_ipv6_compressed() {
+        let re = &IPV6_REGEX;
+        assert!(re.is_match("2001:db8::1"));
+        assert!(re.is_match("::1"));
+        assert!(re.is_match("fe80::"));
+        assert!(re.is_match("2001:db8:85a3::8a2e:370:7334"));
+    }
+
+    #[test]
+    fn test_ipv6_bracketed_with_port() {
+        let re = &IPV6_REGEX;
+        assert!(re.is_match("[::1]:8080"));
+        assert!(re.is_match("[2001:db8::1]:443"));
+        assert!(re.is_match("[fe80::1]:22"));
+    }
+
+    #[test]
+    fn test_ipv6_link_local_with_zone() {
+        let re = &IPV6_REGEX;
+        assert!(re.is_match("fe80::1%eth0"));
+        assert!(re.is_match("fe80::a:b:c:d%en0"));
+        assert!(re.is_match("fe80::%lo0"));
+    }
+
+    #[test]
+    fn test_ipv6_ipv4_mapped() {
+        let re = &IPV6_REGEX;
+        assert!(re.is_match("::ffff:192.168.0.1"));
+        assert!(re.is_match("::ffff:10.0.0.1"));
+        assert!(re.is_match("::192.168.1.1"));
+    }
+
+    #[test]
+    fn test_ipv6_mixed_notation() {
+        let re = &IPV6_REGEX;
+        assert!(re.is_match("2001:db8::192.168.0.1"));
+        assert!(re.is_match("64:ff9b::192.0.2.1"));
     }
 }

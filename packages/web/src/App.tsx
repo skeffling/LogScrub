@@ -8,7 +8,7 @@ import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
 import { Modal } from './components/Modal'
 import { useAppStore } from './stores/useAppStore'
-import init, { compress_zip } from './wasm-core/wasm_core'
+import init, { compress_zip, compress_gzip } from './wasm-core/wasm_core'
 
 let wasmReady: Promise<unknown> | null = null
 async function ensureWasm(): Promise<void> {
@@ -49,7 +49,21 @@ function App() {
   const [syncScroll, setSyncScroll] = useState(() => loadUiPreference('syncScroll', true))
   const [showStats, setShowStats] = useState(false)
   const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
+  const [fullscreenLoading, setFullscreenLoading] = useState(false)
+  const [fullscreenGoToLine, setFullscreenGoToLine] = useState(false)
+  const [fullscreenGoToLineValue, setFullscreenGoToLineValue] = useState('')
   const editorRef = useRef<{ scrollToLine: (line: number) => void } | null>(null)
+  const fullscreenScrollRef = useRef<HTMLDivElement | null>(null)
+
+  const openFullscreen = useCallback(() => {
+    setFullscreenLoading(true)
+    setFullscreenView(true)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setFullscreenLoading(false)
+      })
+    })
+  }, [])
 
   useEffect(() => { saveUiPreference('showRules', showRules) }, [showRules])
   useEffect(() => { saveUiPreference('constrainWidth', constrainWidth) }, [constrainWidth])
@@ -113,6 +127,22 @@ function App() {
     const a = document.createElement('a')
     a.href = url
     a.download = `${baseName}.zip`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleDownloadGzip = async () => {
+    if (!output) return
+    await ensureWasm()
+    const baseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'sanitized_output'
+    const gzipData = compress_gzip(output)
+    const blob = new Blob([gzipData], { type: 'application/gzip' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${baseName}.txt.gz`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -200,6 +230,44 @@ function App() {
               <span className={`w-2 h-2 rounded-full ${fullscreenHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
               Highlight
             </button>
+            <span className="text-gray-300 dark:text-gray-600">|</span>
+            {fullscreenGoToLine ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  const line = parseInt(fullscreenGoToLineValue, 10)
+                  if (!isNaN(line) && line > 0 && fullscreenScrollRef.current) {
+                    fullscreenScrollRef.current.scrollTop = (line - 1) * 20
+                  }
+                  setFullscreenGoToLine(false)
+                  setFullscreenGoToLineValue('')
+                }}
+                className="flex items-center gap-1"
+              >
+                <input
+                  type="number"
+                  min="1"
+                  max={fullscreenLines.length}
+                  value={fullscreenGoToLineValue}
+                  onChange={(e) => setFullscreenGoToLineValue(e.target.value)}
+                  placeholder="Line #"
+                  autoFocus
+                  className="w-20 px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                  onBlur={() => { if (!fullscreenGoToLineValue) setFullscreenGoToLine(false) }}
+                  onKeyDown={(e) => { if (e.key === 'Escape') { setFullscreenGoToLine(false); setFullscreenGoToLineValue('') } }}
+                />
+                <button type="submit" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800">Go</button>
+              </form>
+            ) : (
+              <button
+                onClick={() => setFullscreenGoToLine(true)}
+                className="text-sm text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                title="Go to line (⌘G)"
+              >
+                Go to Line
+              </button>
+            )}
+            <span className="text-gray-300 dark:text-gray-600">|</span>
             <button
               onClick={handleDownload}
               className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border dark:border-gray-600 rounded"
@@ -215,6 +283,13 @@ function App() {
               .zip
             </button>
             <button
+              onClick={handleDownloadGzip}
+              className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border dark:border-gray-600 rounded"
+              title="Download as gzip compressed"
+            >
+              .gz
+            </button>
+            <button
               onClick={() => { window.history.back() }}
               className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
             >
@@ -222,24 +297,36 @@ function App() {
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
-          <div className="flex min-w-fit">
-            <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-800 text-right select-none border-r dark:border-gray-700 py-2">
-              {fullscreenLines.map((_, i) => (
-                <div key={i} className="px-3 font-mono text-sm text-gray-500 dark:text-gray-500 h-5 flex items-center justify-end">
-                  {i + 1}
-                </div>
-              ))}
-            </div>
-            <div className="flex-1 p-2">
-              {fullscreenLines.map((line, i) => (
-                <div key={i} className="font-mono text-sm whitespace-pre text-gray-900 dark:text-gray-100 h-5">
-                  {highlightFullscreenLine(line)}
-                </div>
-              ))}
+        {fullscreenLoading ? (
+          <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900">
+            <div className="flex flex-col items-center gap-3">
+              <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span className="text-gray-500 dark:text-gray-400">Loading {fullscreenLines.length.toLocaleString()} lines...</span>
             </div>
           </div>
-        </div>
+        ) : (
+          <div ref={fullscreenScrollRef} className="flex-1 overflow-auto bg-white dark:bg-gray-900">
+            <div className="flex min-w-fit">
+              <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-800 text-right select-none border-r dark:border-gray-700 py-2">
+                {fullscreenLines.map((_, i) => (
+                  <div key={i} className="px-3 font-mono text-sm text-gray-500 dark:text-gray-500 h-5 flex items-center justify-end">
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+              <div className="flex-1 p-2">
+                {fullscreenLines.map((line, i) => (
+                  <div key={i} className="font-mono text-sm whitespace-pre text-gray-900 dark:text-gray-100 h-5">
+                    {highlightFullscreenLine(line)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -452,7 +539,7 @@ function App() {
                 input={input}
                 output={output}
                 onInputChange={setInput}
-                onView={() => setFullscreenView(true)}
+                onView={openFullscreen}
                 showDiff={showDiffHighlight}
                 syncScroll={syncScroll}
               />

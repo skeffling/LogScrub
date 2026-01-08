@@ -338,10 +338,10 @@ function App() {
       <Header onAboutClick={() => setShowAbout(true)} />
       
       <main className={`flex-1 flex flex-col mx-auto px-4 py-4 w-full min-h-0 overflow-hidden ${constrainWidth ? 'max-w-7xl' : ''}`}>
-        {isProcessing && processingProgress > 0 && (
+        {(isProcessing || isAnalyzing) && processingProgress > 0 && (
           <div className="mb-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Processing...</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{isAnalyzing ? 'Analyzing...' : 'Processing...'}</span>
               <span className="text-xs text-gray-500 dark:text-gray-400">{processingProgress}%</span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">

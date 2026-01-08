@@ -5,6 +5,8 @@ import { RulePanel } from './components/RulePanel'
 import { TimeShift } from './components/TimeShift'
 import { AboutModal } from './components/AboutModal'
 import { Suggestions } from './components/Suggestions'
+import { Stats } from './components/Stats'
+import { Modal } from './components/Modal'
 import { useAppStore } from './stores/useAppStore'
 
 function loadUiPreference<T>(key: string, defaultValue: T): T {
@@ -35,6 +37,7 @@ function App() {
   const [goToLineValue, setGoToLineValue] = useState('')
   const [showGoToLine, setShowGoToLine] = useState(false)
   const [syncScroll, setSyncScroll] = useState(() => loadUiPreference('syncScroll', true))
+  const [showStats, setShowStats] = useState(false)
   const editorRef = useRef<{ scrollToLine: (line: number) => void } | null>(null)
 
   useEffect(() => { saveUiPreference('showRules', showRules) }, [showRules])
@@ -239,6 +242,17 @@ function App() {
                   <span className={`w-2 h-2 rounded-full ${syncScroll ? 'bg-blue-500' : 'bg-gray-400'}`} />
                   Sync Scroll
                 </button>
+                <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
+                <button
+                  onClick={() => setShowStats(true)}
+                  className="text-sm text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hidden md:flex items-center gap-1"
+                  title="View detection statistics and download audit reports"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  Stats
+                </button>
               </div>
               <div className="flex items-center gap-2">
                 {input && (
@@ -344,6 +358,12 @@ function App() {
       </footer>
       
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+      
+      {showStats && (
+        <Modal onClose={() => setShowStats(false)} title="Detection Statistics">
+          <Stats />
+        </Modal>
+      )}
     </div>
   )
 }

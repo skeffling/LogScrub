@@ -1099,16 +1099,25 @@ User [EMAIL-3] logged in</div>
         <li><strong>Local storage only</strong> — Presets and settings are stored in your browser</li>
       </ul>
 
+      <div class="warning" style="background: #fef3c7; border-color: #f59e0b;">
+        <strong>Disclaimer:</strong> LogScrub does <strong>not</strong> guarantee detection of all PII. Pattern-based detection has inherent limitations and may miss sensitive data in unexpected formats, custom identifiers, or context-dependent information. <strong>Always review your scrubbed output before sharing.</strong> You are responsible for ensuring adequate sanitization of your data.
+      </div>
+
       <h3>Open Source</h3>
       <p>LogScrub is open source. You can inspect the code, run it locally, or host your own instance.</p>
 
       <h3>Best Practices</h3>
       <ul>
-        <li>Always review the scrubbed output before sharing</li>
+        <li><strong>Always review the scrubbed output before sharing</strong></li>
         <li>Use "Analyze" first to understand what will be detected</li>
         <li>Enable additional rules if your logs contain sensitive data types that aren't detected by default</li>
+        <li>Add custom patterns for organization-specific identifiers</li>
         <li>Consider using "Redact" strategy for highly sensitive data to completely obscure the original values</li>
+        <li>Use the "Changed only" filter to quickly review all lines that were modified</li>
       </ul>
+
+      <h3>Feedback</h3>
+      <p>Found a pattern that should be detected? Have a suggestion or want to report a problem? We'd love to hear from you at <a href="mailto:skeffling@gmail.com">skeffling@gmail.com</a></p>
     </section>
 
     <footer>

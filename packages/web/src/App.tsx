@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Header } from './components/Header'
 import { Editor } from './components/Editor'
 import { RulePanel } from './components/RulePanel'
@@ -16,6 +17,79 @@ async function ensureWasm(): Promise<void> {
     wasmReady = init()
   }
   await wasmReady
+}
+
+const LINE_HEIGHT = 20
+
+interface FullscreenVirtualListProps {
+  lines: string[]
+  lineNumbers?: number[]
+  changedLines: Set<number>
+  highlightLine: (line: string) => React.ReactNode
+  scrollRef: React.MutableRefObject<HTMLDivElement | null>
+}
+
+function FullscreenVirtualList({ lines, lineNumbers, changedLines, highlightLine, scrollRef }: FullscreenVirtualListProps) {
+  const parentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef && parentRef.current) {
+      scrollRef.current = parentRef.current
+    }
+  }, [scrollRef])
+
+  const virtualizer = useVirtualizer({
+    count: lines.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => LINE_HEIGHT,
+    overscan: 20,
+  })
+
+  return (
+    <div ref={parentRef} className="flex-1 overflow-auto bg-white dark:bg-gray-900">
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        <div
+          className="inline-flex min-w-full absolute top-0 left-0"
+          style={{
+            transform: `translateY(${virtualizer.getVirtualItems()[0]?.start ?? 0}px)`,
+          }}
+        >
+          <div className="flex-shrink-0 sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 text-right select-none border-r dark:border-gray-700">
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const lineNum = lineNumbers ? lineNumbers[virtualRow.index] : virtualRow.index
+              const hasChange = changedLines.has(lineNum)
+              return (
+                <div
+                  key={virtualRow.key}
+                  className={`px-3 font-mono text-sm h-5 flex items-center justify-end ${
+                    hasChange ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-500'
+                  }`}
+                >
+                  {lineNum + 1}
+                </div>
+              )
+            })}
+          </div>
+          <div className="p-2">
+            {virtualizer.getVirtualItems().map((virtualRow) => (
+              <div
+                key={virtualRow.key}
+                className="font-mono text-sm whitespace-pre text-gray-900 dark:text-gray-100 h-5"
+              >
+                {highlightLine(lines[virtualRow.index])}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function loadUiPreference<T>(key: string, defaultValue: T): T {
@@ -52,6 +126,7 @@ function App() {
   const [fullscreenLoading, setFullscreenLoading] = useState(false)
   const [fullscreenGoToLine, setFullscreenGoToLine] = useState(false)
   const [fullscreenGoToLineValue, setFullscreenGoToLineValue] = useState('')
+  const [fullscreenChangedOnly, setFullscreenChangedOnly] = useState(false)
   const editorRef = useRef<{ scrollToLine: (line: number) => void } | null>(null)
   const fullscreenScrollRef = useRef<HTMLDivElement | null>(null)
 
@@ -180,7 +255,49 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleProcess, output, isProcessing, canCancel, cancelProcessing, showGoToLine])
 
+  const inputLines = useMemo(() => input.split('\n'), [input])
   const fullscreenLines = useMemo(() => output.split('\n'), [output])
+  
+  const lineOffsets = useMemo(() => {
+    const offsets: number[] = []
+    let offset = 0
+    for (const line of inputLines) {
+      offsets.push(offset)
+      offset += line.length + 1
+    }
+    return offsets
+  }, [inputLines])
+
+  const changedLinesSet = useMemo(() => {
+    const lines = new Set<number>()
+    for (const r of replacements) {
+      if (r.start >= 0) {
+        for (let i = 0; i < lineOffsets.length; i++) {
+          const lineStart = lineOffsets[i]
+          const lineEnd = i < lineOffsets.length - 1 ? lineOffsets[i + 1] - 1 : Infinity
+          if (r.start <= lineEnd && r.end > lineStart) {
+            lines.add(i)
+          }
+        }
+      }
+    }
+    return lines
+  }, [replacements, lineOffsets])
+
+  const { filteredFullscreenLines, filteredLineNumbers } = useMemo(() => {
+    if (!fullscreenChangedOnly || changedLinesSet.size === 0) {
+      return { filteredFullscreenLines: fullscreenLines, filteredLineNumbers: undefined }
+    }
+    const lineNums: number[] = []
+    const lines: string[] = []
+    for (let i = 0; i < fullscreenLines.length; i++) {
+      if (changedLinesSet.has(i)) {
+        lineNums.push(i)
+        lines.push(fullscreenLines[i])
+      }
+    }
+    return { filteredFullscreenLines: lines, filteredLineNumbers: lineNums }
+  }, [fullscreenLines, changedLinesSet, fullscreenChangedOnly])
   
   const highlightFullscreenLine = useCallback((line: string): React.ReactNode => {
     if (!fullscreenHighlight || replacements.length === 0) return line || ' '
@@ -221,7 +338,9 @@ function App() {
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Scrubbed Output {fileName && <span className="text-gray-500 dark:text-gray-400 text-sm">({fileName})</span>}
-            <span className="ml-2 text-xs text-gray-400">({fullscreenLines.length.toLocaleString()} lines)</span>
+            <span className="ml-2 text-xs text-gray-400">
+              ({filteredFullscreenLines.length.toLocaleString()} lines{fullscreenChangedOnly && ` of ${fullscreenLines.length.toLocaleString()}`})
+            </span>
           </h2>
           <div className="flex items-center gap-4">
             <button
@@ -233,6 +352,19 @@ function App() {
               Highlight
             </button>
             <span className="text-gray-300 dark:text-gray-600">|</span>
+            {changedLinesSet.size > 0 && (
+              <>
+                <button
+                  onClick={() => setFullscreenChangedOnly(!fullscreenChangedOnly)}
+                  className={`text-sm flex items-center gap-1 ${fullscreenChangedOnly ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}
+                  title="Show only lines with changes"
+                >
+                  <span className={`w-2 h-2 rounded-full ${fullscreenChangedOnly ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                  Changed only
+                </button>
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+              </>
+            )}
             {fullscreenGoToLine ? (
               <form
                 onSubmit={(e) => {
@@ -310,24 +442,13 @@ function App() {
             </div>
           </div>
         ) : (
-          <div ref={fullscreenScrollRef} className="flex-1 overflow-auto bg-white dark:bg-gray-900">
-            <div className="flex min-w-fit">
-              <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-800 text-right select-none border-r dark:border-gray-700 py-2">
-                {fullscreenLines.map((_, i) => (
-                  <div key={i} className="px-3 font-mono text-sm text-gray-500 dark:text-gray-500 h-5 flex items-center justify-end">
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
-              <div className="flex-1 p-2">
-                {fullscreenLines.map((line, i) => (
-                  <div key={i} className="font-mono text-sm whitespace-pre text-gray-900 dark:text-gray-100 h-5">
-                    {highlightFullscreenLine(line)}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <FullscreenVirtualList
+            lines={filteredFullscreenLines}
+            lineNumbers={filteredLineNumbers}
+            changedLines={changedLinesSet}
+            highlightLine={highlightFullscreenLine}
+            scrollRef={fullscreenScrollRef}
+          />
         )}
       </div>
     )

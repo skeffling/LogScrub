@@ -129,10 +129,17 @@ export function AboutModal({ onClose }: AboutModalProps) {
           </p>
         </div>
         
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+          <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">Important Disclaimer</h3>
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            LogScrub does not guarantee detection of all PII. Pattern-based detection has limitations and may miss sensitive data in unexpected formats. <strong>Always review your scrubbed output before sharing.</strong> You are responsible for ensuring adequate sanitization of your data.
+          </p>
+        </div>
+        
         <div>
           <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Feedback</h3>
           <p className="text-sm">
-            Have a suggestion or want to report a problem? Email us at <a href="mailto:skeffling@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">skeffling@gmail.com</a>
+            Found a pattern that should be detected? Have a suggestion or want to report a problem? We'd love to hear from you at <a href="mailto:skeffling@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">skeffling@gmail.com</a>
           </p>
         </div>
         

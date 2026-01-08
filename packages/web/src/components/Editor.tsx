@@ -1,4 +1,5 @@
-import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle, startTransition } from 'react'
+import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import init, { decompress_gzip, decompress_zip, compress_zip, compress_gzip } from '../wasm-core/wasm_core'
 import { useAppStore, type ReplacementInfo } from '../stores/useAppStore'
 
@@ -25,7 +26,7 @@ export interface EditorHandle {
 
 const LINE_HEIGHT = 20
 const VIRTUAL_THRESHOLD = 500
-const OVERSCAN = 30
+const OVERSCAN = 15
 
 function highlightLine(line: string, lineStart: number, replacements: ReplacementInfo[], type: 'original' | 'output'): React.ReactNode {
   const lineEnd = lineStart + line.length
@@ -131,84 +132,63 @@ interface VirtualizedListProps {
   onScroll?: () => void
   className?: string
   changedLines?: Set<number>
+  originalLineNumbers?: number[]
 }
 
 function VirtualizedList({ 
   lines, lineOffsets, replacements, selectedLine, onLineClick, 
-  showDiff, type, scrollRef, onScroll, className, changedLines 
+  showDiff, type, scrollRef, onScroll, className, changedLines,
+  originalLineNumbers
 }: VirtualizedListProps) {
-  const internalRef = useRef<HTMLDivElement>(null)
-  const [scrollTop, setScrollTop] = useState(0)
-  const [containerHeight, setContainerHeight] = useState(400)
-  const rafRef = useRef<number | null>(null)
-  const lastScrollTop = useRef(0)
+  const parentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (scrollRef && internalRef.current) {
-      scrollRef.current = internalRef.current
+    if (scrollRef && parentRef.current) {
+      scrollRef.current = parentRef.current
     }
   }, [scrollRef])
 
-  useEffect(() => {
-    const updateHeight = () => {
-      if (internalRef.current) {
-        setContainerHeight(internalRef.current.clientHeight)
-      }
-    }
-    updateHeight()
-    const observer = new ResizeObserver(updateHeight)
-    if (internalRef.current) observer.observe(internalRef.current)
-    return () => observer.disconnect()
-  }, [])
+  const virtualizer = useVirtualizer({
+    count: lines.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => LINE_HEIGHT,
+    overscan: OVERSCAN,
+  })
 
-  useEffect(() => {
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    }
-  }, [])
-
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const newScrollTop = e.currentTarget.scrollTop
-    lastScrollTop.current = newScrollTop
+  const handleScroll = useCallback(() => {
     onScroll?.()
-    
-    if (rafRef.current) return
-    
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null
-      startTransition(() => {
-        setScrollTop(lastScrollTop.current)
-      })
-    })
   }, [onScroll])
-
-  const totalHeight = lines.length * LINE_HEIGHT
-  const startIndex = Math.max(0, Math.floor(scrollTop / LINE_HEIGHT) - OVERSCAN)
-  const endIndex = Math.min(lines.length, Math.ceil((scrollTop + containerHeight) / LINE_HEIGHT) + OVERSCAN)
-  const visibleLines = lines.slice(startIndex, endIndex)
 
   return (
     <div 
-      ref={internalRef}
+      ref={parentRef}
       onScroll={handleScroll}
       className={`overflow-auto ${className || ''}`}
       style={{ height: '100%' }}
     >
-      <div style={{ height: totalHeight, position: 'relative', contain: 'strict' }}>
-        <div 
-          className="inline-flex absolute min-w-full"
-          style={{ transform: `translateY(${startIndex * LINE_HEIGHT}px)`, willChange: 'transform' }}
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        <div
+          className="inline-flex min-w-full absolute top-0 left-0"
+          style={{
+            transform: `translateY(${virtualizer.getVirtualItems()[0]?.start ?? 0}px)`,
+          }}
         >
           <div className="flex-shrink-0 sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 text-right select-none border-r dark:border-gray-700">
-            {visibleLines.map((_, i) => {
-              const lineNum = startIndex + i
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const lineNum = originalLineNumbers ? originalLineNumbers[virtualRow.index] : virtualRow.index
               const hasChange = changedLines?.has(lineNum)
               const lineColor = hasChange
                 ? (type === 'output' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')
                 : 'text-gray-500 dark:text-gray-500'
               return (
                 <div
-                  key={lineNum}
+                  key={virtualRow.key}
                   className={`px-2 font-mono text-sm cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-end ${lineColor} ${
                     selectedLine === lineNum ? 'bg-yellow-200 dark:bg-yellow-900' : ''
                   }`}
@@ -221,19 +201,20 @@ function VirtualizedList({
             })}
           </div>
           <div className="px-2">
-            {visibleLines.map((line, i) => {
-              const lineNum = startIndex + i
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const line = lines[virtualRow.index]
+              const lineNum = originalLineNumbers ? originalLineNumbers[virtualRow.index] : virtualRow.index
               let content: React.ReactNode
               if (type === 'analysis') {
-                content = highlightLine(line, lineOffsets[lineNum], replacements, 'original')
+                content = highlightLine(line, lineOffsets[lineNum] ?? 0, replacements, 'original')
               } else if (type === 'output') {
                 content = showDiff && replacements.length > 0 ? highlightOutputLine(line, replacements) : (line || ' ')
               } else {
-                content = showDiff && replacements.length > 0 ? highlightLine(line, lineOffsets[lineNum], replacements, 'original') : (line || ' ')
+                content = showDiff && replacements.length > 0 ? highlightLine(line, lineOffsets[lineNum] ?? 0, replacements, 'original') : (line || ' ')
               }
               return (
                 <div
-                  key={lineNum}
+                  key={virtualRow.key}
                   className={`font-mono text-sm whitespace-pre text-gray-900 dark:text-gray-100 cursor-pointer ${
                     selectedLine === lineNum ? 'bg-yellow-100 dark:bg-yellow-900/50' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                   }`}
@@ -257,6 +238,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const outputContainerRef = useRef<HTMLDivElement | null>(null)
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
   const [showDiff, setShowDiff] = useState(showDiffProp)
+  const [showChangedOnly, setShowChangedOnly] = useState(false)
   const scrollingRef = useRef<'input' | 'output' | null>(null)
 
   useEffect(() => {
@@ -268,6 +250,10 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
       setShowDiff(true)
     }
   }, [output, replacements.length])
+
+  useEffect(() => {
+    setShowChangedOnly(false)
+  }, [input, output])
 
   useImperativeHandle(ref, () => ({
     scrollToLine: (line: number) => {
@@ -313,6 +299,29 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     }
     return lines
   }, [replacements, analysisReplacements, lineOffsets, output])
+
+  const { filteredInputLines, filteredOutputLines, filteredLineNumbers } = useMemo(() => {
+    if (!showChangedOnly || changedLines.size === 0) {
+      return { 
+        filteredInputLines: inputLines, 
+        filteredOutputLines: outputLines, 
+        filteredLineNumbers: undefined 
+      }
+    }
+    const lineNums: number[] = []
+    const inLines: string[] = []
+    const outLines: string[] = []
+    for (let i = 0; i < inputLines.length; i++) {
+      if (changedLines.has(i)) {
+        lineNums.push(i)
+        inLines.push(inputLines[i])
+        if (outputLines[i] !== undefined) {
+          outLines.push(outputLines[i])
+        }
+      }
+    }
+    return { filteredInputLines: inLines, filteredOutputLines: outLines, filteredLineNumbers: lineNums }
+  }, [inputLines, outputLines, changedLines, showChangedOnly])
 
   const handleDownload = () => {
     if (!output) return
@@ -405,7 +414,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   }
 
   const handleScroll = useCallback((source: 'input' | 'output') => {
-    if (!syncScrollProp) return
+    if (!syncScrollProp || showChangedOnly) return
     if (scrollingRef.current && scrollingRef.current !== source) return
     
     scrollingRef.current = source
@@ -420,7 +429,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     requestAnimationFrame(() => {
       scrollingRef.current = null
     })
-  }, [syncScrollProp])
+  }, [syncScrollProp, showChangedOnly])
 
   const handleLineClick = (lineNum: number) => {
     setSelectedLine(lineNum === selectedLine ? null : lineNum)
@@ -451,47 +460,53 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     }
   }
 
-  const renderNonVirtualLines = (lines: string[], type: 'input' | 'output' | 'analysis', reps: ReplacementInfo[], changed?: Set<number>) => (
+  const renderNonVirtualLines = (lines: string[], type: 'input' | 'output' | 'analysis', reps: ReplacementInfo[], changed?: Set<number>, lineNums?: number[]) => (
     <div className="inline-flex min-w-full">
       <div className="flex-shrink-0 sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 text-right select-none border-r dark:border-gray-700 py-2">
         {lines.map((_, i) => {
-          const hasChange = changed?.has(i)
+          const lineNum = lineNums ? lineNums[i] : i
+          const hasChange = changed?.has(lineNum)
           const lineColor = hasChange
             ? (type === 'output' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')
             : 'text-gray-500 dark:text-gray-500'
           return (
             <div
-              key={i}
+              key={lineNum}
               className={`px-2 font-mono text-sm cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 h-5 flex items-center justify-end ${lineColor} ${
-                selectedLine === i ? 'bg-yellow-200 dark:bg-yellow-900' : ''
+                selectedLine === lineNum ? 'bg-yellow-200 dark:bg-yellow-900' : ''
               }`}
-              onClick={() => handleLineClick(i)}
+              onClick={() => handleLineClick(lineNum)}
             >
-              {i + 1}
+              {lineNum + 1}
             </div>
           )
         })}
       </div>
       <div className="p-2">
-        {lines.map((line, i) => (
-          <div
-            key={i}
-            className={`font-mono text-sm whitespace-pre text-gray-900 dark:text-gray-100 cursor-pointer h-5 ${
-              selectedLine === i ? 'bg-yellow-100 dark:bg-yellow-900/50' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
-            }`}
-            onClick={() => handleLineClick(i)}
-          >
-            {type === 'analysis' 
-              ? highlightLine(line, lineOffsets[i], reps, 'original')
-              : type === 'output'
-                ? (showDiff && reps.length > 0 ? highlightOutputLine(line, reps) : (line || ' '))
-                : (showDiff && reps.length > 0 ? highlightLine(line, lineOffsets[i], reps, 'original') : (line || ' '))
-            }
-          </div>
-        ))}
+        {lines.map((line, i) => {
+          const lineNum = lineNums ? lineNums[i] : i
+          return (
+            <div
+              key={lineNum}
+              className={`font-mono text-sm whitespace-pre text-gray-900 dark:text-gray-100 cursor-pointer h-5 ${
+                selectedLine === lineNum ? 'bg-yellow-100 dark:bg-yellow-900/50' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+              }`}
+              onClick={() => handleLineClick(lineNum)}
+            >
+              {type === 'analysis' 
+                ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original')
+                : type === 'output'
+                  ? (showDiff && reps.length > 0 ? highlightOutputLine(line, reps) : (line || ' '))
+                  : (showDiff && reps.length > 0 ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original') : (line || ' '))
+              }
+            </div>
+          )
+        })}
       </div>
     </div>
   )
+
+  const hasChanges = changedLines.size > 0
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
@@ -500,10 +515,22 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Original {fileName && <span className="text-gray-500 dark:text-gray-400">({fileName})</span>}
             {useVirtualScrolling && inputLines.length > VIRTUAL_THRESHOLD && (
-              <span className="ml-2 text-xs text-gray-400">({inputLines.length.toLocaleString()} lines)</span>
+              <span className="ml-2 text-xs text-gray-400">
+                ({(showChangedOnly ? filteredInputLines.length : inputLines.length).toLocaleString()} lines{showChangedOnly && ` of ${inputLines.length.toLocaleString()}`})
+              </span>
             )}
           </label>
           <div className="flex gap-2">
+            {hasChanges && output && (
+              <button
+                onClick={() => setShowChangedOnly(!showChangedOnly)}
+                className={`text-xs flex items-center gap-1 ${showChangedOnly ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}
+                title="Show only lines with changes"
+              >
+                <span className={`w-2 h-2 rounded-full ${showChangedOnly ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                Changed only
+              </button>
+            )}
             <label 
               className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer"
               title="Upload a log file (.log, .txt, .json, .xml, .csv, .zip, .gz). Compressed files are automatically extracted."
@@ -570,7 +597,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
         ) : useVirtualScrolling ? (
           <div className="flex-1 min-h-0 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800">
             <VirtualizedList
-              lines={inputLines}
+              lines={filteredInputLines}
               lineOffsets={lineOffsets}
               replacements={replacements}
               selectedLine={selectedLine}
@@ -580,6 +607,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               scrollRef={inputContainerRef}
               onScroll={() => handleScroll('input')}
               changedLines={changedLines}
+              originalLineNumbers={filteredLineNumbers}
             />
           </div>
         ) : (
@@ -588,7 +616,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             onScroll={() => handleScroll('input')}
             className="flex-1 min-h-0 border dark:border-gray-600 rounded-lg overflow-auto bg-white dark:bg-gray-800"
           >
-            {renderNonVirtualLines(inputLines, 'input', replacements, changedLines)}
+            {renderNonVirtualLines(filteredInputLines, 'input', replacements, changedLines, filteredLineNumbers)}
           </div>
         )}
       </div>
@@ -598,7 +626,9 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Scrubbed
             {useVirtualScrolling && outputLines.length > VIRTUAL_THRESHOLD && output && (
-              <span className="ml-2 text-xs text-gray-400">({outputLines.length.toLocaleString()} lines)</span>
+              <span className="ml-2 text-xs text-gray-400">
+                ({(showChangedOnly ? filteredOutputLines.length : outputLines.length).toLocaleString()} lines{showChangedOnly && ` of ${outputLines.length.toLocaleString()}`})
+              </span>
             )}
           </label>
           {output && (
@@ -665,7 +695,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
         ) : useVirtualScrolling ? (
           <div className="flex-1 min-h-0 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900">
             <VirtualizedList
-              lines={outputLines}
+              lines={filteredOutputLines}
               lineOffsets={[]}
               replacements={replacements}
               selectedLine={selectedLine}
@@ -675,6 +705,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               scrollRef={outputContainerRef}
               onScroll={() => handleScroll('output')}
               changedLines={changedLines}
+              originalLineNumbers={filteredLineNumbers}
             />
           </div>
         ) : (
@@ -683,7 +714,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             onScroll={() => handleScroll('output')}
             className="flex-1 min-h-0 border dark:border-gray-600 rounded-lg overflow-auto bg-gray-50 dark:bg-gray-900"
           >
-            {renderNonVirtualLines(outputLines, 'output', replacements, changedLines)}
+            {renderNonVirtualLines(filteredOutputLines, 'output', replacements, changedLines, filteredLineNumbers)}
           </div>
         )}
       </div>

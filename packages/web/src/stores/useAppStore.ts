@@ -77,6 +77,7 @@ interface AppState {
   analysisReplacements: ReplacementInfo[]
   analysisStats: DetectionStats
   analysisMatches: DetectionMatches
+  analysisCompleted: boolean
   suggestions: RuleSuggestion[]
   showSuggestions: boolean
   
@@ -255,10 +256,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   analysisReplacements: [],
   analysisStats: {},
   analysisMatches: {},
+  analysisCompleted: false,
   suggestions: [],
   showSuggestions: false,
 
-  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {} }),
+  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false }),
   setOutput: (output) => set({ output }),
   setStats: (stats) => set({ stats }),
   setMatches: (matches) => set({ matches }),
@@ -443,7 +445,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!text.trim()) return
 
     cancelRequested = false
-    set({ isProcessing: true, processingProgress: 0, canCancel: true, analysisReplacements: [], analysisStats: {} })
+    set({ isProcessing: true, processingProgress: 0, canCancel: true, analysisReplacements: [], analysisStats: {}, analysisCompleted: false })
 
     try {
       const { rules, customRules, plainTextPatterns, consistencyMode, timeShift } = get()
@@ -502,7 +504,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!text.trim()) return
 
     cancelRequested = false
-    set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false })
+    set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false })
 
     try {
       const { rules, customRules, plainTextPatterns, consistencyMode } = get()
@@ -588,6 +590,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           analysisReplacements: enabledReplacements, 
           analysisStats: enabledStats,
           analysisMatches: enabledMatches,
+          analysisCompleted: true,
           suggestions,
           showSuggestions: suggestions.length > 0
         })
@@ -599,7 +602,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  clearAnalysis: () => set({ analysisReplacements: [], analysisStats: {}, analysisMatches: {}, suggestions: [], showSuggestions: false }),
+  clearAnalysis: () => set({ analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, suggestions: [], showSuggestions: false }),
 
   dismissSuggestions: () => set({ showSuggestions: false }),
 

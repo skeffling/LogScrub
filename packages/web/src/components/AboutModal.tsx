@@ -88,6 +88,15 @@ export function AboutModal({ onClose }: AboutModalProps) {
                 <li>Consistent performance across browsers</li>
               </ul>
             </div>
+            
+            <div>
+              <h4 className="font-medium text-gray-800 dark:text-gray-200">Large File Handling</h4>
+              <ul className="text-gray-600 dark:text-gray-400 list-disc list-inside space-y-1">
+                <li><strong>Virtual Scrolling:</strong> Uses <a href="https://tanstack.com/virtual" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">@tanstack/react-virtual</a> to render only visible lines</li>
+                <li><strong>Changed Lines Filter:</strong> Quickly review only lines that were modified</li>
+                <li><strong>Compression:</strong> Upload/download .zip and .gz files (handled via WASM)</li>
+              </ul>
+            </div>
           </div>
         </div>
 
@@ -145,7 +154,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
         
         <div className="pt-4 border-t dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Built with React, TypeScript, Rust/WebAssembly, Tailwind CSS, and Zustand. Press ESC to close.
+            Built with React, TypeScript, Rust/WebAssembly, TanStack Virtual, Tailwind CSS, and Zustand. Press ESC to close.
           </p>
         </div>
       </div>

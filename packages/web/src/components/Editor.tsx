@@ -415,16 +415,6 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             )}
           </label>
           <div className="flex gap-2">
-            {output && (
-              <button
-                onClick={() => setShowDiff(!showDiff)}
-                className={`text-xs flex items-center gap-1 ${showDiff ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
-                title={showDiff ? 'Hide diff highlighting - stop showing what changed' : 'Show diff highlighting - highlight detected and replaced values'}
-              >
-                <span className={`w-2 h-2 rounded-full ${showDiff ? 'bg-blue-500' : 'bg-gray-400'}`} />
-                Diff
-              </button>
-            )}
             <label 
               className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer"
               title="Upload a log file (.log, .txt, .json, .xml, .csv). Files over 50MB may be slower to process."

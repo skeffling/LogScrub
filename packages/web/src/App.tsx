@@ -33,11 +33,13 @@ function App() {
   const [showDiffHighlight, setShowDiffHighlight] = useState(() => loadUiPreference('showDiffHighlight', true))
   const [goToLineValue, setGoToLineValue] = useState('')
   const [showGoToLine, setShowGoToLine] = useState(false)
+  const [syncScroll, setSyncScroll] = useState(() => loadUiPreference('syncScroll', true))
   const editorRef = useRef<{ scrollToLine: (line: number) => void } | null>(null)
 
   useEffect(() => { saveUiPreference('showRules', showRules) }, [showRules])
   useEffect(() => { saveUiPreference('constrainWidth', constrainWidth) }, [constrainWidth])
   useEffect(() => { saveUiPreference('showDiffHighlight', showDiffHighlight) }, [showDiffHighlight])
+  useEffect(() => { saveUiPreference('syncScroll', syncScroll) }, [syncScroll])
 
   const handleProcess = useCallback(() => {
     if (input.trim() && !isProcessing) {
@@ -227,6 +229,15 @@ function App() {
                     Go to Line
                   </button>
                 )}
+                <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
+                <button
+                  onClick={() => setSyncScroll(!syncScroll)}
+                  className={`text-sm hidden md:flex items-center gap-1 ${syncScroll ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  title="Sync scrolling between original and sanitized panes"
+                >
+                  <span className={`w-2 h-2 rounded-full ${syncScroll ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                  Sync Scroll
+                </button>
               </div>
               <div className="flex items-center gap-2">
                 {input && (
@@ -281,6 +292,7 @@ function App() {
                 onInputChange={setInput}
                 onView={() => setFullscreenView(true)}
                 showDiff={showDiffHighlight}
+                syncScroll={syncScroll}
               />
             </div>
           </div>

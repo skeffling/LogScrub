@@ -7,6 +7,7 @@ interface EditorProps {
   onInputChange: (value: string) => void
   onView?: () => void
   showDiff?: boolean
+  syncScroll?: boolean
 }
 
 export interface EditorHandle {
@@ -223,7 +224,7 @@ function VirtualizedList({
   )
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true }, ref) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, analysisStats, analyzeText, clearAnalysis, isAnalyzing } = useAppStore()
   const inputContainerRef = useRef<HTMLDivElement | null>(null)
   const outputContainerRef = useRef<HTMLDivElement | null>(null)
@@ -311,6 +312,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   }
 
   const handleScroll = useCallback((source: 'input' | 'output') => {
+    if (!syncScrollProp) return
     if (scrollingRef.current && scrollingRef.current !== source) return
     
     scrollingRef.current = source
@@ -319,12 +321,13 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     
     if (sourceEl && targetEl) {
       targetEl.scrollTop = sourceEl.scrollTop
+      targetEl.scrollLeft = sourceEl.scrollLeft
     }
     
     requestAnimationFrame(() => {
       scrollingRef.current = null
     })
-  }, [])
+  }, [syncScrollProp])
 
   const handleLineClick = (lineNum: number) => {
     setSelectedLine(lineNum === selectedLine ? null : lineNum)

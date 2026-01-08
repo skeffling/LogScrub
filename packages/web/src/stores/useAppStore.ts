@@ -29,6 +29,7 @@ export interface TimeShiftConfig {
   offsetMinutes: number
   startDate: string
   startTime: string
+  lineOnly: boolean
 }
 
 export interface RuleSuggestion {
@@ -239,7 +240,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     offsetHours: 0,
     offsetMinutes: 0,
     startDate: '',
-    startTime: ''
+    startTime: '',
+    lineOnly: true
   },
   fileName: null,
   savedPresets: loadPresetsFromStorage(),

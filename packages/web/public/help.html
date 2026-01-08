@@ -857,6 +857,64 @@ User [EMAIL-3] logged in</div>
       <h3>Start From Mode</h3>
       <p>Set the first timestamp to a specific date/time. All subsequent timestamps shift by the same amount, preserving relative timing.</p>
       <p>This is useful when you want logs to appear to start from a neutral date like <code>2000-01-01</code>.</p>
+
+      <h3>Scope: Line Start vs All Timestamps</h3>
+      <p>Logs often contain two types of timestamps:</p>
+      <ul>
+        <li><strong>Log timestamps</strong> — At the start of each line, indicating when the event occurred</li>
+        <li><strong>Content dates</strong> — Within the log message itself (DOBs, appointment dates, expiry dates, etc.)</li>
+      </ul>
+      
+      <div class="example">
+        <div>
+          <div class="example-label">Example log with both types</div>
+          <div class="example-before">2024-01-15T10:30:00Z User created. DOB: 1985-03-22, subscription expires: 2025-06-01
+2024-01-15T10:31:00Z Appointment scheduled for 2024-02-20 at 14:00</div>
+        </div>
+      </div>
+
+      <p>The <strong>Scope</strong> setting controls which timestamps are shifted:</p>
+      
+      <table class="rule-table">
+        <tr>
+          <th>Scope</th>
+          <th>Shifts</th>
+          <th>Leaves Alone</th>
+          <th>Best For</th>
+        </tr>
+        <tr>
+          <td><strong>Line Start</strong></td>
+          <td>Log timestamps at line beginning</td>
+          <td>Dates within message content</td>
+          <td>Shifting log timing while sanitizing content dates with detection rules</td>
+        </tr>
+        <tr>
+          <td><strong>All Timestamps</strong></td>
+          <td>Every timestamp found</td>
+          <td>Nothing</td>
+          <td>When all dates should shift together (e.g., test data generation)</td>
+        </tr>
+      </table>
+
+      <div class="example">
+        <div>
+          <div class="example-label">Line Start mode (shifted -30 days)</div>
+          <div class="example-after">2023-12-16T10:30:00Z User created. DOB: 1985-03-22, subscription expires: 2025-06-01
+2023-12-16T10:31:00Z Appointment scheduled for 2024-02-20 at 14:00</div>
+        </div>
+        <div>
+          <div class="example-label">All Timestamps mode (shifted -30 days)</div>
+          <div class="example-after">2023-12-16T10:30:00Z User created. DOB: 1985-02-20, subscription expires: 2025-05-02
+2023-12-16T10:31:00Z Appointment scheduled for 2024-01-21 at 14:00</div>
+        </div>
+      </div>
+
+      <div class="tip">
+        <strong>Tip:</strong> Use "Line Start" scope with date/time detection rules enabled. This way, log timestamps get shifted while content dates like DOBs get sanitized to <code>[DATE-1]</code>.
+      </div>
+
+      <h3>Interaction with Date/Time Rules</h3>
+      <p>When Time Shift is enabled, date/time detection rules (DateTime ISO, DateTime CLF, Date, Time, etc.) are automatically skipped to prevent conflicts. This ensures timestamps are shifted rather than replaced with labels.</p>
     </section>
 
     <section id="analyze-mode">

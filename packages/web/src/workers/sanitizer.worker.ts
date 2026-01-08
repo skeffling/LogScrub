@@ -16,6 +16,7 @@ interface TimeShiftConfig {
   offsetMinutes: number
   startDate: string
   startTime: string
+  lineOnly: boolean
 }
 
 interface ProcessRequest {
@@ -161,10 +162,16 @@ function formatTimestamp(date: Date, format: string): string {
   }
 }
 
+function isAtLineStart(text: string, position: number): boolean {
+  if (position === 0) return true
+  const charBefore = text[position - 1]
+  return charBefore === '\n' || charBefore === '\r'
+}
+
 function shiftTimestamps(text: string, config: TimeShiftConfig): string {
   if (!config.enabled) return text
 
-  const allMatches: TimestampMatch[] = []
+  let allMatches: TimestampMatch[] = []
 
   for (const pattern of TIMESTAMP_PATTERNS) {
     pattern.regex.lastIndex = 0
@@ -187,6 +194,10 @@ function shiftTimestamps(text: string, config: TimeShiftConfig): string {
         }
       }
     }
+  }
+
+  if (config.lineOnly) {
+    allMatches = allMatches.filter(m => isAtLineStart(text, m.start))
   }
 
   if (allMatches.length === 0) return text

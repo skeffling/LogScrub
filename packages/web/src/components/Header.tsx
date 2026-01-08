@@ -14,7 +14,7 @@ export function Header({ onAboutClick }: HeaderProps) {
         </div>
         <div className="flex items-center gap-4">
           <a 
-            href="/help.html"
+            href="./help.html"
             className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           >
             Help

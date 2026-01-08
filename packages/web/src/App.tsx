@@ -501,19 +501,15 @@ function App() {
                 >
                   {constrainWidth ? '⬌ Expand' : '⬄ Compact'}
                 </button>
-                {output && (
-                  <>
-                    <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
-                    <button
-                      onClick={() => setShowDiffHighlight(!showDiffHighlight)}
-                      className={`text-sm flex items-center gap-1 hidden md:flex ${showDiffHighlight ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}
-                      title="Toggle diff highlighting"
-                    >
-                      <span className={`w-2 h-2 rounded-full ${showDiffHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
-                      Highlight
-                    </button>
-                  </>
-                )}
+                <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
+                <button
+                  onClick={() => setShowDiffHighlight(!showDiffHighlight)}
+                  className={`text-sm flex items-center gap-1 hidden md:flex ${showDiffHighlight ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}
+                  title="Toggle diff highlighting"
+                >
+                  <span className={`w-2 h-2 rounded-full ${showDiffHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                  Highlight
+                </button>
                 <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
                 {showGoToLine ? (
                   <form 

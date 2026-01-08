@@ -92,10 +92,10 @@ static GITHUB_TOKEN_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}\b").unwrap());
 
 static BEARER_TOKEN_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)bearer\s+[a-z0-9_-]+\.[a-z0-9_-]+\.?[a-z0-9_-]*").unwrap());
+    Lazy::new(|| Regex::new(r"(?i)bearer[ \t]+[a-z0-9_-]+\.[a-z0-9_-]+\.?[a-z0-9_-]*").unwrap());
 
 static GENERIC_SECRET_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(?i)(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|auth[_-]?token|access[_-]?token)\s*[:=]\s*['"]?([^\s'"]{8,})['"]?"#).unwrap()
+    Regex::new(r#"(?i)(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|auth[_-]?token|access[_-]?token)[ \t]*[:=][ \t]*['"]?([^\s'"]{8,})['"]?"#).unwrap()
 });
 
 static BTC_ADDRESS_REGEX: Lazy<Regex> =
@@ -104,7 +104,7 @@ static BTC_ADDRESS_REGEX: Lazy<Regex> =
 static ETH_ADDRESS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b0x[a-fA-F0-9]{40}\b").unwrap());
 
 static GPS_COORD_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"-?(?:[1-8]?[0-9](?:\.[0-9]{4,})?|90(?:\.0+)?)\s*,\s*-?(?:1[0-7][0-9]|[1-9]?[0-9])(?:\.[0-9]{4,})?").unwrap()
+    Regex::new(r"-?(?:[1-8]?[0-9](?:\.[0-9]{4,})?|90(?:\.0+)?)[ \t]*,[ \t]*-?(?:1[0-7][0-9]|[1-9]?[0-9])(?:\.[0-9]{4,})?").unwrap()
 });
 
 static FILE_PATH_UNIX_REGEX: Lazy<Regex> =
@@ -124,7 +124,8 @@ static PASSPORT_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\b(?:passport[:\s#]*)?[A-Z]{1,2}[0-9]{6,9}\b").unwrap());
 
 static DRIVERS_LICENSE_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?i)\b(?:d\.?l\.?|driver'?s?\s*(?:license|lic))[:\s#]*[A-Z0-9]{5,15}\b").unwrap()
+    Regex::new(r"(?i)\b(?:d\.?l\.?|driver'?s?[ \t]*(?:license|lic))[: \t#]*[A-Z0-9]{5,15}\b")
+        .unwrap()
 });
 
 static SESSION_ID_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -142,7 +143,7 @@ static SLACK_TOKEN_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\bxox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*\b").unwrap());
 
 static BASIC_AUTH_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)basic\s+[a-z0-9+/]+=*").unwrap());
+    Lazy::new(|| Regex::new(r"(?i)basic[ \t]+[a-z0-9+/]+=*").unwrap());
 
 static URL_CREDENTIALS_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)(?:https?|ftp)://[^:]+:[^@]+@[^\s/]+").unwrap());
@@ -200,7 +201,8 @@ static DATE_ISO_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 static TIME_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\b(?:[01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?(?:\s*[AaPp][Mm])?\b").unwrap()
+    Regex::new(r"\b(?:[01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?(?:[ \t]*[AaPp][Mm])?\b")
+        .unwrap()
 });
 
 static DATETIME_ISO_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -208,7 +210,7 @@ static DATETIME_ISO_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 static DATETIME_CLF_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\[?\d{1,2}/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/\d{4}:\d{2}:\d{2}:\d{2}\s*[+-]?\d{4}\]?").unwrap()
+    Regex::new(r"\[?\d{1,2}/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/\d{4}:\d{2}:\d{2}:\d{2}[ \t]*[+-]?\d{4}\]?").unwrap()
 });
 
 static TIMESTAMP_UNIX_REGEX: Lazy<Regex> =
@@ -221,13 +223,13 @@ static LICENSE_PLATE_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 static SQL_TABLES_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(?i)(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+(`[^`]+`|\[[^\]]+\]|"[^"]+"|[a-zA-Z_][a-zA-Z0-9_]*)"#).unwrap()
+    Regex::new(r#"(?i)(?:FROM|JOIN|INTO|UPDATE|TABLE)[ \t]+(`[^`]+`|\[[^\]]+\]|"[^"]+"|[a-zA-Z_][a-zA-Z0-9_]*)"#).unwrap()
 });
 
-static SQL_STRINGS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"'(?:[^'\\]|\\.)*'").unwrap());
+static SQL_STRINGS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"'(?:[^'\\\r\n]|\\.)*'").unwrap());
 
 static SQL_IDENTIFIERS_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(?i)(?:SELECT|WHERE|AND|OR|ON|SET|ORDER\s+BY|GROUP\s+BY|HAVING|AS|,)\s*(`[^`]+`|\[[^\]]+\])|(`[^`]+`|\[[^\]]+\])\s*\.\s*(`[^`]+`|\[[^\]]+\])"#).unwrap()
+    Regex::new(r#"(?i)(?:SELECT|WHERE|AND|OR|ON|SET|ORDER[ \t]+BY|GROUP[ \t]+BY|HAVING|AS|,)[ \t]*(`[^`]+`|\[[^\]]+\])|(`[^`]+`|\[[^\]]+\])[ \t]*\.[ \t]*(`[^`]+`|\[[^\]]+\])"#).unwrap()
 });
 
 static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {

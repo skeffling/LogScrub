@@ -149,43 +149,17 @@ static BASIC_AUTH_REGEX: Lazy<Regex> =
 static URL_CREDENTIALS_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)(?:https?|ftp)://[^:]+:[^@]+@[^\s/]+").unwrap());
 
-static NI_NUMBER_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?i)\b[A-CEGHJ-PR-TW-Z]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[A-D]\b").unwrap()
-});
-
-static TAX_ID_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[0-9]{2}-[0-9]{7}\b").unwrap());
-
-static MEDICARE_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\b[0-9]{3}-[0-9]{2}-[0-9]{4}-[A-Z]\b").unwrap());
-
-static SWIFT_BIC_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\b[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b").unwrap());
-
-static ROUTING_NUMBER_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[0-9]{9}\b").unwrap());
-
-static IP_CIDR_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/[0-9]{1,2}\b").unwrap()
-});
-
 static DB_CONNECTION_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)(?:mongodb|postgres|postgresql|mysql|redis|amqp|mssql)://[^\s]+").unwrap()
 });
 
 static NPM_TOKEN_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\bnpm_[A-Za-z0-9]{36}\b").unwrap());
 
-static HEROKU_KEY_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(?i)heroku[a-z0-9_-]*[=:\s]+['"]?[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}['"]?"#).unwrap()
-});
-
 static SENDGRID_KEY_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b").unwrap());
 
 static TWILIO_KEY_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\b(?:AC|SK)[a-f0-9]{32}\b").unwrap());
-
-static DOB_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\b(?:0[1-9]|[12][0-9]|3[01])[/-](?:0[1-9]|1[0-2])[/-](?:19|20)[0-9]{2}\b|\b(?:19|20)[0-9]{2}[/-](?:0[1-9]|1[0-2])[/-](?:0[1-9]|[12][0-9]|3[01])\b").unwrap()
-});
 
 static DATE_MDY_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12][0-9]|3[01])[/-](?:19|20)?[0-9]{2}\b")
@@ -216,12 +190,6 @@ static DATETIME_CLF_REGEX: Lazy<Regex> = Lazy::new(|| {
 
 static TIMESTAMP_UNIX_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\b1[0-7][0-9]{8}(?:[0-9]{3})?\b").unwrap());
-
-static VIN_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[A-HJ-NPR-Z0-9]{17}\b").unwrap());
-
-static LICENSE_PLATE_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\b[A-Z]{2}[0-9]{2}\s?[A-Z]{3}\b|\b[A-Z]{1,3}\s?[0-9]{1,4}\s?[A-Z]{0,3}\b").unwrap()
-});
 
 static SQL_TABLES_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"(?i)(?:FROM|JOIN|INTO|UPDATE|TABLE)[ \t]+(`[^`]+`|\[[^\]]+\]|"[^"]+"|[a-zA-Z_][a-zA-Z0-9_]*)"#).unwrap()
@@ -398,6 +366,26 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "slack_token",
             regex: &SLACK_TOKEN_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "npm_token",
+            regex: &NPM_TOKEN_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sendgrid_key",
+            regex: &SENDGRID_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "twilio_key",
+            regex: &TWILIO_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "db_connection",
+            regex: &DB_CONNECTION_REGEX,
             validator: None,
         },
         PatternDef {

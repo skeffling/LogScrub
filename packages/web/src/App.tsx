@@ -57,6 +57,19 @@ function App() {
   useEffect(() => { saveUiPreference('syncScroll', syncScroll) }, [syncScroll])
 
   useEffect(() => {
+    if (!input && !output) return
+    
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+      return ''
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [input, output])
+
+  useEffect(() => {
     if (fullscreenView) {
       window.history.pushState({ fullscreen: true }, '')
       const handlePopState = () => setFullscreenView(false)

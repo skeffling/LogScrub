@@ -1,6 +1,14 @@
 import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
-import { decompress_gzip, decompress_zip, compress_zip } from '../wasm-core/wasm_core'
+import init, { decompress_gzip, decompress_zip, compress_zip } from '../wasm-core/wasm_core'
 import { useAppStore, type ReplacementInfo } from '../stores/useAppStore'
+
+let wasmReady: Promise<unknown> | null = null
+async function ensureWasm(): Promise<void> {
+  if (!wasmReady) {
+    wasmReady = init()
+  }
+  await wasmReady
+}
 
 interface EditorProps {
   input: string
@@ -308,16 +316,18 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
 
   const processCompressedFile = async (file: File): Promise<{ content: string; name: string }> => {
     const ext = file.name.toLowerCase()
-    const buffer = await file.arrayBuffer()
-    const data = new Uint8Array(buffer)
     
-    if (ext.endsWith('.zip')) {
-      const content = decompress_zip(data)
-      const baseName = file.name.replace(/\.zip$/i, '')
-      return { content, name: baseName }
-    }
-    
-    if (ext.endsWith('.gz') || ext.endsWith('.gzip')) {
+    if (ext.endsWith('.zip') || ext.endsWith('.gz') || ext.endsWith('.gzip')) {
+      await ensureWasm()
+      const buffer = await file.arrayBuffer()
+      const data = new Uint8Array(buffer)
+      
+      if (ext.endsWith('.zip')) {
+        const content = decompress_zip(data)
+        const baseName = file.name.replace(/\.zip$/i, '')
+        return { content, name: baseName }
+      }
+      
       const content = decompress_gzip(data)
       const baseName = file.name.replace(/\.(gz|gzip)$/i, '')
       return { content, name: baseName }
@@ -344,8 +354,9 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     }
   }
 
-  const handleDownloadZip = () => {
+  const handleDownloadZip = async () => {
     if (!output) return
+    await ensureWasm()
     const baseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'sanitized_output'
     const zipData = compress_zip(output, `${baseName}.txt`)
     const blob = new Blob([zipData], { type: 'application/zip' })

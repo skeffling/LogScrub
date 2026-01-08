@@ -8,7 +8,15 @@ import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
 import { Modal } from './components/Modal'
 import { useAppStore } from './stores/useAppStore'
-import { compress_zip } from './wasm-core/wasm_core'
+import init, { compress_zip } from './wasm-core/wasm_core'
+
+let wasmReady: Promise<unknown> | null = null
+async function ensureWasm(): Promise<void> {
+  if (!wasmReady) {
+    wasmReady = init()
+  }
+  await wasmReady
+}
 
 function loadUiPreference<T>(key: string, defaultValue: T): T {
   try {
@@ -82,8 +90,9 @@ function App() {
     URL.revokeObjectURL(url)
   }
 
-  const handleDownloadZip = () => {
+  const handleDownloadZip = async () => {
     if (!output) return
+    await ensureWasm()
     const baseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'sanitized_output'
     const zipData = compress_zip(output, `${baseName}.txt`)
     const blob = new Blob([zipData], { type: 'application/zip' })

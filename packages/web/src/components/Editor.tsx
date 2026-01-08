@@ -578,7 +578,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
       <div className="flex flex-col min-h-0">
         <div className="flex items-center justify-between mb-2 flex-shrink-0">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Sanitized
+            Scrubbed
             {useVirtualScrolling && outputLines.length > VIRTUAL_THRESHOLD && output && (
               <span className="ml-2 text-xs text-gray-400">({outputLines.length.toLocaleString()} lines)</span>
             )}
@@ -642,7 +642,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
         
         {!output ? (
           <div className="flex-1 min-h-0 p-4 font-mono text-sm border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500 overflow-auto">
-            Sanitized output will appear here...
+            Scrubbed output will appear here...
           </div>
         ) : useVirtualScrolling ? (
           <div className="flex-1 min-h-0 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900">

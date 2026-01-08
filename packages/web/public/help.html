@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LogScrub Help - Complete Guide to PII Redaction</title>
-  <meta name="description" content="Complete guide to using LogScrub for PII redaction. Learn about detection rules, replacement strategies, custom patterns, and how to sanitize sensitive data from logs.">
+  <meta name="description" content="Complete guide to using LogScrub for PII redaction. Learn about detection rules, replacement strategies, custom patterns, and how to scrub sensitive data from logs.">
   <meta name="keywords" content="LogScrub help, PII redaction guide, log sanitization tutorial, data masking documentation">
   <link rel="icon" type="image/svg+xml" href="/shield.svg">
   <script defer src="https://stats.skeffling.net/script.js" data-website-id="44266b4c-7a68-441e-8887-93d625a376db"></script>
@@ -263,7 +263,7 @@
       <div class="card">
         <h4>Sharing Logs with AI Assistants</h4>
         <p>AI tools like ChatGPT, Claude, and Copilot are incredibly useful for debugging and analyzing logs. But pasting raw logs means sending customer emails, IP addresses, API keys, and other sensitive data to third-party services.</p>
-        <p><strong>Solution:</strong> Sanitize your logs first. The AI can still understand error patterns, stack traces, and timing issues without seeing real customer data. A log showing <code>[EMAIL-1] failed to authenticate from [IPV4-1]</code> is just as useful for debugging as one with real values.</p>
+        <p><strong>Solution:</strong> Scrub your logs first. The AI can still understand error patterns, stack traces, and timing issues without seeing real customer data. A log showing <code>[EMAIL-1] failed to authenticate from [IPV4-1]</code> is just as useful for debugging as one with real values.</p>
       </div>
 
       <div class="card">
@@ -303,8 +303,8 @@
       <ol>
         <li><strong>Paste or upload</strong> your log content into the "Original" pane</li>
         <li><strong>Review</strong> the detection rules in the left panel (enabled rules are checked)</li>
-        <li><strong>Click "Sanitize"</strong> or press <code>⌘/Ctrl + Enter</code></li>
-        <li><strong>Copy or download</strong> the sanitized output</li>
+        <li><strong>Click "Scrub"</strong> or press <code>⌘/Ctrl + Enter</code></li>
+        <li><strong>Copy or download</strong> the scrubbed output</li>
       </ol>
 
       <div class="example">
@@ -316,7 +316,7 @@
   session: <span class="highlight">sid=abc123def456789</span></div>
         </div>
         <div>
-          <div class="example-label">After (Sanitized)</div>
+          <div class="example-label">After (Scrubbed)</div>
           <div class="example-after">2024-01-15 10:23:45 INFO User login successful
   email: [EMAIL-1]
   ip: [IPV4-1]
@@ -910,7 +910,7 @@ User [EMAIL-3] logged in</div>
       </div>
 
       <div class="tip">
-        <strong>Tip:</strong> Use "Line Start" scope with date/time detection rules enabled. This way, log timestamps get shifted while content dates like DOBs get sanitized to <code>[DATE-1]</code>.
+        <strong>Tip:</strong> Use "Line Start" scope with date/time detection rules enabled. This way, log timestamps get shifted while content dates like DOBs get scrubbed to <code>[DATE-1]</code>.
       </div>
 
       <h3>Interaction with Date/Time Rules</h3>
@@ -919,7 +919,7 @@ User [EMAIL-3] logged in</div>
 
     <section id="analyze-mode">
       <h2>Analyze Mode</h2>
-      <p>Preview detections before sanitizing to fine-tune your rules.</p>
+      <p>Preview detections before scrubbing to fine-tune your rules.</p>
 
       <h3>Using Analyze</h3>
       <ol>
@@ -927,7 +927,7 @@ User [EMAIL-3] logged in</div>
         <li>Click "Analyze" above the Original pane</li>
         <li>Review highlighted matches (shown in red)</li>
         <li>Check the suggestions for disabled rules that would match</li>
-        <li>Adjust rules as needed, then Sanitize</li>
+        <li>Adjust rules as needed, then Scrub</li>
       </ol>
 
       <h3>Smart Suggestions</h3>
@@ -964,11 +964,11 @@ User [EMAIL-3] logged in</div>
         </tr>
         <tr>
           <td><code>⌘/Ctrl + Enter</code></td>
-          <td>Sanitize the input text</td>
+          <td>Scrub the input text</td>
         </tr>
         <tr>
           <td><code>⌘/Ctrl + S</code></td>
-          <td>Download sanitized output</td>
+          <td>Download scrubbed output</td>
         </tr>
         <tr>
           <td><code>⌘/Ctrl + G</code></td>
@@ -1034,9 +1034,9 @@ User [EMAIL-3] logged in</div>
 
       <h3>How We Protect Your Data</h3>
       <ul>
-        <li><strong>Client-side processing</strong> — All sanitization happens in your browser using WebAssembly</li>
+        <li><strong>Client-side processing</strong> — All scrubbing happens in your browser using WebAssembly</li>
         <li><strong>No server communication</strong> — Your text never leaves your device</li>
-        <li><strong>No analytics on content</strong> — We don't track what you sanitize</li>
+        <li><strong>No analytics on content</strong> — We don't track what you scrub</li>
         <li><strong>Local storage only</strong> — Presets and settings are stored in your browser</li>
       </ul>
 
@@ -1045,7 +1045,7 @@ User [EMAIL-3] logged in</div>
 
       <h3>Best Practices</h3>
       <ul>
-        <li>Always review the sanitized output before sharing</li>
+        <li>Always review the scrubbed output before sharing</li>
         <li>Use "Analyze" first to understand what will be detected</li>
         <li>Enable additional rules if your logs contain sensitive data types that aren't detected by default</li>
         <li>Consider using "Redact" strategy for highly sensitive data to completely obscure the original values</li>

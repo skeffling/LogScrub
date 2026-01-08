@@ -218,7 +218,7 @@ function App() {
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Sanitized Output {fileName && <span className="text-gray-500 dark:text-gray-400 text-sm">({fileName})</span>}
+            Scrubbed Output {fileName && <span className="text-gray-500 dark:text-gray-400 text-sm">({fileName})</span>}
             <span className="ml-2 text-xs text-gray-400">({fullscreenLines.length.toLocaleString()} lines)</span>
           </h2>
           <div className="flex items-center gap-4">
@@ -514,7 +514,7 @@ function App() {
                     onClick={handleProcess}
                     disabled={isProcessing || !input.trim()}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    title="Apply all enabled detection rules and sanitize the input text (⌘/Ctrl+Enter)"
+                    title="Apply all enabled detection rules and scrub the input text (⌘/Ctrl+Enter)"
                   >
                     {isProcessing && (
                       <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -522,7 +522,7 @@ function App() {
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
                     )}
-                    {isProcessing ? 'Processing...' : 'Sanitize'}
+                    {isProcessing ? 'Processing...' : 'Scrub'}
                     <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-xs bg-blue-500 rounded">⌘↵</kbd>
                   </button>
                 )}
@@ -552,7 +552,7 @@ function App() {
         <span>100% client-side. Your data never leaves your browser.</span>
         <span className="mx-2">•</span>
         <span className="hidden sm:inline">
-          <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">⌘/Ctrl</kbd>+<kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Enter</kbd> to sanitize
+          <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">⌘/Ctrl</kbd>+<kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Enter</kbd> to scrub
           <span className="mx-2">•</span>
           <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">⌘/Ctrl</kbd>+<kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">S</kbd> to download
           <span className="mx-2">•</span>

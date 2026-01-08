@@ -170,7 +170,7 @@ export function TimeShift() {
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {timeShift.lineOnly 
-                ? 'Only timestamps at line start are shifted. Use date/time rules to sanitize dates in content.'
+                ? 'Only timestamps at line start are shifted. Use date/time rules to scrub dates in content.'
                 : 'All timestamps are shifted, including dates within log messages.'}
             </p>
           </div>

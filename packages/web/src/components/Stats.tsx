@@ -188,7 +188,7 @@ ${entries.map(([type]) => {
     return (
       <div className="text-center py-8 text-gray-500 dark:text-gray-400">
         <p>No PII detected yet.</p>
-        <p className="text-sm mt-1">Run Analyze or Sanitize to see statistics.</p>
+        <p className="text-sm mt-1">Run Analyze or Scrub to see statistics.</p>
       </div>
     )
   }

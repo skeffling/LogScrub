@@ -37,8 +37,8 @@ export function AboutModal({ onClose }: AboutModalProps) {
             <li>Paste text or upload a log file</li>
             <li>Select which PII types to detect</li>
             <li>Choose replacement strategy per type (label, fake data, or redact)</li>
-            <li>Click "Sanitize" to process</li>
-            <li>Download or copy the sanitized output</li>
+<li>Click "Scrub" to process</li>
+  <li>Download or copy the scrubbed output</li>
           </ol>
         </div>
 
@@ -75,7 +75,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
                 <li>Each enabled pattern scans the text, collecting matches with positions</li>
                 <li>Matches are validated (checksums where applicable)</li>
                 <li>Replacements are applied in reverse order (to preserve positions)</li>
-                <li>Results returned: sanitized text + stats + matched values</li>
+                <li>Results returned: scrubbed text + stats + matched values</li>
               </ol>
             </div>
             
@@ -125,7 +125,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
         <div>
           <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Analytics</h3>
           <p className="text-sm">
-            We use <a href="https://umami.is" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Umami</a>, a privacy-focused analytics tool, to track only page views and the number of Sanitize/Analyze actions. No personal data, cookies, or tracking identifiers are collected.
+            We use <a href="https://umami.is" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Umami</a>, a privacy-focused analytics tool, to track only page views and the number of Scrub/Analyze actions. No personal data, cookies, or tracking identifiers are collected.
           </p>
         </div>
         

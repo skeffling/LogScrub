@@ -56,7 +56,7 @@ const STRATEGY_OPTIONS: { value: ReplacementStrategy; label: string }[] = [
 ]
 
 const CATEGORIES: Record<string, string[]> = {
-  'Contact': ['email', 'email_message_id', 'phone_us', 'phone_uk', 'phone_intl'],
+  'Contact': ['email', 'phone_us', 'phone_uk', 'phone_intl'],
   'Network': ['ipv4', 'ipv6', 'mac_address', 'hostname', 'url'],
   'Identity (US)': ['ssn', 'us_itin', 'passport', 'drivers_license'],
   'Identity (UK)': ['uk_nhs', 'uk_nino'],
@@ -67,7 +67,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Location': ['gps_coordinates', 'postcode_uk', 'postcode_us'],
   'Date & Time': ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'timestamp_unix'],
   'SQL': ['sql_tables', 'sql_strings', 'sql_identifiers'],
-  'Other': ['uuid', 'file_path_unix', 'file_path_windows'],
+  'Other': ['uuid', 'email_message_id', 'file_path_unix', 'file_path_windows'],
 }
 
 function fuzzyMatch(query: string, target: string): boolean {

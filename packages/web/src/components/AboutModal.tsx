@@ -1,10 +1,13 @@
 import { Modal } from './Modal'
+import { useAppStore } from '../stores/useAppStore'
 
 interface AboutModalProps {
   onClose: () => void
 }
 
 export function AboutModal({ onClose }: AboutModalProps) {
+  const { terminalStyle, setTerminalStyle } = useAppStore()
+
   return (
     <Modal onClose={onClose} maxWidth="max-w-3xl">
       <div className="space-y-4 text-gray-700 dark:text-gray-300">
@@ -155,6 +158,28 @@ export function AboutModal({ onClose }: AboutModalProps) {
           </p>
         </div>
         
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Display Options</h3>
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={terminalStyle}
+                onChange={(e) => setTerminalStyle(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Terminal Style</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Dark grey background with light text for Original and Scrubbed panes
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <hr className="dark:border-gray-700" />
+
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
           <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">Important Disclaimer</h3>
           <p className="text-sm text-amber-700 dark:text-amber-300">

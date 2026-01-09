@@ -83,6 +83,7 @@ interface AppState {
   unmatchedRules: Array<{ id: string; label: string }>
   showSuggestions: boolean
   analysisLogs: string[]
+  terminalStyle: boolean
 
   setInput: (input: string) => void
   setOutput: (output: string) => void
@@ -120,6 +121,7 @@ interface AppState {
   togglePlainTextPattern: (id: string) => void
   setPlainTextPatternStrategy: (id: string, strategy: ReplacementStrategy) => void
   setTimeShift: (config: Partial<TimeShiftConfig>) => void
+  setTerminalStyle: (enabled: boolean) => void
 }
 
 const DEFAULT_RULES: Record<string, Rule> = {
@@ -215,6 +217,7 @@ function saveCustomRulesToStorage(rules: CustomRule[]) {
 }
 
 const PLAIN_TEXT_STORAGE_KEY = 'logscrub_plain_text'
+const TERMINAL_STYLE_STORAGE_KEY = 'logscrub_terminal_style'
 
 function loadPlainTextPatternsFromStorage(): PlainTextPattern[] {
   try {
@@ -227,6 +230,19 @@ function loadPlainTextPatternsFromStorage(): PlainTextPattern[] {
 
 function savePlainTextPatternsToStorage(patterns: PlainTextPattern[]) {
   localStorage.setItem(PLAIN_TEXT_STORAGE_KEY, JSON.stringify(patterns))
+}
+
+function loadTerminalStyleFromStorage(): boolean {
+  try {
+    const stored = localStorage.getItem(TERMINAL_STYLE_STORAGE_KEY)
+    return stored === 'true'
+  } catch {
+    return false
+  }
+}
+
+function saveTerminalStyleToStorage(enabled: boolean) {
+  localStorage.setItem(TERMINAL_STYLE_STORAGE_KEY, String(enabled))
 }
 
 let worker: Worker | null = null
@@ -277,6 +293,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   unmatchedRules: [],
   showSuggestions: false,
   analysisLogs: [],
+  terminalStyle: loadTerminalStyleFromStorage(),
 
   setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [] }),
   setOutput: (output) => set({ output }),
@@ -393,6 +410,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTimeShift: (config) => set((state) => ({
     timeShift: { ...state.timeShift, ...config }
   })),
+
+  setTerminalStyle: (enabled) => {
+    saveTerminalStyleToStorage(enabled)
+    set({ terminalStyle: enabled })
+  },
 
   savePreset: (name) => {
     const { rules, customRules, consistencyMode, savedPresets } = get()

@@ -193,12 +193,18 @@ interface VirtualizedListProps {
   changedLines?: Set<number>
   originalLineNumbers?: number[]
   replacementLookup?: Map<string, ReplacementLookup>
+  lineNumBg?: string
+  lineNumText?: string
+  paneText?: string
 }
 
 function VirtualizedList({
   lines, lineOffsets, replacements, selectedLine, onLineClick,
   showDiff, type, scrollRef, onScroll, className, changedLines,
-  originalLineNumbers, replacementLookup
+  originalLineNumbers, replacementLookup,
+  lineNumBg = 'bg-gray-100 dark:bg-gray-900',
+  lineNumText = 'text-gray-500 dark:text-gray-500',
+  paneText = 'text-gray-900 dark:text-gray-100'
 }: VirtualizedListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -239,13 +245,13 @@ function VirtualizedList({
             transform: `translateY(${virtualizer.getVirtualItems()[0]?.start ?? 0}px)`,
           }}
         >
-          <div className="flex-shrink-0 sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 text-right select-none border-r dark:border-gray-700">
+          <div className={`flex-shrink-0 sticky left-0 z-10 ${lineNumBg} text-right select-none border-r dark:border-gray-700`}>
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const lineNum = originalLineNumbers ? originalLineNumbers[virtualRow.index] : virtualRow.index
               const hasChange = changedLines?.has(lineNum)
               const lineColor = hasChange
                 ? (type === 'output' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')
-                : 'text-gray-500 dark:text-gray-500'
+                : lineNumText
               return (
                 <div
                   key={virtualRow.key}
@@ -275,7 +281,7 @@ function VirtualizedList({
               return (
                 <div
                   key={virtualRow.key}
-                  className={`font-mono text-sm whitespace-pre text-gray-900 dark:text-gray-100 cursor-pointer ${
+                  className={`font-mono text-sm whitespace-pre ${paneText} cursor-pointer ${
                     selectedLine === lineNum ? 'bg-yellow-100 dark:bg-yellow-900/50' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                   }`}
                   style={{ height: LINE_HEIGHT }}
@@ -293,7 +299,17 @@ function VirtualizedList({
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, showChangedOnly: showChangedOnlyProp = false, onShowChangedOnlyChange }, ref) {
-  const { fileName, setFileName, replacements, analysisReplacements } = useAppStore()
+  const { fileName, setFileName, replacements, analysisReplacements, terminalStyle } = useAppStore()
+
+  // Terminal style classes
+  const paneBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-white dark:bg-gray-800'
+  const paneText = terminalStyle ? 'text-[#d4d4d4]' : 'text-gray-900 dark:text-gray-100'
+  const lineNumBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-gray-100 dark:bg-gray-900'
+  const lineNumText = terminalStyle ? 'text-[#858585]' : 'text-gray-500 dark:text-gray-500'
+  const outputPaneBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-gray-50 dark:bg-gray-900'
+  const placeholderBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-gray-50 dark:bg-gray-900'
+  const placeholderText = terminalStyle ? 'text-[#858585]' : 'text-gray-400 dark:text-gray-500'
+
   const inputContainerRef = useRef<HTMLDivElement | null>(null)
   const outputContainerRef = useRef<HTMLDivElement | null>(null)
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
@@ -522,13 +538,13 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
 
   const renderNonVirtualLines = (lines: string[], type: 'input' | 'output' | 'analysis', reps: ReplacementInfo[], changed?: Set<number>, lineNums?: number[]) => (
     <div className="inline-flex min-w-full">
-      <div className="flex-shrink-0 sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 text-right select-none border-r dark:border-gray-700 py-2">
+      <div className={`flex-shrink-0 sticky left-0 z-10 ${lineNumBg} text-right select-none border-r dark:border-gray-700 py-2`}>
         {lines.map((_, i) => {
           const lineNum = lineNums ? lineNums[i] : i
           const hasChange = changed?.has(lineNum)
           const lineColor = hasChange
             ? (type === 'output' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')
-            : 'text-gray-500 dark:text-gray-500'
+            : lineNumText
           return (
             <div
               key={lineNum}
@@ -548,7 +564,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           return (
             <div
               key={lineNum}
-              className={`font-mono text-sm whitespace-pre text-gray-900 dark:text-gray-100 cursor-pointer h-5 ${
+              className={`font-mono text-sm whitespace-pre ${paneText} cursor-pointer h-5 ${
                 selectedLine === lineNum ? 'bg-yellow-100 dark:bg-yellow-900/50' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
               }`}
               onClick={() => handleLineClick(lineNum)}
@@ -629,11 +645,11 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             placeholder="Paste your logs here, upload, or drag & drop a file..."
-            className="flex-1 min-h-0 p-4 font-mono text-sm border dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+            className={`flex-1 min-h-0 p-4 font-mono text-sm border dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${paneBg} ${paneText} ${terminalStyle ? 'placeholder-[#858585]' : 'placeholder-gray-400 dark:placeholder-gray-500'}`}
           />
         ) : !output && analysisReplacements.length > 0 ? (
           useVirtualScrolling ? (
-            <div className="flex-1 min-h-0 border-2 border-purple-400 dark:border-purple-600 rounded-lg bg-white dark:bg-gray-800">
+            <div className={`flex-1 min-h-0 border-2 border-purple-400 dark:border-purple-600 rounded-lg ${paneBg}`}>
               <VirtualizedList
                 lines={inputLines}
                 lineOffsets={lineOffsets}
@@ -644,18 +660,21 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 type="analysis"
                 scrollRef={inputContainerRef}
                 changedLines={changedLines}
+                lineNumBg={lineNumBg}
+                lineNumText={lineNumText}
+                paneText={paneText}
               />
             </div>
           ) : (
             <div
               ref={inputContainerRef}
-              className="flex-1 min-h-0 border-2 border-purple-400 dark:border-purple-600 rounded-lg overflow-auto bg-white dark:bg-gray-800"
+              className={`flex-1 min-h-0 border-2 border-purple-400 dark:border-purple-600 rounded-lg overflow-auto ${paneBg}`}
             >
               {renderNonVirtualLines(inputLines, 'analysis', analysisReplacements, changedLines)}
             </div>
           )
         ) : useVirtualScrolling ? (
-          <div className="flex-1 min-h-0 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800">
+          <div className={`flex-1 min-h-0 border dark:border-gray-600 rounded-lg ${paneBg}`}>
             <VirtualizedList
               lines={filteredInputLines}
               lineOffsets={lineOffsets}
@@ -668,13 +687,16 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               onScroll={() => handleScroll('input')}
               changedLines={changedLines}
               originalLineNumbers={filteredLineNumbers}
+              lineNumBg={lineNumBg}
+              lineNumText={lineNumText}
+              paneText={paneText}
             />
           </div>
         ) : (
           <div
             ref={inputContainerRef}
             onScroll={() => handleScroll('input')}
-            className="flex-1 min-h-0 border dark:border-gray-600 rounded-lg overflow-auto bg-white dark:bg-gray-800"
+            className={`flex-1 min-h-0 border dark:border-gray-600 rounded-lg overflow-auto ${paneBg}`}
           >
             {renderNonVirtualLines(filteredInputLines, 'input', replacements, changedLines, filteredLineNumbers)}
           </div>
@@ -749,11 +771,11 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
         </div>
         
         {!output ? (
-          <div className="flex-1 min-h-0 p-4 font-mono text-sm border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500 overflow-auto">
+          <div className={`flex-1 min-h-0 p-4 font-mono text-sm border dark:border-gray-600 rounded-lg ${placeholderBg} ${placeholderText} overflow-auto`}>
             Scrubbed output will appear here...
           </div>
         ) : useVirtualScrolling ? (
-          <div className="flex-1 min-h-0 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900">
+          <div className={`flex-1 min-h-0 border dark:border-gray-600 rounded-lg ${outputPaneBg}`}>
             <VirtualizedList
               lines={filteredOutputLines}
               lineOffsets={[]}
@@ -767,13 +789,16 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               changedLines={changedLines}
               originalLineNumbers={filteredLineNumbers}
               replacementLookup={replacementLookup}
+              lineNumBg={lineNumBg}
+              lineNumText={lineNumText}
+              paneText={paneText}
             />
           </div>
         ) : (
           <div
             ref={outputContainerRef}
             onScroll={() => handleScroll('output')}
-            className="flex-1 min-h-0 border dark:border-gray-600 rounded-lg overflow-auto bg-gray-50 dark:bg-gray-900"
+            className={`flex-1 min-h-0 border dark:border-gray-600 rounded-lg overflow-auto ${outputPaneBg}`}
           >
             {renderNonVirtualLines(filteredOutputLines, 'output', replacements, changedLines, filteredLineNumbers)}
           </div>

@@ -68,6 +68,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Date & Time': ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'timestamp_unix'],
   'SQL': ['sql_tables', 'sql_strings', 'sql_identifiers'],
   'Exim': ['exim_subject', 'exim_sender', 'exim_auth', 'exim_user', 'exim_dn'],
+  'Hashes': ['md5_hash', 'sha1_hash', 'sha256_hash', 'docker_container_id'],
   'Other': ['uuid', 'email_message_id', 'file_path_unix', 'file_path_windows'],
 }
 

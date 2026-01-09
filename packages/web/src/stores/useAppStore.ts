@@ -197,6 +197,10 @@ const DEFAULT_RULES: Record<string, Rule> = {
   exim_auth: { label: 'Exim Auth', enabled: false, strategy: 'label' },
   exim_user: { label: 'Exim User', enabled: false, strategy: 'label' },
   exim_dn: { label: 'Exim DN', enabled: false, strategy: 'label' },
+  md5_hash: { label: 'MD5 Hash', enabled: false, strategy: 'label' },
+  sha1_hash: { label: 'SHA1 Hash', enabled: false, strategy: 'label' },
+  sha256_hash: { label: 'SHA256 Hash', enabled: false, strategy: 'label' },
+  docker_container_id: { label: 'Docker Container ID', enabled: false, strategy: 'label' },
 }
 
 const PRESETS_STORAGE_KEY = 'logscrub_presets'

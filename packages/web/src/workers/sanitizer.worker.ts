@@ -59,12 +59,20 @@ function applyTemplate(template: string, vars: { n: number; type: string; origin
     .replace(/\{len\}/g, String(vars.original.length))
 }
 
+interface TimestampFormatDetails {
+  separator?: string      // 'T' or ' ' for ISO
+  hasMilliseconds?: boolean
+  hasTimezone?: boolean
+  timezoneValue?: string  // e.g., 'Z', '+00:00', '-05:00'
+}
+
 interface TimestampMatch {
   start: number
   end: number
   original: string
   date: Date
   format: string
+  formatDetails?: TimestampFormatDetails
 }
 
 const MONTHS: Record<string, number> = {
@@ -76,22 +84,28 @@ function parseMonth(str: string): number {
   return MONTHS[str.toLowerCase().slice(0, 3)] ?? 0
 }
 
-const TIMESTAMP_PATTERNS: Array<{ regex: RegExp; parser: (m: RegExpExecArray) => Date | null; format: string }> = [
+const TIMESTAMP_PATTERNS: Array<{ regex: RegExp; parser: (m: RegExpExecArray) => Date | null; format: string; getFormatDetails?: (m: RegExpExecArray) => TimestampFormatDetails }> = [
   {
-    regex: /(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2}):(\d{2})(?:\.(\d{3}))?(?:Z|([+-])(\d{2}):?(\d{2}))?/g,
+    regex: /(\d{4})-(\d{2})-(\d{2})([T\s])(\d{2}):(\d{2}):(\d{2})(?:\.(\d{3}))?(Z|([+-])(\d{2}):?(\d{2}))?/g,
     parser: (m) => {
       const date = new Date(
         parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]),
-        parseInt(m[4]), parseInt(m[5]), parseInt(m[6]), parseInt(m[7] || '0')
+        parseInt(m[5]), parseInt(m[6]), parseInt(m[7]), parseInt(m[8] || '0')
       )
-      if (m[8]) {
-        const sign = m[8] === '+' ? -1 : 1
-        date.setHours(date.getHours() + sign * parseInt(m[9]))
-        date.setMinutes(date.getMinutes() + sign * parseInt(m[10]))
+      if (m[10]) {
+        const sign = m[10] === '+' ? -1 : 1
+        date.setHours(date.getHours() + sign * parseInt(m[11]))
+        date.setMinutes(date.getMinutes() + sign * parseInt(m[12]))
       }
       return date
     },
-    format: 'iso'
+    format: 'iso',
+    getFormatDetails: (m) => ({
+      separator: m[4],
+      hasMilliseconds: !!m[8],
+      hasTimezone: !!m[9],
+      timezoneValue: m[9] || undefined
+    })
   },
   {
     regex: /\[([A-Za-z]{3})\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})\]/g,
@@ -142,14 +156,23 @@ const TIMESTAMP_PATTERNS: Array<{ regex: RegExp; parser: (m: RegExpExecArray) =>
   }
 ]
 
-function formatTimestamp(date: Date, format: string): string {
+function formatTimestamp(date: Date, format: string, formatDetails?: TimestampFormatDetails): string {
   const pad = (n: number, len = 2) => String(n).padStart(len, '0')
   const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  
+
   switch (format) {
-    case 'iso':
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}Z`
+    case 'iso': {
+      const sep = formatDetails?.separator || 'T'
+      let result = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}${sep}${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+      if (formatDetails?.hasMilliseconds) {
+        result += `.${pad(date.getMilliseconds(), 3)}`
+      }
+      if (formatDetails?.hasTimezone) {
+        result += formatDetails.timezoneValue || 'Z'
+      }
+      return result
+    }
     case 'date-iso':
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
     case 'apache-error':
@@ -187,7 +210,7 @@ function shiftTimestamps(text: string, config: TimeShiftConfig): string {
       const date = pattern.parser(match)
       if (date && !isNaN(date.getTime())) {
         const overlaps = allMatches.some(
-          m => (match!.index >= m.start && match!.index < m.end) || 
+          m => (match!.index >= m.start && match!.index < m.end) ||
                (match!.index + match![0].length > m.start && match!.index + match![0].length <= m.end)
         )
         if (!overlaps) {
@@ -196,7 +219,8 @@ function shiftTimestamps(text: string, config: TimeShiftConfig): string {
             end: match.index + match[0].length,
             original: match[0],
             date,
-            format: pattern.format
+            format: pattern.format,
+            formatDetails: pattern.getFormatDetails?.(match)
           })
         }
       }
@@ -226,7 +250,7 @@ function shiftTimestamps(text: string, config: TimeShiftConfig): string {
   let result = text
   for (const m of allMatches) {
     const newDate = new Date(m.date.getTime() + offsetMs)
-    const newTimestamp = formatTimestamp(newDate, m.format)
+    const newTimestamp = formatTimestamp(newDate, m.format, m.formatDetails)
     result = result.slice(0, m.start) + newTimestamp + result.slice(m.end)
   }
 

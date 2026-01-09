@@ -4,68 +4,53 @@ import 'prismjs/components/prism-markup'
 import 'prismjs/components/prism-sql'
 import 'prismjs/components/prism-bash'
 import 'prismjs/components/prism-javascript'
+import 'prismjs/components/prism-yaml'
+import 'prismjs/components/prism-ini'
+import 'prismjs/components/prism-toml'
+import 'prismjs/components/prism-nginx'
+import 'prismjs/components/prism-diff'
+import 'prismjs/components/prism-python'
+import 'prismjs/components/prism-java'
+import 'prismjs/components/prism-csharp'
+import 'prismjs/components/prism-go'
+import 'prismjs/components/prism-log'        // Built-in log format with stack traces, IPs, UUIDs, etc.
+import 'prismjs/components/prism-http'       // HTTP requests/responses
+import 'prismjs/components/prism-apacheconf' // Apache config
 
-// Define custom log language for Prism
-Prism.languages['log'] = {
-  'timestamp': {
-    pattern: /\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?|\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2}|\[\d{1,2}\/[A-Za-z]{3}\/\d{4}:\d{2}:\d{2}:\d{2}\s*[+-]?\d{4}\]|[A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}/,
-    alias: 'number'
+// Define custom CSV language for Prism
+Prism.languages['csv'] = {
+  'header': {
+    pattern: /^.+$/m,
+    inside: {
+      'header-cell': /[^,\n]+/
+    }
   },
-  'log-level-error': {
-    pattern: /\b(?:ERROR|FATAL|CRITICAL|FAIL(?:ED)?|EXCEPTION)\b/i,
-    alias: 'deleted'
-  },
-  'log-level-warn': {
-    pattern: /\b(?:WARN(?:ING)?|ALERT)\b/i,
-    alias: 'warning'
-  },
-  'log-level-info': {
-    pattern: /\b(?:INFO|NOTICE|LOG)\b/i,
-    alias: 'keyword'
-  },
-  'log-level-debug': {
-    pattern: /\b(?:DEBUG|TRACE|VERBOSE)\b/i,
-    alias: 'comment'
-  },
-  'ip-address': {
-    pattern: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b|\b[0-9a-f]{1,4}(?::[0-9a-f]{1,4}){7}\b/i,
-    alias: 'constant'
-  },
-  'uuid': {
-    pattern: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i,
-    alias: 'symbol'
-  },
-  'email': {
-    pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/,
-    alias: 'url'
-  },
-  'url': {
-    pattern: /https?:\/\/[^\s<>[\]{}|\\^`\x00-\x1f\x7f]+/,
-    alias: 'url'
-  },
-  'key-value': {
-    pattern: /\b[A-Za-z_][A-Za-z0-9_]*=/,
-    alias: 'property'
-  },
-  'quoted-string': {
-    pattern: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/,
+  'quoted': {
+    pattern: /"(?:[^"\\]|\\.)*"/,
     alias: 'string'
-  },
-  'bracketed': {
-    pattern: /\[[^\]]+\]/,
-    alias: 'tag'
   },
   'number': {
     pattern: /\b\d+(?:\.\d+)?\b/,
     alias: 'number'
+  },
+  'delimiter': {
+    pattern: /,/,
+    alias: 'punctuation'
   }
 }
 
-type Language = 'json' | 'markup' | 'sql' | 'bash' | 'javascript' | 'log' | 'plain'
+type Language = 'json' | 'markup' | 'sql' | 'bash' | 'javascript' | 'yaml' | 'ini' | 'toml' | 'nginx' | 'diff' | 'python' | 'java' | 'csharp' | 'go' | 'csv' | 'http' | 'apacheconf' | 'log' | 'plain'
 
 // Detect language from content patterns
 export function detectLanguage(text: string): Language {
   const trimmed = text.trim()
+  const firstLine = trimmed.split('\n')[0]
+
+  // Diff detection (must be early - very distinctive)
+  if (/^(diff\s|---\s|@@\s|\+\+\+\s|[-+]\s)/m.test(trimmed) ||
+      (trimmed.includes('\n--- ') && trimmed.includes('\n+++ '))) {
+    return 'diff'
+  }
 
   // JSON detection
   if (trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.includes('": ') || trimmed.includes('":')) {
@@ -77,20 +62,95 @@ export function detectLanguage(text: string): Language {
     return 'markup'
   }
 
+  // YAML detection (must be before INI - both use key: value)
+  if (/^---\s*$/m.test(trimmed) ||
+      /^[a-zA-Z_][a-zA-Z0-9_]*:\s*[|>]?\s*$/m.test(trimmed) ||
+      /^\s*-\s+[a-zA-Z_]/.test(trimmed) ||
+      /^[a-zA-Z_][a-zA-Z0-9_]*:\s*\n\s+-/.test(trimmed)) {
+    return 'yaml'
+  }
+
+  // TOML detection
+  if (/^\[[a-zA-Z_][a-zA-Z0-9_.-]*\]\s*$/m.test(trimmed) ||
+      /^[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*\[/.test(trimmed) ||
+      /^[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*"""/.test(trimmed)) {
+    return 'toml'
+  }
+
+  // INI/Properties detection
+  if (/^\[[^\]]+\]\s*$/m.test(trimmed) && /^[a-zA-Z_][a-zA-Z0-9_]*\s*=/.test(trimmed)) {
+    return 'ini'
+  }
+
+  // HTTP request/response detection
+  if (/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|CONNECT|TRACE)\s+\S+\s+HTTP\//m.test(trimmed) ||
+      /^HTTP\/[\d.]+\s+\d{3}\s+/m.test(trimmed)) {
+    return 'http'
+  }
+
+  // Apache config detection
+  if (/^<(VirtualHost|Directory|Location|Files|IfModule|IfDefine)\s/m.test(trimmed) ||
+      /^\s*(ServerName|DocumentRoot|ErrorLog|CustomLog|RewriteRule|RewriteCond)\s/m.test(trimmed)) {
+    return 'apacheconf'
+  }
+
+  // Nginx config detection
+  if (/\b(server|location|upstream|http|events)\s*\{/.test(trimmed) ||
+      /\b(proxy_pass|fastcgi_pass|root|index|listen)\s+/.test(trimmed)) {
+    return 'nginx'
+  }
+
   // SQL detection (case-insensitive)
   const sqlKeywords = /\b(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|FROM|WHERE|JOIN|TABLE|INDEX)\b/i
   if (sqlKeywords.test(trimmed)) {
     return 'sql'
   }
 
+  // Python detection
+  if (/^(def|class|import|from|if __name__)\s/.test(trimmed) ||
+      /^\s*(def|class)\s+\w+.*:/.test(trimmed) ||
+      /^#!.*python/.test(firstLine)) {
+    return 'python'
+  }
+
+  // Java detection
+  if (/\b(public|private|protected)\s+(static\s+)?(class|void|int|String|boolean)/.test(trimmed) ||
+      /^package\s+[a-z]/.test(trimmed) ||
+      /^import\s+java\./.test(trimmed)) {
+    return 'java'
+  }
+
+  // C# detection
+  if (/\bnamespace\s+\w+/.test(trimmed) ||
+      /\b(public|private|internal)\s+(class|interface|struct|enum)/.test(trimmed) ||
+      /^using\s+System/.test(trimmed)) {
+    return 'csharp'
+  }
+
+  // Go detection
+  if (/^package\s+\w+\s*$/.test(firstLine) ||
+      /^func\s+(\w+|\([^)]+\)\s*\w+)\s*\(/.test(trimmed) ||
+      /^import\s+\(/.test(trimmed)) {
+    return 'go'
+  }
+
   // Shell command detection
-  if (trimmed.startsWith('$') || trimmed.startsWith('#') || trimmed.startsWith('>')) {
+  if (trimmed.startsWith('$') || /^#!\/.*sh/.test(firstLine)) {
     return 'bash'
   }
 
-  // JavaScript detection (function declarations, const/let/var, arrow functions)
+  // JavaScript/TypeScript detection
   if (/\b(function|const|let|var|=>|import|export)\b/.test(trimmed)) {
     return 'javascript'
+  }
+
+  // CSV detection (comma-separated with consistent column count)
+  const lines = trimmed.split('\n').slice(0, 5)
+  if (lines.length >= 2) {
+    const commaCount = (lines[0].match(/,/g) || []).length
+    if (commaCount >= 2 && lines.every(l => (l.match(/,/g) || []).length === commaCount)) {
+      return 'csv'
+    }
   }
 
   // Log file detection - timestamps at start of lines or log levels
@@ -153,6 +213,54 @@ const tokenColors: Record<string, string> = {
   'quoted-string': 'text-green-600 dark:text-green-400',
   'bracketed': 'text-orange-600 dark:text-orange-400',
   'symbol': 'text-teal-600 dark:text-teal-400',
+
+  // Diff
+  'inserted': 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20',
+  'coord': 'text-cyan-600 dark:text-cyan-400',
+
+  // YAML/INI/TOML
+  'atrule': 'text-purple-600 dark:text-purple-400',  // YAML keys
+  'selector': 'text-blue-600 dark:text-blue-400',    // INI sections
+  'section': 'text-blue-600 dark:text-blue-400',     // INI/TOML sections
+  'title': 'text-blue-600 dark:text-blue-400',       // TOML tables
+  'table': 'text-blue-600 dark:text-blue-400',       // TOML tables
+
+  // CSV
+  'header-cell': 'text-blue-600 dark:text-blue-400 font-semibold',
+  'delimiter': 'text-gray-400 dark:text-gray-500',
+
+  // Nginx
+  'directive': 'text-blue-600 dark:text-blue-400',
+
+  // Additional language tokens
+  'decorator': 'text-yellow-600 dark:text-yellow-400',  // Python decorators
+  'annotation': 'text-yellow-600 dark:text-yellow-400', // Java annotations
+  'namespace': 'text-purple-600 dark:text-purple-400',
+  'package': 'text-purple-600 dark:text-purple-400',
+
+  // HTTP
+  'method': 'text-blue-600 dark:text-blue-400 font-semibold',
+  'request-target': 'text-green-600 dark:text-green-400',
+  'http-version': 'text-gray-500 dark:text-gray-400',
+  'status-code': 'text-orange-600 dark:text-orange-400 font-semibold',
+  'reason-phrase': 'text-gray-600 dark:text-gray-400',
+  'header-name': 'text-purple-600 dark:text-purple-400',
+  'header-value': 'text-green-600 dark:text-green-400',
+
+  // Log format (Prism built-in)
+  'level': 'text-blue-600 dark:text-blue-400',
+  'error': 'text-red-600 dark:text-red-400 font-semibold',
+  'important': 'font-semibold',
+  'info': 'text-blue-600 dark:text-blue-400',
+  'debug': 'text-gray-500 dark:text-gray-400',
+  'trace': 'text-gray-400 dark:text-gray-500 italic',
+  'exception': 'text-red-600 dark:text-red-400',
+  'date': 'text-cyan-600 dark:text-cyan-400',
+  'time': 'text-cyan-600 dark:text-cyan-400',
+  'file-path': 'text-green-600 dark:text-green-400',
+  'domain': 'text-blue-600 dark:text-blue-400',
+  'mac-address': 'text-purple-600 dark:text-purple-400',
+  'hash': 'text-teal-600 dark:text-teal-400',
 }
 
 // Convert Prism token to React element

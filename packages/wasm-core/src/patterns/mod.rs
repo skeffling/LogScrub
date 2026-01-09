@@ -72,8 +72,9 @@ static IPV6_REGEX: Lazy<Regex> = Lazy::new(|| {
 static MAC_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\b(?:[0-9A-F]{2}[:-]){5}[0-9A-F]{2}\b").unwrap());
 
+// Matches hostnames with any TLD (2-12 chars). Requires at least one subdomain to reduce false positives
 static HOSTNAME_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+(?:com|org|net|edu|gov|mil|co|io|dev|app|uk|de|fr|jp|cn|au|ca|us|info|biz)\b").unwrap()
+    Regex::new(r"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.){2,}[a-zA-Z]{2,12}\b").unwrap()
 });
 
 static URL_REGEX: Lazy<Regex> =
@@ -296,6 +297,19 @@ static EXIM_USER_REGEX: Lazy<Regex> =
 
 static EXIM_DN_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"DN=[^\s]+").unwrap());
+
+// Hash patterns
+static MD5_HASH_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b[a-f0-9]{32}\b").unwrap());
+
+static SHA1_HASH_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b[a-f0-9]{40}\b").unwrap());
+
+static SHA256_HASH_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b[a-f0-9]{64}\b").unwrap());
+
+static DOCKER_CONTAINER_ID_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b[a-f0-9]{12}\b").unwrap());
 
 static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
     vec![
@@ -627,6 +641,26 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "exim_dn",
             regex: &EXIM_DN_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "md5_hash",
+            regex: &MD5_HASH_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sha1_hash",
+            regex: &SHA1_HASH_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sha256_hash",
+            regex: &SHA256_HASH_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "docker_container_id",
+            regex: &DOCKER_CONTAINER_ID_REGEX,
             validator: None,
         },
     ]

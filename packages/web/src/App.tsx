@@ -130,8 +130,8 @@ function App() {
   const [fullscreenLoading, setFullscreenLoading] = useState(false)
   const [fullscreenGoToLine, setFullscreenGoToLine] = useState(false)
   const [fullscreenGoToLineValue, setFullscreenGoToLineValue] = useState('')
-  const [fullscreenChangedOnly, setFullscreenChangedOnly] = useState(false)
-  const [showChangedOnly, setShowChangedOnly] = useState(false)
+  const [fullscreenLineFilter, setFullscreenLineFilter] = useState<'all' | 'changed' | 'unchanged'>('all')
+  const [lineFilter, setLineFilter] = useState<'all' | 'changed' | 'unchanged'>('all')
   const editorRef = useRef<{ scrollToLine: (line: number) => void } | null>(null)
   const fullscreenScrollRef = useRef<HTMLDivElement | null>(null)
 
@@ -164,7 +164,7 @@ function App() {
   }, [input, output])
 
   useEffect(() => {
-    setShowChangedOnly(false)
+    setLineFilter('all')
   }, [input, output])
 
   useEffect(() => {
@@ -311,19 +311,21 @@ function App() {
   }, [replacements, lineOffsets])
 
   const { filteredFullscreenLines, filteredLineNumbers } = useMemo(() => {
-    if (!fullscreenChangedOnly || changedLinesSet.size === 0) {
+    if (fullscreenLineFilter === 'all' || changedLinesSet.size === 0) {
       return { filteredFullscreenLines: fullscreenLines, filteredLineNumbers: undefined }
     }
     const lineNums: number[] = []
     const lines: string[] = []
     for (let i = 0; i < fullscreenLines.length; i++) {
-      if (changedLinesSet.has(i)) {
+      const isChanged = changedLinesSet.has(i)
+      if ((fullscreenLineFilter === 'changed' && isChanged) ||
+          (fullscreenLineFilter === 'unchanged' && !isChanged)) {
         lineNums.push(i)
         lines.push(fullscreenLines[i])
       }
     }
     return { filteredFullscreenLines: lines, filteredLineNumbers: lineNums }
-  }, [fullscreenLines, changedLinesSet, fullscreenChangedOnly])
+  }, [fullscreenLines, changedLinesSet, fullscreenLineFilter])
   
   const fullscreenReplacementLookup = useMemo(() => {
     const lineOffsets: number[] = []
@@ -417,7 +419,7 @@ function App() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Scrubbed Output {fileName && <span className="text-gray-500 dark:text-gray-400 text-sm" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
             <span className="ml-2 text-xs text-gray-400">
-              ({filteredFullscreenLines.length.toLocaleString()} lines{fullscreenChangedOnly && ` of ${fullscreenLines.length.toLocaleString()}`})
+              ({filteredFullscreenLines.length.toLocaleString()} lines{fullscreenLineFilter !== 'all' && ` of ${fullscreenLines.length.toLocaleString()}`})
             </span>
           </h2>
           <div className="flex items-center gap-4">
@@ -433,12 +435,27 @@ function App() {
             {changedLinesSet.size > 0 && (
               <>
                 <button
-                  onClick={() => setFullscreenChangedOnly(!fullscreenChangedOnly)}
-                  className={`text-sm flex items-center gap-1 ${fullscreenChangedOnly ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}
-                  title="Show only lines with changes"
+                  onClick={() => setFullscreenLineFilter('all')}
+                  className={`text-sm ${fullscreenLineFilter === 'all' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  title={`All ${fullscreenLines.length.toLocaleString()} lines (${changedLinesSet.size.toLocaleString()} changed, ${(fullscreenLines.length - changedLinesSet.size).toLocaleString()} unchanged)`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${fullscreenChangedOnly ? 'bg-blue-500' : 'bg-gray-400'}`} />
-                  Changed only
+                  All
+                </button>
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+                <button
+                  onClick={() => setFullscreenLineFilter('changed')}
+                  className={`text-sm ${fullscreenLineFilter === 'changed' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  title={`${changedLinesSet.size.toLocaleString()} changed lines`}
+                >
+                  Changed
+                </button>
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+                <button
+                  onClick={() => setFullscreenLineFilter('unchanged')}
+                  className={`text-sm ${fullscreenLineFilter === 'unchanged' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  title={`${(fullscreenLines.length - changedLinesSet.size).toLocaleString()} unchanged lines`}
+                >
+                  Unchanged
                 </button>
                 <span className="text-gray-300 dark:text-gray-600">|</span>
               </>
@@ -680,17 +697,17 @@ function App() {
                 )}
                 <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
                 <button
-                  onClick={() => input.trim() && !showChangedOnly && setSyncScroll(!syncScroll)}
+                  onClick={() => input.trim() && lineFilter === 'all' && setSyncScroll(!syncScroll)}
                   className={`text-sm hidden md:flex items-center gap-1 ${
-                    !input.trim() || showChangedOnly
+                    !input.trim() || lineFilter !== 'all'
                       ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                       : syncScroll
                         ? 'text-blue-600 dark:text-blue-400'
                         : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
-                  title={!input.trim() ? 'Load a log file first' : showChangedOnly ? 'Disabled while "Changed only" is active' : 'Sync scrolling between original and sanitized panes'}
+                  title={!input.trim() ? 'Load a log file first' : lineFilter !== 'all' ? 'Disabled while filtering lines' : 'Sync scrolling between original and sanitized panes'}
                 >
-                  <span className={`w-2 h-2 rounded-full ${!input.trim() || showChangedOnly ? 'bg-gray-300 dark:bg-gray-600' : syncScroll ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                  <span className={`w-2 h-2 rounded-full ${!input.trim() || lineFilter !== 'all' ? 'bg-gray-300 dark:bg-gray-600' : syncScroll ? 'bg-blue-500' : 'bg-gray-400'}`} />
                   Sync Scroll
                 </button>
                 <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
@@ -887,6 +904,20 @@ function App() {
                               )}
                             </div>
                           )}
+
+                          <button
+                            onClick={() => {
+                              if (!timeShift.enabled) {
+                                setTimeShift({ enabled: true })
+                              }
+                              setShowTimeShift(false)
+                              handleProcess()
+                            }}
+                            disabled={isProcessing || !input.trim()}
+                            className="mt-3 w-full px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Apply TimeShift
+                          </button>
                         </div>
                       </>
                     )}
@@ -974,8 +1005,8 @@ function App() {
                 onView={openFullscreen}
                 showDiff={showDiffHighlight}
                 syncScroll={syncScroll}
-                showChangedOnly={showChangedOnly}
-                onShowChangedOnlyChange={setShowChangedOnly}
+                lineFilter={lineFilter}
+                onLineFilterChange={setLineFilter}
                 onClearAll={handleClear}
               />
             </div>

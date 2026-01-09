@@ -275,6 +275,10 @@ fn generate_fake(pii_type: &str, _original: &str, count: usize) -> String {
         "exim_auth" => format!("A=login:user{}", count),
         "exim_user" => format!("U=user{}", count),
         "exim_dn" => format!("DN=CN=User{},O=Example", count),
+        "md5_hash" => format!("{:032x}", count),
+        "sha1_hash" => format!("{:040x}", count),
+        "sha256_hash" => format!("{:064x}", count),
+        "docker_container_id" => format!("{:012x}", count),
         _ => format!("[REDACTED-{}]", count),
     }
 }

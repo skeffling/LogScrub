@@ -12,6 +12,8 @@ async function ensureWasm(): Promise<void> {
   await wasmReady
 }
 
+type LineFilter = 'all' | 'changed' | 'unchanged'
+
 interface EditorProps {
   input: string
   output: string
@@ -19,8 +21,8 @@ interface EditorProps {
   onView?: () => void
   showDiff?: boolean
   syncScroll?: boolean
-  showChangedOnly?: boolean
-  onShowChangedOnlyChange?: (value: boolean) => void
+  lineFilter?: LineFilter
+  onLineFilterChange?: (value: LineFilter) => void
   onClearAll?: () => void
 }
 
@@ -553,7 +555,7 @@ function dismissDonationForever() {
   } catch {}
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, showChangedOnly: showChangedOnlyProp = false, onShowChangedOnlyChange, onClearAll }, ref) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
 
@@ -570,8 +572,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const outputContainerRef = useRef<HTMLDivElement | null>(null)
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
   const [showDiff, setShowDiff] = useState(showDiffProp)
-  const showChangedOnly = showChangedOnlyProp
-  const setShowChangedOnly = onShowChangedOnlyChange || (() => {})
+  const lineFilter = lineFilterProp
+  const setLineFilter = onLineFilterChange || (() => {})
   const scrollingRef = useRef<'input' | 'output' | null>(null)
 
   useEffect(() => {
@@ -635,18 +637,20 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   }, [replacements, analysisReplacements, input, output])
 
   const { filteredInputLines, filteredOutputLines, filteredLineNumbers } = useMemo(() => {
-    if (!showChangedOnly || changedLines.size === 0) {
-      return { 
-        filteredInputLines: inputLines, 
-        filteredOutputLines: outputLines, 
-        filteredLineNumbers: undefined 
+    if (lineFilter === 'all' || changedLines.size === 0) {
+      return {
+        filteredInputLines: inputLines,
+        filteredOutputLines: outputLines,
+        filteredLineNumbers: undefined
       }
     }
     const lineNums: number[] = []
     const inLines: string[] = []
     const outLines: string[] = []
     for (let i = 0; i < inputLines.length; i++) {
-      if (changedLines.has(i)) {
+      const isChanged = changedLines.has(i)
+      if ((lineFilter === 'changed' && isChanged) ||
+          (lineFilter === 'unchanged' && !isChanged)) {
         lineNums.push(i)
         inLines.push(inputLines[i])
         if (outputLines[i] !== undefined) {
@@ -655,7 +659,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
       }
     }
     return { filteredInputLines: inLines, filteredOutputLines: outLines, filteredLineNumbers: lineNums }
-  }, [inputLines, outputLines, changedLines, showChangedOnly])
+  }, [inputLines, outputLines, changedLines, lineFilter])
 
   const triggerDonationModal = useCallback(() => {
     if (shouldShowDonationModal()) {
@@ -757,7 +761,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   }
 
   const handleScroll = useCallback((source: 'input' | 'output') => {
-    if (!syncScrollProp || showChangedOnly) return
+    if (!syncScrollProp || lineFilter !== 'all') return
     if (scrollingRef.current && scrollingRef.current !== source) return
     
     scrollingRef.current = source
@@ -772,7 +776,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     requestAnimationFrame(() => {
       scrollingRef.current = null
     })
-  }, [syncScrollProp, showChangedOnly])
+  }, [syncScrollProp, lineFilter])
 
   const handleLineClick = (lineNum: number) => {
     setSelectedLine(lineNum === selectedLine ? null : lineNum)
@@ -862,20 +866,37 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             Original {fileName && <span className="text-gray-500 dark:text-gray-400" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
             {useVirtualScrolling && inputLines.length > VIRTUAL_THRESHOLD && (
               <span className="ml-2 text-xs text-gray-400">
-                ({(showChangedOnly ? filteredInputLines.length : inputLines.length).toLocaleString()} lines{showChangedOnly && ` of ${inputLines.length.toLocaleString()}`})
+                ({(lineFilter !== 'all' ? filteredInputLines.length : inputLines.length).toLocaleString()} lines{lineFilter !== 'all' && ` of ${inputLines.length.toLocaleString()}`})
               </span>
             )}
           </label>
           <div className="flex gap-2">
             {hasChanges && output && (
-              <button
-                onClick={() => setShowChangedOnly(!showChangedOnly)}
-                className={`text-xs flex items-center gap-1 ${showChangedOnly ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}
-                title="Show only lines with changes"
-              >
-                <span className={`w-2 h-2 rounded-full ${showChangedOnly ? 'bg-blue-500' : 'bg-gray-400'}`} />
-                Changed only
-              </button>
+              <div className="flex items-center gap-1 text-xs">
+                <button
+                  onClick={() => setLineFilter('all')}
+                  className={lineFilter === 'all' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}
+                  title={`All ${inputLines.length.toLocaleString()} lines (${changedLines.size.toLocaleString()} changed, ${(inputLines.length - changedLines.size).toLocaleString()} unchanged)`}
+                >
+                  All
+                </button>
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+                <button
+                  onClick={() => setLineFilter('changed')}
+                  className={lineFilter === 'changed' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}
+                  title={`${changedLines.size.toLocaleString()} changed lines`}
+                >
+                  Changed
+                </button>
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+                <button
+                  onClick={() => setLineFilter('unchanged')}
+                  className={lineFilter === 'unchanged' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}
+                  title={`${(inputLines.length - changedLines.size).toLocaleString()} unchanged lines`}
+                >
+                  Unchanged
+                </button>
+              </div>
             )}
             <label 
               className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer"
@@ -995,7 +1016,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             Scrubbed
             {useVirtualScrolling && outputLines.length > VIRTUAL_THRESHOLD && output && (
               <span className="ml-2 text-xs text-gray-400">
-                ({(showChangedOnly ? filteredOutputLines.length : outputLines.length).toLocaleString()} lines{showChangedOnly && ` of ${outputLines.length.toLocaleString()}`})
+                ({(lineFilter !== 'all' ? filteredOutputLines.length : outputLines.length).toLocaleString()} lines{lineFilter !== 'all' && ` of ${outputLines.length.toLocaleString()}`})
               </span>
             )}
           </label>
@@ -1011,15 +1032,6 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             )}
           {output && (
             <>
-              <button
-                onClick={handleCopy}
-                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Copy
-              </button>
               {onView && (
                 <button
                   onClick={onView}
@@ -1033,6 +1045,15 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 </button>
               )}
               <button
+                onClick={handleCopy}
+                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copy
+              </button>
+              <button
                 onClick={handleDownload}
                 className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
                 title="Download as plain text"
@@ -1040,7 +1061,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                .txt
+                txt
               </button>
               <button
                 onClick={handleDownloadZip}
@@ -1050,7 +1071,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                .zip
+                zip
               </button>
               <button
                 onClick={handleDownloadGzip}
@@ -1060,7 +1081,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                .gz
+                gz
               </button>
             </>
           )}

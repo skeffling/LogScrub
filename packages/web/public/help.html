@@ -246,6 +246,7 @@
         <li><a href="#custom-rules">Custom Rules</a></li>
         <li><a href="#plain-text-patterns">Plain Text Patterns</a></li>
         <li><a href="#presets">Presets</a></li>
+        <li><a href="#organizing-rules">Organizing Rules</a></li>
         <li><a href="#time-shift">Time Shift</a></li>
         <li><a href="#analyze-mode">Analyze Mode</a></li>
         <li><a href="#audit-reports">Audit Reports</a></li>
@@ -915,6 +916,37 @@ User [EMAIL-3] logged in</div>
 
       <h3>Import/Export</h3>
       <p>Share configurations between computers or team members using JSON export/import.</p>
+    </section>
+
+    <section id="organizing-rules">
+      <h2>Organizing Rules</h2>
+      <p>Customize the order of rule categories and individual rules to match your workflow.</p>
+
+      <h3>Reordering Categories</h3>
+      <p>Drag categories to change their display order in the Detection Rules panel:</p>
+      <ol>
+        <li>Grab the drag handle (<code>⋮⋮</code>) to the left of a category name</li>
+        <li>Drag the category up or down to your preferred position</li>
+        <li>Release to drop it in place</li>
+      </ol>
+      <p>As you drag, you'll see a preview of the category with its rules. Other categories will shift to make room.</p>
+
+      <h3>Reordering Rules Within a Category</h3>
+      <p>You can also reorder individual rules within each category:</p>
+      <ol>
+        <li>Expand the category by clicking its name</li>
+        <li>Grab the drag handle (<code>⋮</code>) to the left of a rule</li>
+        <li>Drag the rule up or down within the category</li>
+        <li>Release to set its new position</li>
+      </ol>
+
+      <h3>Persistence</h3>
+      <p>Your custom ordering is automatically saved to your browser's local storage and will be restored on your next visit.</p>
+      <p>When you save a preset, the current category and rule ordering is included. Loading a preset will restore both the rule settings and the ordering.</p>
+
+      <div class="tip">
+        <strong>Tip:</strong> Put frequently-used categories and rules at the top for quick access. For example, if you primarily work with network logs, drag the "Network" category to the top.
+      </div>
     </section>
 
     <section id="time-shift">

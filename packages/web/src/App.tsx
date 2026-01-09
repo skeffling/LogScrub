@@ -8,6 +8,7 @@ import { AboutModal } from './components/AboutModal'
 import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
 import { Modal } from './components/Modal'
+import { FeatureBanner } from './components/FeatureBanner'
 import { useAppStore } from './stores/useAppStore'
 import init, { compress_zip, compress_gzip } from './wasm-core/wasm_core'
 
@@ -459,6 +460,8 @@ function App() {
       <Header onAboutClick={() => setShowAbout(true)} />
       
       <main className={`flex-1 flex flex-col mx-auto px-4 py-4 w-full min-h-0 overflow-hidden ${constrainWidth ? 'max-w-7xl' : ''}`}>
+        <FeatureBanner />
+
         {(isProcessing || isAnalyzing) && processingProgress > 0 && (
           <div className="mb-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-1">

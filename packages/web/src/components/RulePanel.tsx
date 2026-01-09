@@ -760,63 +760,6 @@ export function RulePanel() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                 </svg>
               </button>
-              {showLabelConfig && (
-                <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowLabelConfig(false)} />
-                <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg shadow-lg z-50 min-w-[200px]">
-                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Label Format</div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <label className="text-xs text-gray-500 dark:text-gray-400 w-12">Prefix:</label>
-                    <input
-                      type="text"
-                      value={labelFormat.prefix}
-                      onChange={(e) => setLabelFormat({ ...labelFormat, prefix: e.target.value })}
-                      className="flex-1 text-xs border dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-white w-16"
-                      placeholder="["
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <label className="text-xs text-gray-500 dark:text-gray-400 w-12">Suffix:</label>
-                    <input
-                      type="text"
-                      value={labelFormat.suffix}
-                      onChange={(e) => setLabelFormat({ ...labelFormat, suffix: e.target.value })}
-                      className="flex-1 text-xs border dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-white w-16"
-                      placeholder="]"
-                    />
-                  </div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">
-                    Preview: {labelFormat.prefix}EMAIL-1{labelFormat.suffix}
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => setLabelFormat({ prefix: '[', suffix: ']' })}
-                      className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
-                    >
-                      [ ]
-                    </button>
-                    <button
-                      onClick={() => setLabelFormat({ prefix: '{{', suffix: '}}' })}
-                      className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
-                    >
-                      {'{{ }}'}
-                    </button>
-                    <button
-                      onClick={() => setLabelFormat({ prefix: '<', suffix: '>' })}
-                      className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
-                    >
-                      {'< >'}
-                    </button>
-                    <button
-                      onClick={() => setLabelFormat({ prefix: '', suffix: '' })}
-                      className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
-                    >
-                      None
-                    </button>
-                  </div>
-                </div>
-                </>
-              )}
             </div>
           ) : opt.value === 'template' ? (
             <div key={opt.value} className="relative flex">
@@ -1515,6 +1458,80 @@ export function RulePanel() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {showLabelConfig && (
+        <Modal onClose={() => setShowLabelConfig(false)} title="Label Format">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prefix</label>
+                <input
+                  type="text"
+                  value={labelFormat.prefix}
+                  onChange={(e) => setLabelFormat({ ...labelFormat, prefix: e.target.value })}
+                  className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white"
+                  placeholder="["
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Suffix</label>
+                <input
+                  type="text"
+                  value={labelFormat.suffix}
+                  onChange={(e) => setLabelFormat({ ...labelFormat, suffix: e.target.value })}
+                  className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white"
+                  placeholder="]"
+                />
+              </div>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg text-sm">
+              <p className="text-gray-600 dark:text-gray-400">
+                Preview: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{labelFormat.prefix}EMAIL-1{labelFormat.suffix}</code>
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Quick presets:</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setLabelFormat({ prefix: '[', suffix: ']' })}
+                  className="px-3 py-1.5 text-sm rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                >
+                  [ ]
+                </button>
+                <button
+                  onClick={() => setLabelFormat({ prefix: '{{', suffix: '}}' })}
+                  className="px-3 py-1.5 text-sm rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                >
+                  {'{{ }}'}
+                </button>
+                <button
+                  onClick={() => setLabelFormat({ prefix: '<', suffix: '>' })}
+                  className="px-3 py-1.5 text-sm rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                >
+                  {'< >'}
+                </button>
+                <button
+                  onClick={() => setLabelFormat({ prefix: '', suffix: '' })}
+                  className="px-3 py-1.5 text-sm rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                >
+                  None
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowLabelConfig(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Done
               </button>
             </div>
           </div>

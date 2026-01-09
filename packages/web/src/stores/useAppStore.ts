@@ -80,7 +80,8 @@ interface AppState {
   analysisCompleted: boolean
   suggestions: RuleSuggestion[]
   showSuggestions: boolean
-  
+  analysisLogs: string[]
+
   setInput: (input: string) => void
   setOutput: (output: string) => void
   setStats: (stats: DetectionStats) => void
@@ -270,8 +271,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   analysisCompleted: false,
   suggestions: [],
   showSuggestions: false,
+  analysisLogs: [],
 
-  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false }),
+  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [] }),
   setOutput: (output) => set({ output }),
   setStats: (stats) => set({ stats }),
   setMatches: (matches) => set({ matches }),
@@ -514,7 +516,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!text.trim()) return
 
     cancelRequested = false
-    set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false })
+    set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [] })
 
     try {
       const { rules, customRules, plainTextPatterns, consistencyMode } = get()
@@ -540,9 +542,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             reject(new Error(e.data.payload))
           } else if (e.data.type === 'progress') {
             set({ processingProgress: e.data.payload })
+          } else if (e.data.type === 'log') {
+            const { analysisLogs } = get()
+            set({ analysisLogs: [...analysisLogs, e.data.payload] })
           }
         }
-        
+
         w.addEventListener('message', handler)
         w.postMessage({
           type: 'process',

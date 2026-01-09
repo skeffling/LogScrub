@@ -198,9 +198,9 @@ static SG_NRIC_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\b[STFGM][0-9]{7}[A-Z]\b").unwrap());
 
 // High entropy secret detection - matches potential tokens/passwords
-// Looks for quoted strings or unquoted tokens that could be secrets
+// Simple pattern: quoted strings 8-64 chars with mixed characters
 static HIGH_ENTROPY_SECRET_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"['"][A-Za-z0-9!@#$%^&*()_+\-=\[\]{};:,.<>?/\\|`~]{8,64}['"]|(?<=[=:\s])[A-Za-z0-9!@#$%^&*_+\-]{12,64}(?=[\s,;}\])]|$)"#).unwrap()
+    Regex::new(r#"['"][A-Za-z0-9!@#$%^&*_+\-]{8,64}['"]"#).unwrap()
 });
 
 static DATE_MDY_REGEX: Lazy<Regex> = Lazy::new(|| {

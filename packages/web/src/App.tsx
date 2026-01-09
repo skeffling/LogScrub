@@ -111,7 +111,7 @@ function App() {
   const { 
     input, setInput, output, setOutput, isProcessing, processText, setFileName, fileName,
     processingProgress, cancelProcessing, canCancel,
-    analyzeText, isAnalyzing, analysisReplacements, analysisCompleted, clearAnalysis,
+    analyzeText, isAnalyzing, analysisReplacements, analysisCompleted, clearAnalysis, analysisLogs,
     replacements
   } = useAppStore()
   const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
@@ -123,6 +123,7 @@ function App() {
   const [showGoToLine, setShowGoToLine] = useState(false)
   const [syncScroll, setSyncScroll] = useState(() => loadUiPreference('syncScroll', true))
   const [showStats, setShowStats] = useState(false)
+  const [showAnalysisLogs, setShowAnalysisLogs] = useState(false)
   const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
   const [fullscreenLoading, setFullscreenLoading] = useState(false)
   const [fullscreenGoToLine, setFullscreenGoToLine] = useState(false)
@@ -524,14 +525,33 @@ function App() {
           <div className="mb-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-gray-500 dark:text-gray-400">{isAnalyzing ? 'Analyzing...' : 'Processing...'}</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">{processingProgress}%</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAnalysisLogs(!showAnalysisLogs)}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                  title="Show analysis logs"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {showAnalysisLogs ? 'Hide' : 'Info'}
+                </button>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{processingProgress}%</span>
+              </div>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-              <div 
+              <div
                 className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${processingProgress}%` }}
               />
             </div>
+            {showAnalysisLogs && analysisLogs.length > 0 && (
+              <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono max-h-32 overflow-y-auto">
+                {analysisLogs.map((log, i) => (
+                  <div key={i} className="text-gray-600 dark:text-gray-400">{log}</div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         

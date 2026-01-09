@@ -387,41 +387,58 @@ function processCustomRules(
   return { output, stats, matches, replacements }
 }
 
+function log(message: string) {
+  self.postMessage({ type: 'log', payload: message })
+}
+
 self.onmessage = async (e: MessageEvent) => {
   if (e.data.type === 'process') {
     try {
+      const startTime = performance.now()
+      log('Starting analysis...')
       self.postMessage({ type: 'progress', payload: 10 })
-      
+
+      log('Initializing WASM module...')
       await initWasm()
-      
+      log(`WASM initialized in ${(performance.now() - startTime).toFixed(0)}ms`)
+
       self.postMessage({ type: 'progress', payload: 30 })
-      
+
       const { text, rules, customRules = [], plainTextPatterns = [], consistencyMode, timeShift } = e.data.payload as ProcessRequest
-      
+
+      log(`Processing ${text.length.toLocaleString()} characters with ${rules.length} rules`)
+
       const TIMESTAMP_RULES = ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'timestamp_unix']
-      const filteredRules = timeShift?.enabled 
+      const filteredRules = timeShift?.enabled
         ? rules.filter(r => !TIMESTAMP_RULES.includes(r.id))
         : rules
-      
+
+      log(`Running ${filteredRules.length} pattern rules...`)
+      const sanitizeStart = performance.now()
+
       const wasmResult = sanitize(
         text,
         JSON.stringify(filteredRules),
         consistencyMode
       )
-      
+
+      log(`Pattern matching completed in ${(performance.now() - sanitizeStart).toFixed(0)}ms`)
       self.postMessage({ type: 'progress', payload: 60 })
       
       let parsed = JSON.parse(wasmResult)
-      
+      const matchCount = Object.values(parsed.stats as Record<string, number>).reduce((a, b) => a + b, 0)
+      log(`Found ${matchCount} matches across ${Object.keys(parsed.stats).length} pattern types`)
+
       if (customRules.length > 0) {
+        log(`Processing ${customRules.length} custom regex rules...`)
         const customResult = processCustomRules(parsed.output, customRules, consistencyMode)
-        
+
         const adjustedCustomReplacements = customResult.replacements.map(r => ({
           ...r,
           start: -1,
           end: -1
         }))
-        
+
         parsed = {
           output: customResult.output,
           stats: { ...parsed.stats, ...customResult.stats },
@@ -429,18 +446,19 @@ self.onmessage = async (e: MessageEvent) => {
           replacements: [...(parsed.replacements || []), ...adjustedCustomReplacements]
         }
       }
-      
+
       self.postMessage({ type: 'progress', payload: 80 })
 
       if (plainTextPatterns.length > 0) {
+        log(`Processing ${plainTextPatterns.length} plain text patterns...`)
         const plainTextResult = processPlainTextPatterns(parsed.output, plainTextPatterns, consistencyMode)
-        
+
         const adjustedPlainTextReplacements = plainTextResult.replacements.map(r => ({
           ...r,
           start: -1,
           end: -1
         }))
-        
+
         parsed = {
           output: plainTextResult.output,
           stats: { ...parsed.stats, ...plainTextResult.stats },
@@ -452,11 +470,15 @@ self.onmessage = async (e: MessageEvent) => {
       self.postMessage({ type: 'progress', payload: 90 })
 
       if (timeShift && timeShift.enabled) {
+        log('Applying time shift...')
         parsed.output = shiftTimestamps(parsed.output, timeShift)
       }
-      
+
+      const totalTime = performance.now() - startTime
+      log(`Analysis complete in ${totalTime.toFixed(0)}ms`)
+
       self.postMessage({ type: 'progress', payload: 100 })
-      
+
       self.postMessage({
         type: 'result',
         payload: {
@@ -467,6 +489,7 @@ self.onmessage = async (e: MessageEvent) => {
         }
       })
     } catch (error) {
+      log(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
       self.postMessage({
         type: 'error',
         payload: error instanceof Error ? error.message : 'Unknown error'

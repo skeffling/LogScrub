@@ -85,6 +85,7 @@ interface AppState {
   analysisLogs: string[]
   terminalStyle: boolean
   syntaxHighlight: boolean
+  labelFormat: LabelFormat
 
   setInput: (input: string) => void
   setOutput: (output: string) => void
@@ -124,6 +125,7 @@ interface AppState {
   setTimeShift: (config: Partial<TimeShiftConfig>) => void
   setTerminalStyle: (enabled: boolean) => void
   setSyntaxHighlight: (enabled: boolean) => void
+  setLabelFormat: (format: LabelFormat) => void
 }
 
 const DEFAULT_RULES: Record<string, Rule> = {
@@ -262,6 +264,27 @@ function saveSyntaxHighlightToStorage(enabled: boolean) {
   localStorage.setItem(SYNTAX_HIGHLIGHT_STORAGE_KEY, String(enabled))
 }
 
+const LABEL_FORMAT_STORAGE_KEY = 'logscrub_label_format'
+
+export interface LabelFormat {
+  prefix: string
+  suffix: string
+}
+
+function loadLabelFormatFromStorage(): LabelFormat {
+  try {
+    const stored = localStorage.getItem(LABEL_FORMAT_STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch {}
+  return { prefix: '[', suffix: ']' }
+}
+
+function saveLabelFormatToStorage(format: LabelFormat) {
+  localStorage.setItem(LABEL_FORMAT_STORAGE_KEY, JSON.stringify(format))
+}
+
 let worker: Worker | null = null
 
 function getWorker(): Worker {
@@ -312,6 +335,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   analysisLogs: [],
   terminalStyle: loadTerminalStyleFromStorage(),
   syntaxHighlight: loadSyntaxHighlightFromStorage(),
+  labelFormat: loadLabelFormatFromStorage(),
 
   setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [] }),
   setOutput: (output) => set({ output }),
@@ -439,6 +463,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ syntaxHighlight: enabled })
   },
 
+  setLabelFormat: (format) => {
+    saveLabelFormatToStorage(format)
+    set({ labelFormat: format })
+  },
+
   savePreset: (name) => {
     const { rules, customRules, consistencyMode, savedPresets } = get()
     const newPreset: RulePreset = { name, rules: { ...rules }, customRules: [...customRules], consistencyMode }
@@ -511,7 +540,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isProcessing: true, processingProgress: 0, canCancel: true, analysisReplacements: [], analysisStats: {}, analysisCompleted: false })
 
     try {
-      const { rules, customRules, plainTextPatterns, consistencyMode, timeShift } = get()
+      const { rules, customRules, plainTextPatterns, consistencyMode, timeShift, labelFormat } = get()
       const enabledRules = Object.entries(rules)
         .filter(([, rule]) => rule.enabled)
         .map(([id, rule]) => ({ id, strategy: rule.strategy, template: rule.template }))
@@ -542,13 +571,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         w.addEventListener('message', handler)
         w.postMessage({
           type: 'process',
-          payload: { 
-            text, 
-            rules: enabledRules, 
-            customRules: enabledCustomRules, 
-            plainTextPatterns: enabledPlainTextPatterns, 
+          payload: {
+            text,
+            rules: enabledRules,
+            customRules: enabledCustomRules,
+            plainTextPatterns: enabledPlainTextPatterns,
             consistencyMode,
-            timeShift: timeShift.enabled ? timeShift : null
+            timeShift: timeShift.enabled ? timeShift : null,
+            labelFormat
           }
         })
       })
@@ -569,8 +599,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [] })
 
     try {
-      const { rules, customRules, plainTextPatterns, consistencyMode } = get()
-      
+      const { rules, customRules, plainTextPatterns, consistencyMode, labelFormat } = get()
+
       const allRules = Object.entries(rules)
         .map(([id, rule]) => ({ id, strategy: rule.strategy, template: rule.template }))
 
@@ -601,7 +631,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         w.addEventListener('message', handler)
         w.postMessage({
           type: 'process',
-          payload: { text, rules: allRules, customRules: allCustomRules, plainTextPatterns: allPlainTextPatterns, consistencyMode }
+          payload: { text, rules: allRules, customRules: allCustomRules, plainTextPatterns: allPlainTextPatterns, consistencyMode, labelFormat }
         })
       })
 

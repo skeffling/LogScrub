@@ -38,7 +38,7 @@ struct SanitizeResult {
 }
 
 #[wasm_bindgen]
-pub fn sanitize(text: &str, rules_json: &str, consistency_mode: bool) -> String {
+pub fn sanitize(text: &str, rules_json: &str, consistency_mode: bool, label_prefix: &str, label_suffix: &str) -> String {
     let rules: Vec<RuleConfig> = serde_json::from_str(rules_json).unwrap_or_default();
     let enabled_rules: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
     let strategy_map: HashMap<&str, &str> = rules
@@ -70,6 +70,8 @@ pub fn sanitize(text: &str, rules_json: &str, consistency_mode: bool) -> String 
         &strategy_map,
         &template_map,
         consistency_mode,
+        label_prefix,
+        label_suffix,
     );
 
     let result = SanitizeResult {
@@ -97,6 +99,8 @@ fn apply_replacements(
     strategy_map: &HashMap<&str, &str>,
     template_map: &HashMap<&str, &str>,
     consistency_mode: bool,
+    label_prefix: &str,
+    label_suffix: &str,
 ) -> (String, Vec<Replacement>) {
     if matches.is_empty() {
         return (text.to_string(), Vec::new());
@@ -137,6 +141,8 @@ fn apply_replacements(
                         strategy,
                         template,
                         &mut type_counters,
+                        label_prefix,
+                        label_suffix,
                     )
                 })
                 .clone()
@@ -147,6 +153,8 @@ fn apply_replacements(
                 strategy,
                 template,
                 &mut type_counters,
+                label_prefix,
+                label_suffix,
             )
         };
 
@@ -178,6 +186,8 @@ fn generate_replacement(
     strategy: &str,
     template: Option<&str>,
     counters: &mut HashMap<String, usize>,
+    label_prefix: &str,
+    label_suffix: &str,
 ) -> String {
     match strategy {
         "template" => {
@@ -188,13 +198,13 @@ fn generate_replacement(
                 *count += 1;
                 apply_template(tmpl, *count, pii_type, original)
             } else {
-                format!("[{}]", pii_type.to_uppercase())
+                format!("{}{}{}",label_prefix, pii_type.to_uppercase(), label_suffix)
             }
         }
         "label" => {
             let count = counters.entry(pii_type.to_string()).or_insert(0);
             *count += 1;
-            format!("[{}-{}]", pii_type.to_uppercase(), count)
+            format!("{}{}-{}{}", label_prefix, pii_type.to_uppercase(), count, label_suffix)
         }
         "fake" => {
             let count = counters.entry(format!("{}_fake", pii_type)).or_insert(0);
@@ -202,7 +212,7 @@ fn generate_replacement(
             generate_fake(pii_type, original, *count)
         }
         "redact" => "\u{2588}".repeat(original.len().min(16)),
-        _ => format!("[{}]", pii_type.to_uppercase()),
+        _ => format!("{}{}{}", label_prefix, pii_type.to_uppercase(), label_suffix),
     }
 }
 

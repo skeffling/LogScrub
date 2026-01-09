@@ -19,6 +19,11 @@ interface TimeShiftConfig {
   lineOnly: boolean
 }
 
+interface LabelFormat {
+  prefix: string
+  suffix: string
+}
+
 interface ProcessRequest {
   text: string
   rules: Array<{ id: string; strategy: string; template?: string }>
@@ -26,6 +31,7 @@ interface ProcessRequest {
   plainTextPatterns?: Array<{ id: string; strategy: string; text: string; label: string }>
   consistencyMode: boolean
   timeShift?: TimeShiftConfig | null
+  labelFormat?: LabelFormat
 }
 
 interface Match {
@@ -229,7 +235,9 @@ function shiftTimestamps(text: string, config: TimeShiftConfig): string {
 function processPlainTextPatterns(
   text: string,
   patterns: Array<{ id: string; strategy: string; text: string; label: string }>,
-  consistencyMode: boolean
+  consistencyMode: boolean,
+  labelPrefix: string,
+  labelSuffix: string
 ): { output: string; stats: Record<string, number>; matches: Record<string, string[]>; replacements: ReplacementInfo[] } {
   const stats: Record<string, number> = {}
   const matches: Record<string, string[]> = {}
@@ -274,11 +282,11 @@ function processPlainTextPatterns(
       typeCounters[m.type] = (typeCounters[m.type] || 0) + 1
       
       if (strategy === 'label') {
-        replacement = `[${label.toUpperCase()}-${typeCounters[m.type]}]`
+        replacement = `${labelPrefix}${label.toUpperCase()}-${typeCounters[m.type]}${labelSuffix}`
       } else if (strategy === 'redact') {
         replacement = '█'.repeat(Math.min(m.value.length, 16))
       } else {
-        replacement = `[${label.toUpperCase()}]`
+        replacement = `${labelPrefix}${label.toUpperCase()}${labelSuffix}`
       }
       
       if (consistencyMode) {
@@ -308,9 +316,11 @@ function processPlainTextPatterns(
 }
 
 function processCustomRules(
-  text: string, 
+  text: string,
   customRules: Array<{ id: string; strategy: string; pattern: string; template?: string }>,
-  consistencyMode: boolean
+  consistencyMode: boolean,
+  labelPrefix: string,
+  labelSuffix: string
 ): { output: string; stats: Record<string, number>; matches: Record<string, string[]>; replacements: ReplacementInfo[] } {
   const stats: Record<string, number> = {}
   const matches: Record<string, string[]> = {}
@@ -354,11 +364,11 @@ function processCustomRules(
       if (strategy === 'template' && rule?.template) {
         replacement = applyTemplate(rule.template, { n: typeCounters[m.type], type: m.type, original: m.value })
       } else if (strategy === 'label') {
-        replacement = `[${m.type.toUpperCase()}-${typeCounters[m.type]}]`
+        replacement = `${labelPrefix}${m.type.toUpperCase()}-${typeCounters[m.type]}${labelSuffix}`
       } else if (strategy === 'redact') {
         replacement = '█'.repeat(Math.min(m.value.length, 16))
       } else {
-        replacement = `[${m.type.toUpperCase()}]`
+        replacement = `${labelPrefix}${m.type.toUpperCase()}${labelSuffix}`
       }
       
       if (consistencyMode) {
@@ -404,7 +414,9 @@ self.onmessage = async (e: MessageEvent) => {
 
       self.postMessage({ type: 'progress', payload: 30 })
 
-      const { text, rules, customRules = [], plainTextPatterns = [], consistencyMode, timeShift } = e.data.payload as ProcessRequest
+      const { text, rules, customRules = [], plainTextPatterns = [], consistencyMode, timeShift, labelFormat } = e.data.payload as ProcessRequest
+      const labelPrefix = labelFormat?.prefix ?? '['
+      const labelSuffix = labelFormat?.suffix ?? ']'
 
       log(`Processing ${text.length.toLocaleString()} characters with ${rules.length} rules`)
 
@@ -419,7 +431,9 @@ self.onmessage = async (e: MessageEvent) => {
       const wasmResult = sanitize(
         text,
         JSON.stringify(filteredRules),
-        consistencyMode
+        consistencyMode,
+        labelPrefix,
+        labelSuffix
       )
 
       log(`Pattern matching completed in ${(performance.now() - sanitizeStart).toFixed(0)}ms`)
@@ -439,7 +453,7 @@ self.onmessage = async (e: MessageEvent) => {
 
       if (customRules.length > 0) {
         log(`Processing ${customRules.length} custom regex rules...`)
-        const customResult = processCustomRules(parsed.output, customRules, consistencyMode)
+        const customResult = processCustomRules(parsed.output, customRules, consistencyMode, labelPrefix, labelSuffix)
 
         const adjustedCustomReplacements = customResult.replacements.map(r => ({
           ...r,
@@ -459,7 +473,7 @@ self.onmessage = async (e: MessageEvent) => {
 
       if (plainTextPatterns.length > 0) {
         log(`Processing ${plainTextPatterns.length} plain text patterns...`)
-        const plainTextResult = processPlainTextPatterns(parsed.output, plainTextPatterns, consistencyMode)
+        const plainTextResult = processPlainTextPatterns(parsed.output, plainTextPatterns, consistencyMode, labelPrefix, labelSuffix)
 
         const adjustedPlainTextReplacements = plainTextResult.replacements.map(r => ({
           ...r,

@@ -154,12 +154,13 @@ const RuleRow = memo(function RuleRow({
 
 export function RulePanel() {
   const { 
-    rules, toggleRule, setRuleStrategy, setRuleTemplate, setAllStrategy, 
+    rules, toggleRule, setRuleStrategy, setRuleTemplate, setAllStrategy,
     consistencyMode, setConsistencyMode,
     savedPresets, savePreset, loadPreset, deletePreset, importPreset, exportCurrentRules, resetToDefaults,
     customRules, addCustomRule, updateCustomRule, deleteCustomRule, toggleCustomRule, setCustomRuleStrategy,
     plainTextPatterns, addPlainTextPattern, updatePlainTextPattern, deletePlainTextPattern, togglePlainTextPattern, setPlainTextPatternStrategy,
-    stats, analysisStats
+    stats, analysisStats,
+    labelFormat, setLabelFormat
   } = useAppStore()
   
   const [showStats, setShowStats] = useState(false)
@@ -189,6 +190,7 @@ export function RulePanel() {
   const [showAddPlainText, setShowAddPlainText] = useState(false)
   const [newPlainText, setNewPlainText] = useState({ label: '', text: '' })
   const [editingPlainText, setEditingPlainText] = useState<PlainTextPattern | null>(null)
+  const [showLabelConfig, setShowLabelConfig] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const testResults = useMemo(() => {
@@ -404,14 +406,90 @@ export function RulePanel() {
       <div className="flex gap-1 mb-3">
         <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">Set all:</span>
         {STRATEGY_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setAllStrategy(opt.value)}
-            className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-            title={`Set all enabled rules to use ${opt.label.toLowerCase()} replacement strategy`}
-          >
-            {opt.label}
-          </button>
+          opt.value === 'label' ? (
+            <div key={opt.value} className="relative flex">
+              <button
+                onClick={() => setAllStrategy(opt.value)}
+                className="text-xs px-2 py-1 rounded-l bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                title={`Set all enabled rules to use ${opt.label.toLowerCase()} replacement strategy`}
+              >
+                {opt.label}
+              </button>
+              <button
+                onClick={() => setShowLabelConfig(!showLabelConfig)}
+                className="text-xs px-1 py-1 rounded-r bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border-l border-gray-200 dark:border-gray-600"
+                title="Configure label format"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+              {showLabelConfig && (
+                <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg shadow-lg z-50 min-w-[200px]">
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Label Format</div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <label className="text-xs text-gray-500 dark:text-gray-400 w-12">Prefix:</label>
+                    <input
+                      type="text"
+                      value={labelFormat.prefix}
+                      onChange={(e) => setLabelFormat({ ...labelFormat, prefix: e.target.value })}
+                      className="flex-1 text-xs border dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-white w-16"
+                      placeholder="["
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <label className="text-xs text-gray-500 dark:text-gray-400 w-12">Suffix:</label>
+                    <input
+                      type="text"
+                      value={labelFormat.suffix}
+                      onChange={(e) => setLabelFormat({ ...labelFormat, suffix: e.target.value })}
+                      className="flex-1 text-xs border dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-white w-16"
+                      placeholder="]"
+                    />
+                  </div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+                    Preview: {labelFormat.prefix}EMAIL-1{labelFormat.suffix}
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setLabelFormat({ prefix: '[', suffix: ']' })}
+                      className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      [ ]
+                    </button>
+                    <button
+                      onClick={() => setLabelFormat({ prefix: '{{', suffix: '}}' })}
+                      className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      {'{{ }}'}
+                    </button>
+                    <button
+                      onClick={() => setLabelFormat({ prefix: '<', suffix: '>' })}
+                      className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      {'< >'}
+                    </button>
+                    <button
+                      onClick={() => setLabelFormat({ prefix: '', suffix: '' })}
+                      className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      None
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              key={opt.value}
+              onClick={() => setAllStrategy(opt.value)}
+              className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+              title={`Set all enabled rules to use ${opt.label.toLowerCase()} replacement strategy`}
+            >
+              {opt.label}
+            </button>
+          )
         ))}
       </div>
 

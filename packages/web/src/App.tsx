@@ -558,16 +558,22 @@ function App() {
                 </button>
                 <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
                 <button
-                  onClick={() => setShowDiffHighlight(!showDiffHighlight)}
-                  className={`text-sm flex items-center gap-1 hidden md:flex ${showDiffHighlight ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}
-                  title="Toggle diff highlighting"
+                  onClick={() => input.trim() && setShowDiffHighlight(!showDiffHighlight)}
+                  className={`text-sm flex items-center gap-1 hidden md:flex ${
+                    !input.trim()
+                      ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                      : showDiffHighlight
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500 dark:text-gray-500'
+                  }`}
+                  title={!input.trim() ? 'Load a log file first' : 'Toggle diff highlighting'}
                 >
-                  <span className={`w-2 h-2 rounded-full ${showDiffHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                  <span className={`w-2 h-2 rounded-full ${!input.trim() ? 'bg-gray-300 dark:bg-gray-600' : showDiffHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
                   Highlight
                 </button>
                 <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
                 {showGoToLine ? (
-                  <form 
+                  <form
                     onSubmit={(e) => {
                       e.preventDefault()
                       const line = parseInt(goToLineValue, 10)
@@ -603,27 +609,41 @@ function App() {
                   </form>
                 ) : (
                   <button
-                    onClick={() => setShowGoToLine(true)}
-                    className="text-sm text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hidden md:block"
-                    title="Go to line (⌘G)"
+                    onClick={() => input.trim() && setShowGoToLine(true)}
+                    className={`text-sm hidden md:block ${
+                      !input.trim()
+                        ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                        : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                    title={!input.trim() ? 'Load a log file first' : 'Go to line (⌘G)'}
                   >
                     Go to Line
                   </button>
                 )}
                 <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
                 <button
-                  onClick={() => setSyncScroll(!syncScroll)}
-                  className={`text-sm hidden md:flex items-center gap-1 ${syncScroll ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                  title="Sync scrolling between original and sanitized panes"
+                  onClick={() => input.trim() && setSyncScroll(!syncScroll)}
+                  className={`text-sm hidden md:flex items-center gap-1 ${
+                    !input.trim()
+                      ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                      : syncScroll
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                  title={!input.trim() ? 'Load a log file first' : 'Sync scrolling between original and sanitized panes'}
                 >
-                  <span className={`w-2 h-2 rounded-full ${syncScroll ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                  <span className={`w-2 h-2 rounded-full ${!input.trim() ? 'bg-gray-300 dark:bg-gray-600' : syncScroll ? 'bg-blue-500' : 'bg-gray-400'}`} />
                   Sync Scroll
                 </button>
                 <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
                 <button
-                  onClick={() => setShowStats(true)}
-                  className="text-sm text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hidden md:flex items-center gap-1"
-                  title="View detection statistics and download audit reports"
+                  onClick={() => input.trim() && setShowStats(true)}
+                  className={`text-sm hidden md:flex items-center gap-1 ${
+                    !input.trim()
+                      ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                      : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                  title={!input.trim() ? 'Load a log file first' : 'View detection statistics and download audit reports'}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />

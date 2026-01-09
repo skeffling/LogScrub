@@ -1067,15 +1067,13 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
 
       {/* Resize handle between Original and Scrubbed */}
       <div
-        className="hidden md:flex items-center justify-center w-4 flex-shrink-0 cursor-col-resize group"
+        className="hidden md:block w-2 flex-shrink-0 cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors"
         onMouseDown={(e) => {
           e.preventDefault()
           setIsResizingSplit(true)
         }}
         title="Drag to resize"
-      >
-        <div className="w-1 h-16 rounded-full bg-gray-200 dark:bg-gray-700 group-hover:bg-blue-400 group-active:bg-blue-500 transition-colors" />
-      </div>
+      />
 
       <div className="flex flex-col min-h-0 relative flex-1">
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">

@@ -103,7 +103,7 @@ export function FeatureBanner() {
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
             <strong>Share logs safely with AI assistants</strong> like ChatGPT, Claude, or Gemini for debugging help without exposing customer data or API keys.
-            Perfect for <strong>posting to GitHub issues</strong>, Stack Overflow, or support tickets without leaking sensitive information.
+            Perfect for <strong>posting to GitHub issues</strong>, Stack Overflow, pastebins, or support tickets without leaking sensitive information.
             Essential for <strong>compliance teams</strong> preparing audit logs, and developers sharing production data with contractors or offshore teams.
             Use it before uploading logs to third-party monitoring tools, or when creating <strong>sanitized test datasets</strong> from real production data.
           </p>

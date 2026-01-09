@@ -535,78 +535,6 @@ export function RulePanel() {
       )}
       
       <div className="space-y-3">
-        {Object.entries(filteredCategories).map(([category, ruleIds]) => {
-          const categoryRules = ruleIds.filter(id => rules[id])
-          if (categoryRules.length === 0) return null
-          
-          const enabledCount = categoryRules.filter(id => rules[id]?.enabled).length
-          const isExpanded = searchQuery ? true : expandedCategories[category]
-          
-          return (
-            <div key={category} className="border-b dark:border-gray-700 pb-2 last:border-b-0">
-              <div className="flex items-center justify-between mb-2">
-                <button
-                  onClick={() => toggleCategory(category)}
-                  className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                >
-                  <span className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
-                    ▶
-                  </span>
-                  {category}
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    ({enabledCount}/{categoryRules.length})
-                  </span>
-                </button>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => toggleAllInCategory(category, true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                    title={`Enable all rules in ${category}`}
-                  >
-                    All
-                  </button>
-                  <span className="text-gray-300 dark:text-gray-600">|</span>
-                  <button
-                    onClick={() => toggleAllInCategory(category, false)}
-                    className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                    title={`Disable all rules in ${category}`}
-                  >
-                    None
-                  </button>
-                </div>
-              </div>
-              
-              {isExpanded && (
-                <div className="space-y-2 ml-4">
-                  {categoryRules.map(id => {
-                    const rule = rules[id]
-                    if (!rule) return null
-                    
-                    return (
-                      <RuleRow
-                        key={id}
-                        label={rule.label}
-                        enabled={rule.enabled}
-                        strategy={rule.strategy}
-                        matchCount={displayStats[id]}
-                        onToggle={() => toggleRule(id)}
-                        onStrategyChange={(newStrategy) => {
-                          setRuleStrategy(id, newStrategy)
-                          if (newStrategy === 'template' && !rule.template) {
-                            setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })
-                          }
-                        }}
-                        onViewPattern={() => setViewingPattern({ id, label: rule.label, pattern: BUILTIN_PATTERNS[id] || '' })}
-                        onEditTemplate={() => setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })}
-                      />
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })}
-
         {filteredCustomRules.length > 0 && (
           <div className="border-b dark:border-gray-700 pb-2">
             <div className="flex items-center justify-between mb-2">
@@ -631,7 +559,7 @@ export function RulePanel() {
                       </span>
                     )}
                   </label>
-                  
+
                   <button
                     onClick={() => setEditingCustomRule({ ...rule })}
                     className="text-xs text-purple-500 hover:text-purple-700 dark:hover:text-purple-300 px-1"
@@ -639,7 +567,7 @@ export function RulePanel() {
                   >
                     ✎
                   </button>
-                  
+
                   <button
                     onClick={() => deleteCustomRule(rule.id)}
                     className="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 px-1"
@@ -647,7 +575,7 @@ export function RulePanel() {
                   >
                     ✕
                   </button>
-                  
+
                   <select
                     value={rule.strategy}
                     onChange={(e) => setCustomRuleStrategy(rule.id, e.target.value as ReplacementStrategy)}
@@ -692,7 +620,7 @@ export function RulePanel() {
                       </span>
                     )}
                   </label>
-                  
+
                   <button
                     onClick={() => setEditingPlainText({ ...pattern })}
                     className="text-xs text-orange-500 hover:text-orange-700 dark:hover:text-orange-300 px-1"
@@ -700,7 +628,7 @@ export function RulePanel() {
                   >
                     ✎
                   </button>
-                  
+
                   <button
                     onClick={() => deletePlainTextPattern(pattern.id)}
                     className="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 px-1"
@@ -708,7 +636,7 @@ export function RulePanel() {
                   >
                     ✕
                   </button>
-                  
+
                   <select
                     value={pattern.strategy}
                     onChange={(e) => setPlainTextPatternStrategy(pattern.id, e.target.value as ReplacementStrategy)}
@@ -726,7 +654,79 @@ export function RulePanel() {
             </div>
           </div>
         )}
-        
+
+        {Object.entries(filteredCategories).map(([category, ruleIds]) => {
+          const categoryRules = ruleIds.filter(id => rules[id])
+          if (categoryRules.length === 0) return null
+
+          const enabledCount = categoryRules.filter(id => rules[id]?.enabled).length
+          const isExpanded = searchQuery ? true : expandedCategories[category]
+
+          return (
+            <div key={category} className="border-b dark:border-gray-700 pb-2 last:border-b-0">
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                >
+                  <span className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                    ▶
+                  </span>
+                  {category}
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    ({enabledCount}/{categoryRules.length})
+                  </span>
+                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => toggleAllInCategory(category, true)}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                    title={`Enable all rules in ${category}`}
+                  >
+                    All
+                  </button>
+                  <span className="text-gray-300 dark:text-gray-600">|</span>
+                  <button
+                    onClick={() => toggleAllInCategory(category, false)}
+                    className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    title={`Disable all rules in ${category}`}
+                  >
+                    None
+                  </button>
+                </div>
+              </div>
+
+              {isExpanded && (
+                <div className="space-y-2 ml-4">
+                  {categoryRules.map(id => {
+                    const rule = rules[id]
+                    if (!rule) return null
+
+                    return (
+                      <RuleRow
+                        key={id}
+                        label={rule.label}
+                        enabled={rule.enabled}
+                        strategy={rule.strategy}
+                        matchCount={displayStats[id]}
+                        onToggle={() => toggleRule(id)}
+                        onStrategyChange={(newStrategy) => {
+                          setRuleStrategy(id, newStrategy)
+                          if (newStrategy === 'template' && !rule.template) {
+                            setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })
+                          }
+                        }}
+                        onViewPattern={() => setViewingPattern({ id, label: rule.label, pattern: BUILTIN_PATTERNS[id] || '' })}
+                        onEditTemplate={() => setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })}
+                      />
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })}
+
         {Object.keys(filteredCategories).length === 0 && filteredCustomRules.length === 0 && searchQuery && (
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
             No rules match "{searchQuery}"

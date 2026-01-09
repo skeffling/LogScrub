@@ -57,7 +57,7 @@ const STRATEGY_OPTIONS: { value: ReplacementStrategy; label: string }[] = [
 
 const CATEGORIES: Record<string, string[]> = {
   'Contact': ['email', 'phone_us', 'phone_uk', 'phone_intl'],
-  'Network': ['ipv4', 'ipv6', 'mac_address', 'hostname', 'url'],
+  'Network': ['ipv4', 'ipv6', 'mac_address', 'hostname', 'url', 'url_params'],
   'Identity (US)': ['ssn', 'us_itin', 'passport', 'drivers_license'],
   'Identity (UK)': ['uk_nhs', 'uk_nino'],
   'Identity (Intl)': ['au_tfn', 'in_pan', 'sg_nric'],
@@ -70,6 +70,28 @@ const CATEGORIES: Record<string, string[]> = {
   'Exim': ['exim_subject', 'exim_sender', 'exim_auth', 'exim_user', 'exim_dn'],
   'Hashes': ['md5_hash', 'sha1_hash', 'sha256_hash', 'docker_container_id'],
   'Other': ['uuid', 'email_message_id', 'file_path_unix', 'file_path_windows'],
+}
+
+const DEFAULT_CATEGORY_ORDER = Object.keys(CATEGORIES)
+const CATEGORY_ORDER_STORAGE_KEY = 'logscrub_category_order'
+
+function loadCategoryOrder(): string[] {
+  try {
+    const stored = localStorage.getItem(CATEGORY_ORDER_STORAGE_KEY)
+    if (stored) {
+      const order = JSON.parse(stored) as string[]
+      // Merge with current categories - add any new ones at the end
+      const allCategories = Object.keys(CATEGORIES)
+      const validOrder = order.filter(c => allCategories.includes(c))
+      const newCategories = allCategories.filter(c => !validOrder.includes(c))
+      return [...validOrder, ...newCategories]
+    }
+  } catch {}
+  return DEFAULT_CATEGORY_ORDER
+}
+
+function saveCategoryOrder(order: string[]) {
+  localStorage.setItem(CATEGORY_ORDER_STORAGE_KEY, JSON.stringify(order))
 }
 
 function fuzzyMatch(query: string, target: string): boolean {
@@ -167,10 +189,13 @@ export function RulePanel() {
   } = useAppStore()
   
   const [showStats, setShowStats] = useState(false)
-  
+  const [categoryOrder, setCategoryOrder] = useState<string[]>(loadCategoryOrder)
+  const [draggedCategory, setDraggedCategory] = useState<string | null>(null)
+  const [dragOverCategory, setDragOverCategory] = useState<string | null>(null)
+
   const displayStats = Object.keys(stats).length > 0 ? stats : analysisStats
   const totalDetections = Object.values(displayStats).reduce((sum, count) => sum + count, 0)
-  
+
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'Contact': true,
     'Network': true,
@@ -234,21 +259,28 @@ export function RulePanel() {
   }, [testText, rules, customRules])
 
   const filteredCategories = useMemo(() => {
-    if (!searchQuery) return CATEGORIES
-    
     const result: Record<string, string[]> = {}
-    Object.entries(CATEGORIES).forEach(([category, ruleIds]) => {
-      const matchingRules = ruleIds.filter(id => {
-        const rule = rules[id]
-        if (!rule) return false
-        return fuzzyMatch(searchQuery, id) || fuzzyMatch(searchQuery, rule.label) || fuzzyMatch(searchQuery, category)
-      })
-      if (matchingRules.length > 0) {
-        result[category] = matchingRules
+
+    // Use category order for iteration
+    for (const category of categoryOrder) {
+      const ruleIds = CATEGORIES[category]
+      if (!ruleIds) continue
+
+      if (!searchQuery) {
+        result[category] = ruleIds
+      } else {
+        const matchingRules = ruleIds.filter(id => {
+          const rule = rules[id]
+          if (!rule) return false
+          return fuzzyMatch(searchQuery, id) || fuzzyMatch(searchQuery, rule.label) || fuzzyMatch(searchQuery, category)
+        })
+        if (matchingRules.length > 0) {
+          result[category] = matchingRules
+        }
       }
-    })
+    }
     return result
-  }, [searchQuery, rules])
+  }, [searchQuery, rules, categoryOrder])
 
   const filteredCustomRules = useMemo(() => {
     if (!searchQuery) return customRules
@@ -274,6 +306,46 @@ export function RulePanel() {
         toggleRule(id)
       }
     })
+  }
+
+  const handleDragStart = (e: React.DragEvent, category: string) => {
+    setDraggedCategory(category)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', category)
+  }
+
+  const handleDragOver = (e: React.DragEvent, category: string) => {
+    e.preventDefault()
+    if (draggedCategory && draggedCategory !== category) {
+      setDragOverCategory(category)
+    }
+  }
+
+  const handleDragLeave = () => {
+    setDragOverCategory(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, targetCategory: string) => {
+    e.preventDefault()
+    if (draggedCategory && draggedCategory !== targetCategory) {
+      const newOrder = [...categoryOrder]
+      const draggedIdx = newOrder.indexOf(draggedCategory)
+      const targetIdx = newOrder.indexOf(targetCategory)
+
+      if (draggedIdx !== -1 && targetIdx !== -1) {
+        newOrder.splice(draggedIdx, 1)
+        newOrder.splice(targetIdx, 0, draggedCategory)
+        setCategoryOrder(newOrder)
+        saveCategoryOrder(newOrder)
+      }
+    }
+    setDraggedCategory(null)
+    setDragOverCategory(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedCategory(null)
+    setDragOverCategory(null)
   }
 
   const handleSavePreset = () => {
@@ -837,22 +909,45 @@ export function RulePanel() {
 
           const enabledCount = categoryRules.filter(id => rules[id]?.enabled).length
           const isExpanded = searchQuery ? true : expandedCategories[category]
+          const isDragging = draggedCategory === category
+          const isDragOver = dragOverCategory === category
 
           return (
-            <div key={category} className="border-b dark:border-gray-700 pb-2 last:border-b-0">
+            <div
+              key={category}
+              className={`border-b dark:border-gray-700 pb-2 last:border-b-0 transition-all ${
+                isDragging ? 'opacity-50' : ''
+              } ${isDragOver ? 'border-t-2 border-t-blue-500 pt-1' : ''}`}
+              onDragOver={(e) => handleDragOver(e, category)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, category)}
+            >
               <div className="flex items-center justify-between mb-2">
-                <button
-                  onClick={() => toggleCategory(category)}
-                  className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                >
-                  <span className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
-                    ▶
-                  </span>
-                  {category}
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    ({enabledCount}/{categoryRules.length})
-                  </span>
-                </button>
+                <div className="flex items-center gap-1">
+                  {!searchQuery && (
+                    <span
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, category)}
+                      onDragEnd={handleDragEnd}
+                      className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 select-none px-0.5"
+                      title="Drag to reorder"
+                    >
+                      ⋮⋮
+                    </span>
+                  )}
+                  <button
+                    onClick={() => toggleCategory(category)}
+                    className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                  >
+                    <span className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                      ▶
+                    </span>
+                    {category}
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      ({enabledCount}/{categoryRules.length})
+                    </span>
+                  </button>
+                </div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => toggleAllInCategory(category, true)}

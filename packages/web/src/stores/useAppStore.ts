@@ -201,10 +201,12 @@ const DEFAULT_RULES: Record<string, Rule> = {
   sha1_hash: { label: 'SHA1 Hash', enabled: false, strategy: 'label' },
   sha256_hash: { label: 'SHA256 Hash', enabled: false, strategy: 'label' },
   docker_container_id: { label: 'Docker Container ID', enabled: false, strategy: 'label' },
+  url_params: { label: 'URL Parameters', enabled: false, strategy: 'label' },
 }
 
 const PRESETS_STORAGE_KEY = 'logscrub_presets'
 const CUSTOM_RULES_STORAGE_KEY = 'logscrub_custom_rules'
+const RULES_STORAGE_KEY = 'logscrub_rules'
 
 function loadPresetsFromStorage(): RulePreset[] {
   try {
@@ -217,6 +219,28 @@ function loadPresetsFromStorage(): RulePreset[] {
 
 function savePresetsToStorage(presets: RulePreset[]) {
   localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets))
+}
+
+function loadRulesFromStorage(): Record<string, Rule> {
+  try {
+    const stored = localStorage.getItem(RULES_STORAGE_KEY)
+    if (stored) {
+      const savedRules = JSON.parse(stored) as Record<string, Rule>
+      // Merge with defaults to handle new patterns added since last save
+      const merged = { ...DEFAULT_RULES }
+      for (const [id, rule] of Object.entries(savedRules)) {
+        if (merged[id]) {
+          merged[id] = { ...merged[id], enabled: rule.enabled, strategy: rule.strategy, template: rule.template }
+        }
+      }
+      return merged
+    }
+  } catch {}
+  return DEFAULT_RULES
+}
+
+function saveRulesToStorage(rules: Record<string, Rule>) {
+  localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(rules))
 }
 
 function loadCustomRulesFromStorage(): CustomRule[] {
@@ -334,7 +358,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   matches: {},
   replacements: [],
   consistencyMode: true,
-  rules: DEFAULT_RULES,
+  rules: loadRulesFromStorage(),
   customRules: loadCustomRulesFromStorage(),
   plainTextPatterns: loadPlainTextPatternsFromStorage(),
   timeShift: {
@@ -376,34 +400,48 @@ export const useAppStore = create<AppState>((set, get) => ({
     cancelRequested = true
   },
 
-  toggleRule: (id) => set((state) => ({
-    rules: {
-      ...state.rules,
-      [id]: { ...state.rules[id], enabled: !state.rules[id].enabled }
+  toggleRule: (id) => {
+    const { rules } = get()
+    const newRules = {
+      ...rules,
+      [id]: { ...rules[id], enabled: !rules[id].enabled }
     }
-  })),
+    saveRulesToStorage(newRules)
+    set({ rules: newRules })
+  },
 
-  setRuleStrategy: (id, strategy) => set((state) => ({
-    rules: {
-      ...state.rules,
-      [id]: { ...state.rules[id], strategy }
+  setRuleStrategy: (id, strategy) => {
+    const { rules } = get()
+    const newRules = {
+      ...rules,
+      [id]: { ...rules[id], strategy }
     }
-  })),
+    saveRulesToStorage(newRules)
+    set({ rules: newRules })
+  },
 
-  setRuleTemplate: (id, template) => set((state) => ({
-    rules: {
-      ...state.rules,
-      [id]: { ...state.rules[id], template }
+  setRuleTemplate: (id, template) => {
+    const { rules } = get()
+    const newRules = {
+      ...rules,
+      [id]: { ...rules[id], template }
     }
-  })),
+    saveRulesToStorage(newRules)
+    set({ rules: newRules })
+  },
 
-  setAllStrategy: (strategy) => set((state) => ({
-    rules: Object.fromEntries(
-      Object.entries(state.rules).map(([id, rule]) => [id, { ...rule, strategy }])
-    ),
-    customRules: state.customRules.map(r => ({ ...r, strategy })),
-    plainTextPatterns: state.plainTextPatterns.map(p => ({ ...p, strategy }))
-  })),
+  setAllStrategy: (strategy) => {
+    const { rules, customRules, plainTextPatterns } = get()
+    const newRules = Object.fromEntries(
+      Object.entries(rules).map(([id, rule]) => [id, { ...rule, strategy }])
+    )
+    saveRulesToStorage(newRules)
+    set({
+      rules: newRules,
+      customRules: customRules.map(r => ({ ...r, strategy })),
+      plainTextPatterns: plainTextPatterns.map(p => ({ ...p, strategy }))
+    })
+  },
 
   setConsistencyMode: (enabled) => set({ consistencyMode: enabled }),
 
@@ -521,14 +559,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadPreset: (preset) => {
     const currentRules = get().rules
     const mergedRules = { ...currentRules }
-    
+
     Object.entries(preset.rules).forEach(([id, rule]) => {
       if (mergedRules[id]) {
         mergedRules[id] = { ...mergedRules[id], enabled: rule.enabled, strategy: rule.strategy }
       }
     })
-    
+
     const customRules = preset.customRules || []
+    saveRulesToStorage(mergedRules)
     saveCustomRulesToStorage(customRules)
     set({ rules: mergedRules, customRules, consistencyMode: preset.consistencyMode })
   },
@@ -562,8 +601,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   resetToDefaults: () => {
-    set({ rules: DEFAULT_RULES, customRules: [], consistencyMode: false })
+    saveRulesToStorage(DEFAULT_RULES)
     saveCustomRulesToStorage([])
+    set({ rules: DEFAULT_RULES, customRules: [], consistencyMode: false })
   },
 
   processText: async (text) => {
@@ -787,10 +827,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   enableSuggestedRule: (id) => {
     const { rules, customRules, plainTextPatterns } = get()
-    
+
     if (rules[id]) {
-      set({ 
-        rules: { ...rules, [id]: { ...rules[id], enabled: true } },
+      const newRules = { ...rules, [id]: { ...rules[id], enabled: true } }
+      saveRulesToStorage(newRules)
+      set({
+        rules: newRules,
         suggestions: get().suggestions.filter(s => s.id !== id)
       })
     } else {
@@ -821,24 +863,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   enableAllSuggested: () => {
     const { rules, customRules, plainTextPatterns, suggestions } = get()
     const suggestedIds = new Set(suggestions.map(s => s.id))
-    
+
     const newRules = { ...rules }
     suggestedIds.forEach(id => {
       if (newRules[id]) {
         newRules[id] = { ...newRules[id], enabled: true }
       }
     })
-    
-    const newCustomRules = customRules.map(r => 
+    saveRulesToStorage(newRules)
+
+    const newCustomRules = customRules.map(r =>
       suggestedIds.has(r.id) ? { ...r, enabled: true } : r
     )
     saveCustomRulesToStorage(newCustomRules)
-    
-    const newPlainText = plainTextPatterns.map(p => 
+
+    const newPlainText = plainTextPatterns.map(p =>
       suggestedIds.has(p.id) ? { ...p, enabled: true } : p
     )
     savePlainTextPatternsToStorage(newPlainText)
-    
+
     set({
       rules: newRules,
       customRules: newCustomRules,
@@ -858,6 +901,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         newRules[id] = { ...newRules[id], enabled: false }
       }
     })
+    saveRulesToStorage(newRules)
 
     const newCustomRules = customRules.map(r =>
       unmatchedIds.has(r.id) ? { ...r, enabled: false } : r

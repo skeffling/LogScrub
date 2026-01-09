@@ -257,6 +257,87 @@ function shiftTimestamps(text: string, config: TimeShiftConfig): string {
   return result
 }
 
+function processUrlParams(
+  text: string,
+  strategy: string,
+  consistencyMode: boolean,
+  labelPrefix: string,
+  labelSuffix: string
+): { output: string; stats: Record<string, number>; matches: Record<string, string[]>; replacements: ReplacementInfo[] } {
+  const stats: Record<string, number> = {}
+  const matches: Record<string, string[]> = {}
+  const allMatches: Array<{ start: number; end: number; key: string; value: string; prefix: string }> = []
+
+  // Match URL query parameters: ?key=value or &key=value
+  // Also handles parameters in the middle of URLs
+  const paramRegex = /([?&])([a-zA-Z_][a-zA-Z0-9_]*)=([^&\s"'<>]*)/g
+  let match
+  while ((match = paramRegex.exec(text)) !== null) {
+    const [full, prefix, key, value] = match
+    if (value.length > 0) {  // Only match if there's a value
+      allMatches.push({
+        start: match.index,
+        end: match.index + full.length,
+        key,
+        value,
+        prefix  // ? or &
+      })
+    }
+  }
+
+  if (allMatches.length === 0) {
+    return { output: text, stats: {}, matches: {}, replacements: [] }
+  }
+
+  const consistencyMap: Record<string, string> = {}
+  let counter = 0
+  const replacements: ReplacementInfo[] = []
+
+  for (const m of allMatches) {
+    stats['url_params'] = (stats['url_params'] || 0) + 1
+    if (!matches['url_params']) matches['url_params'] = []
+    matches['url_params'].push(`${m.key}=${m.value}`)
+
+    let replacementValue: string
+    if (consistencyMode && consistencyMap[m.value]) {
+      replacementValue = consistencyMap[m.value]
+    } else {
+      counter++
+      if (strategy === 'redact') {
+        replacementValue = '█'.repeat(Math.min(m.value.length, 16))
+      } else {
+        // label strategy - preserve key, replace value
+        replacementValue = `${labelPrefix}PARAM-${counter}${labelSuffix}`
+      }
+      if (consistencyMode) {
+        consistencyMap[m.value] = replacementValue
+      }
+    }
+
+    // The replacement preserves the prefix (? or &) and key, only replaces value
+    const fullReplacement = `${m.prefix}${m.key}=${replacementValue}`
+    replacements.push({
+      start: m.start,
+      end: m.end,
+      original: `${m.prefix}${m.key}=${m.value}`,
+      replacement: fullReplacement,
+      pii_type: 'url_params'
+    })
+  }
+
+  // Apply replacements in reverse order
+  allMatches.sort((a, b) => b.start - a.start)
+  let output = text
+  for (const m of allMatches) {
+    const rep = replacements.find(r => r.start === m.start && r.end === m.end)
+    if (rep) {
+      output = output.slice(0, m.start) + rep.replacement + output.slice(m.end)
+    }
+  }
+
+  return { output, stats, matches, replacements }
+}
+
 function processPlainTextPatterns(
   text: string,
   patterns: Array<{ id: string; strategy: string; text: string; label: string }>,
@@ -480,6 +561,37 @@ self.onmessage = async (e: MessageEvent) => {
 
       const matchCount = Object.values(parsed.stats as Record<string, number>).reduce((a, b) => a + b, 0)
       log(`Found ${matchCount} matches across ${Object.keys(parsed.stats).length} pattern types`)
+
+      // Process URL parameters if enabled
+      const urlParamsRule = rules.find(r => r.id === 'url_params')
+      if (urlParamsRule) {
+        log('Processing URL parameters...')
+        const urlParamsResult = processUrlParams(
+          parsed.output,
+          urlParamsRule.strategy,
+          consistencyMode,
+          labelPrefix,
+          labelSuffix
+        )
+
+        const adjustedUrlParamsReplacements = urlParamsResult.replacements.map(r => ({
+          ...r,
+          start: -1,
+          end: -1
+        }))
+
+        parsed = {
+          output: urlParamsResult.output,
+          stats: { ...parsed.stats, ...urlParamsResult.stats },
+          matches: { ...parsed.matches, ...urlParamsResult.matches },
+          replacements: [...(parsed.replacements || []), ...adjustedUrlParamsReplacements]
+        }
+
+        const urlParamCount = urlParamsResult.stats['url_params'] || 0
+        if (urlParamCount > 0) {
+          log(`Found ${urlParamCount} URL parameters`)
+        }
+      }
 
       if (customRules.length > 0) {
         log(`Processing ${customRules.length} custom regex rules...`)

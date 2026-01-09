@@ -6,7 +6,7 @@ interface AboutModalProps {
 }
 
 export function AboutModal({ onClose }: AboutModalProps) {
-  const { terminalStyle, setTerminalStyle, syntaxHighlight, setSyntaxHighlight } = useAppStore()
+  const { terminalStyle, setTerminalStyle } = useAppStore()
 
   return (
     <Modal onClose={onClose} maxWidth="max-w-3xl">
@@ -160,36 +160,20 @@ export function AboutModal({ onClose }: AboutModalProps) {
         
         <div>
           <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Display Options</h3>
-          <div className="space-y-2">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={terminalStyle}
-                onChange={(e) => setTerminalStyle(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">Terminal Style</span>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Dark grey background with light text for Original and Scrubbed panes
-                </p>
-              </div>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={syntaxHighlight}
-                onChange={(e) => setSyntaxHighlight(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">Syntax Highlighting</span>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Colorize code in log files (JSON, XML, SQL, shell commands)
-                </p>
-              </div>
-            </label>
-          </div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={terminalStyle}
+              onChange={(e) => setTerminalStyle(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">Terminal Style</span>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Dark grey background with light text for Original and Scrubbed panes
+              </p>
+            </div>
+          </label>
         </div>
 
         <hr className="dark:border-gray-700" />

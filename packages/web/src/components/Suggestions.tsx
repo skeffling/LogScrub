@@ -15,7 +15,7 @@ export function Suggestions() {
     disableUnmatchedRules
   } = useAppStore()
 
-  const [activeTab, setActiveTab] = useState<Tab>('active')
+  const [activeTab, setActiveTab] = useState<Tab>('suggestions')
 
   if (!showSuggestions || (suggestions.length === 0 && activeMatches.length === 0)) return null
 
@@ -78,21 +78,6 @@ export function Suggestions() {
           {/* Tabs */}
           <div className="flex gap-1 mb-3 border-b border-amber-200 dark:border-amber-800">
             <button
-              onClick={() => setActiveTab('active')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-t transition-colors ${
-                activeTab === 'active'
-                  ? 'bg-white dark:bg-gray-800 text-amber-800 dark:text-amber-200 border border-b-0 border-amber-200 dark:border-amber-800'
-                  : 'text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
-              }`}
-            >
-              Active Matches
-              {activeMatches.length > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded">
-                  {activeMatches.length}
-                </span>
-              )}
-            </button>
-            <button
               onClick={() => setActiveTab('suggestions')}
               className={`px-3 py-1.5 text-xs font-medium rounded-t transition-colors ${
                 activeTab === 'suggestions'
@@ -104,6 +89,21 @@ export function Suggestions() {
               {suggestions.length > 0 && (
                 <span className="ml-1.5 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded">
                   {suggestions.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-t transition-colors ${
+                activeTab === 'active'
+                  ? 'bg-white dark:bg-gray-800 text-amber-800 dark:text-amber-200 border border-b-0 border-amber-200 dark:border-amber-800'
+                  : 'text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+              }`}
+            >
+              Active Matches
+              {activeMatches.length > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded">
+                  {activeMatches.length}
                 </span>
               )}
             </button>

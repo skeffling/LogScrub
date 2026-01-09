@@ -6,7 +6,7 @@ interface AboutModalProps {
 }
 
 export function AboutModal({ onClose }: AboutModalProps) {
-  const { terminalStyle, setTerminalStyle } = useAppStore()
+  const { terminalStyle, setTerminalStyle, syntaxHighlight, setSyntaxHighlight } = useAppStore()
 
   return (
     <Modal onClose={onClose} maxWidth="max-w-3xl">
@@ -172,6 +172,20 @@ export function AboutModal({ onClose }: AboutModalProps) {
                 <span className="text-sm font-medium text-gray-900 dark:text-white">Terminal Style</span>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Dark grey background with light text for Original and Scrubbed panes
+                </p>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={syntaxHighlight}
+                onChange={(e) => setSyntaxHighlight(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Syntax Highlighting</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Colorize code in log files (JSON, XML, SQL, shell commands)
                 </p>
               </div>
             </label>

@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImper
 import { useVirtualizer } from '@tanstack/react-virtual'
 import init, { decompress_gzip, decompress_zip, compress_zip, compress_gzip } from '../wasm-core/wasm_core'
 import { useAppStore, type ReplacementInfo } from '../stores/useAppStore'
+import { tokenizeWithPositions } from '../utils/syntaxHighlight'
 
 let wasmReady: Promise<unknown> | null = null
 async function ensureWasm(): Promise<void> {
@@ -30,46 +31,140 @@ const LINE_HEIGHT = 20
 const VIRTUAL_THRESHOLD = 500
 const OVERSCAN = 15
 
-function highlightLine(line: string, lineStart: number, replacements: ReplacementInfo[], type: 'original' | 'output'): React.ReactNode {
+function highlightLine(line: string, lineStart: number, replacements: ReplacementInfo[], type: 'original' | 'output', syntaxHighlight = false): React.ReactNode {
   const lineEnd = lineStart + line.length
-  const relevantReplacements = replacements.filter(r => 
+  const relevantReplacements = replacements.filter(r =>
     r.start < lineEnd && r.end > lineStart && r.start >= 0
   )
-  
-  if (relevantReplacements.length === 0) {
+
+  // No PII and no syntax highlighting - return plain text
+  if (relevantReplacements.length === 0 && !syntaxHighlight) {
     return line || ' '
   }
 
-  const parts: React.ReactNode[] = []
-  let lastEnd = 0
-
-  const sortedReplacements = [...relevantReplacements].sort((a, b) => a.start - b.start)
-
-  for (const rep of sortedReplacements) {
-    const relStart = Math.max(0, rep.start - lineStart)
-    const relEnd = Math.min(line.length, rep.end - lineStart)
-
-    if (relStart > lastEnd) {
-      parts.push(<span key={`text-${lastEnd}`}>{line.slice(lastEnd, relStart)}</span>)
-    }
-
-    if (type === 'original') {
-      parts.push(
-        <span 
-          key={`hl-${rep.start}`} 
-          className="bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200 rounded px-0.5"
-          title={`${rep.pii_type}: will be replaced`}
-        >
-          {line.slice(relStart, relEnd)}
-        </span>
-      )
-    }
-
-    lastEnd = relEnd
+  // With syntax highlighting but no PII - just apply syntax colors
+  if (relevantReplacements.length === 0 && syntaxHighlight) {
+    const segments = tokenizeWithPositions(line)
+    return segments.map((seg, i) =>
+      seg.className
+        ? <span key={i} className={seg.className}>{seg.text}</span>
+        : <span key={i}>{seg.text}</span>
+    )
   }
 
-  if (lastEnd < line.length) {
-    parts.push(<span key={`text-end`}>{line.slice(lastEnd)}</span>)
+  // Build a list of position ranges for PII
+  const sortedReplacements = [...relevantReplacements].sort((a, b) => a.start - b.start)
+  const piiRanges = sortedReplacements.map(rep => ({
+    start: Math.max(0, rep.start - lineStart),
+    end: Math.min(line.length, rep.end - lineStart),
+    type: rep.pii_type
+  }))
+
+  // If no syntax highlighting, use original simple logic
+  if (!syntaxHighlight) {
+    const parts: React.ReactNode[] = []
+    let lastEnd = 0
+
+    for (const range of piiRanges) {
+      if (range.start > lastEnd) {
+        parts.push(<span key={`text-${lastEnd}`}>{line.slice(lastEnd, range.start)}</span>)
+      }
+
+      if (type === 'original') {
+        parts.push(
+          <span
+            key={`hl-${range.start}`}
+            className="bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200 rounded px-0.5"
+            title={`${range.type}: will be replaced`}
+          >
+            {line.slice(range.start, range.end)}
+          </span>
+        )
+      }
+      lastEnd = range.end
+    }
+
+    if (lastEnd < line.length) {
+      parts.push(<span key={`text-end`}>{line.slice(lastEnd)}</span>)
+    }
+
+    return parts.length > 0 ? parts : (line || ' ')
+  }
+
+  // With both syntax highlighting and PII - merge them
+  const syntaxSegments = tokenizeWithPositions(line)
+  const parts: React.ReactNode[] = []
+  let keyIndex = 0
+
+  // Check if a position is within a PII range
+  const getPiiRange = (pos: number) => piiRanges.find(r => pos >= r.start && pos < r.end)
+
+  for (const seg of syntaxSegments) {
+    // Check if this segment overlaps with any PII
+    const piiAtStart = getPiiRange(seg.start)
+
+    if (piiAtStart && seg.start >= piiAtStart.start && seg.end <= piiAtStart.end) {
+      // Entire segment is within PII - add background
+      const bgClass = type === 'original'
+        ? 'bg-red-200 dark:bg-red-900/50 rounded px-0.5'
+        : ''
+      const combinedClass = [seg.className, bgClass].filter(Boolean).join(' ')
+      parts.push(
+        <span
+          key={keyIndex++}
+          className={combinedClass || undefined}
+          title={type === 'original' ? `${piiAtStart.type}: will be replaced` : undefined}
+        >
+          {seg.text}
+        </span>
+      )
+    } else if (!getPiiRange(seg.start) && !getPiiRange(seg.end - 1)) {
+      // Segment doesn't overlap with PII at all
+      parts.push(
+        seg.className
+          ? <span key={keyIndex++} className={seg.className}>{seg.text}</span>
+          : <span key={keyIndex++}>{seg.text}</span>
+      )
+    } else {
+      // Segment partially overlaps - need to split it
+      let pos = seg.start
+      while (pos < seg.end) {
+        const pii = getPiiRange(pos)
+        if (pii) {
+          const endPos = Math.min(seg.end, pii.end)
+          const text = line.slice(pos, endPos)
+          const bgClass = type === 'original'
+            ? 'bg-red-200 dark:bg-red-900/50 rounded px-0.5'
+            : ''
+          const combinedClass = [seg.className, bgClass].filter(Boolean).join(' ')
+          parts.push(
+            <span
+              key={keyIndex++}
+              className={combinedClass || undefined}
+              title={type === 'original' ? `${pii.type}: will be replaced` : undefined}
+            >
+              {text}
+            </span>
+          )
+          pos = endPos
+        } else {
+          // Find where next PII starts or segment ends
+          let nextPiiStart = seg.end
+          for (const r of piiRanges) {
+            if (r.start > pos && r.start < nextPiiStart) {
+              nextPiiStart = r.start
+            }
+          }
+          const text = line.slice(pos, nextPiiStart)
+          parts.push(
+            seg.className
+              ? <span key={keyIndex++} className={seg.className}>{text}</span>
+              : <span key={keyIndex++}>{text}</span>
+          )
+          pos = nextPiiStart
+        }
+      }
+    }
   }
 
   return parts.length > 0 ? parts : (line || ' ')
@@ -120,60 +215,197 @@ function buildReplacementLookup(replacements: ReplacementInfo[], inputText: stri
   return lookup
 }
 
-function highlightOutputLine(line: string, replacements: ReplacementInfo[], lookup?: Map<string, ReplacementLookup>): React.ReactNode {
+function highlightOutputLine(line: string, replacements: ReplacementInfo[], lookup?: Map<string, ReplacementLookup>, syntaxHighlight = false): React.ReactNode {
   const patterns = replacements.map(r => ({
     pattern: r.replacement,
     type: r.pii_type
   }))
 
-  if (patterns.length === 0) return line || ' '
+  if (patterns.length === 0) {
+    if (syntaxHighlight) {
+      const segments = tokenizeWithPositions(line)
+      return segments.map((seg, i) =>
+        seg.className
+          ? <span key={i} className={seg.className}>{seg.text}</span>
+          : <span key={i}>{seg.text}</span>
+      )
+    }
+    return line || ' '
+  }
 
-  const parts: React.ReactNode[] = []
-  let remaining = line
-  let keyIndex = 0
+  // Find all replacement positions in the line
+  interface MatchInfo {
+    start: number
+    end: number
+    type: string
+    pattern: string
+  }
+  const matches: MatchInfo[] = []
+  let searchPos = 0
 
-  while (remaining.length > 0) {
-    let earliestMatch: { index: number; length: number; type: string; pattern: string } | null = null
+  while (searchPos < line.length) {
+    let earliestMatch: MatchInfo | null = null
 
     for (const p of patterns) {
-      const idx = remaining.indexOf(p.pattern)
-      if (idx !== -1 && (earliestMatch === null || idx < earliestMatch.index)) {
-        earliestMatch = { index: idx, length: p.pattern.length, type: p.type, pattern: p.pattern }
+      const idx = line.indexOf(p.pattern, searchPos)
+      if (idx !== -1 && (earliestMatch === null || idx < earliestMatch.start)) {
+        earliestMatch = { start: idx, end: idx + p.pattern.length, type: p.type, pattern: p.pattern }
       }
     }
 
-    if (earliestMatch === null) {
-      parts.push(<span key={`rest-${keyIndex++}`}>{remaining}</span>)
-      break
+    if (earliestMatch === null) break
+
+    matches.push(earliestMatch)
+    searchPos = earliestMatch.end
+  }
+
+  if (matches.length === 0) {
+    if (syntaxHighlight) {
+      const segments = tokenizeWithPositions(line)
+      return segments.map((seg, i) =>
+        seg.className
+          ? <span key={i} className={seg.className}>{seg.text}</span>
+          : <span key={i}>{seg.text}</span>
+      )
+    }
+    return line || ' '
+  }
+
+  // If no syntax highlighting, use simple approach
+  if (!syntaxHighlight) {
+    const parts: React.ReactNode[] = []
+    let lastEnd = 0
+    let keyIndex = 0
+
+    for (const match of matches) {
+      if (match.start > lastEnd) {
+        parts.push(<span key={`text-${keyIndex++}`}>{line.slice(lastEnd, match.start)}</span>)
+      }
+
+      const info = lookup?.get(match.pattern)
+      const tooltipLines = [`Type: ${match.type}`]
+      if (info) {
+        tooltipLines.unshift(`Original: ${info.original}`)
+        if (info.lines.length > 0) {
+          const lineStr = info.lines.length > 5
+            ? `${info.lines.slice(0, 5).join(', ')}... (${info.lines.length} total)`
+            : info.lines.join(', ')
+          tooltipLines.push(`Lines: ${lineStr}`)
+        }
+      }
+
+      parts.push(
+        <span
+          key={`hl-${keyIndex++}`}
+          className="bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded px-0.5 cursor-help"
+          title={tooltipLines.join('\n')}
+        >
+          {line.slice(match.start, match.end)}
+        </span>
+      )
+      lastEnd = match.end
     }
 
-    if (earliestMatch.index > 0) {
-      parts.push(<span key={`text-${keyIndex++}`}>{remaining.slice(0, earliestMatch.index)}</span>)
+    if (lastEnd < line.length) {
+      parts.push(<span key={`text-rest`}>{line.slice(lastEnd)}</span>)
     }
 
-    const info = lookup?.get(earliestMatch.pattern)
-    const tooltipLines = [`Type: ${earliestMatch.type}`]
-    if (info) {
-      tooltipLines.unshift(`Original: ${info.original}`)
-      if (info.lines.length > 0) {
-        const lineStr = info.lines.length > 5
-          ? `${info.lines.slice(0, 5).join(', ')}... (${info.lines.length} total)`
-          : info.lines.join(', ')
-        tooltipLines.push(`Lines: ${lineStr}`)
+    return parts.length > 0 ? parts : (line || ' ')
+  }
+
+  // With syntax highlighting - merge syntax colors with replacement backgrounds
+  const syntaxSegments = tokenizeWithPositions(line)
+  const parts: React.ReactNode[] = []
+  let keyIndex = 0
+
+  const getMatch = (pos: number) => matches.find(m => pos >= m.start && pos < m.end)
+
+  for (const seg of syntaxSegments) {
+    const matchAtStart = getMatch(seg.start)
+
+    if (matchAtStart && seg.start >= matchAtStart.start && seg.end <= matchAtStart.end) {
+      // Entire segment is within a replacement
+      const info = lookup?.get(matchAtStart.pattern)
+      const tooltipLines = [`Type: ${matchAtStart.type}`]
+      if (info) {
+        tooltipLines.unshift(`Original: ${info.original}`)
+        if (info.lines.length > 0) {
+          const lineStr = info.lines.length > 5
+            ? `${info.lines.slice(0, 5).join(', ')}... (${info.lines.length} total)`
+            : info.lines.join(', ')
+          tooltipLines.push(`Lines: ${lineStr}`)
+        }
+      }
+
+      const bgClass = 'bg-green-200 dark:bg-green-900/50 rounded px-0.5 cursor-help'
+      const combinedClass = [seg.className, bgClass].filter(Boolean).join(' ')
+      parts.push(
+        <span
+          key={keyIndex++}
+          className={combinedClass}
+          title={tooltipLines.join('\n')}
+        >
+          {seg.text}
+        </span>
+      )
+    } else if (!getMatch(seg.start) && !getMatch(seg.end - 1)) {
+      // Segment doesn't overlap with any replacement
+      parts.push(
+        seg.className
+          ? <span key={keyIndex++} className={seg.className}>{seg.text}</span>
+          : <span key={keyIndex++}>{seg.text}</span>
+      )
+    } else {
+      // Segment partially overlaps - split it
+      let pos = seg.start
+      while (pos < seg.end) {
+        const match = getMatch(pos)
+        if (match) {
+          const endPos = Math.min(seg.end, match.end)
+          const text = line.slice(pos, endPos)
+
+          const info = lookup?.get(match.pattern)
+          const tooltipLines = [`Type: ${match.type}`]
+          if (info) {
+            tooltipLines.unshift(`Original: ${info.original}`)
+            if (info.lines.length > 0) {
+              const lineStr = info.lines.length > 5
+                ? `${info.lines.slice(0, 5).join(', ')}... (${info.lines.length} total)`
+                : info.lines.join(', ')
+              tooltipLines.push(`Lines: ${lineStr}`)
+            }
+          }
+
+          const bgClass = 'bg-green-200 dark:bg-green-900/50 rounded px-0.5 cursor-help'
+          const combinedClass = [seg.className, bgClass].filter(Boolean).join(' ')
+          parts.push(
+            <span
+              key={keyIndex++}
+              className={combinedClass}
+              title={tooltipLines.join('\n')}
+            >
+              {text}
+            </span>
+          )
+          pos = endPos
+        } else {
+          // Find where next match starts or segment ends
+          let nextMatchStart = seg.end
+          for (const m of matches) {
+            if (m.start > pos && m.start < nextMatchStart) {
+              nextMatchStart = m.start
+            }
+          }
+          const text = line.slice(pos, nextMatchStart)
+          parts.push(
+            seg.className
+              ? <span key={keyIndex++} className={seg.className}>{text}</span>
+              : <span key={keyIndex++}>{text}</span>
+          )
+          pos = nextMatchStart
+        }
       }
     }
-
-    parts.push(
-      <span
-        key={`hl-${keyIndex++}`}
-        className="bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded px-0.5 cursor-help"
-        title={tooltipLines.join('\n')}
-      >
-        {remaining.slice(earliestMatch.index, earliestMatch.index + earliestMatch.length)}
-      </span>
-    )
-
-    remaining = remaining.slice(earliestMatch.index + earliestMatch.length)
   }
 
   return parts.length > 0 ? parts : (line || ' ')
@@ -196,6 +428,7 @@ interface VirtualizedListProps {
   lineNumBg?: string
   lineNumText?: string
   paneText?: string
+  syntaxHighlight?: boolean
 }
 
 function VirtualizedList({
@@ -204,7 +437,8 @@ function VirtualizedList({
   originalLineNumbers, replacementLookup,
   lineNumBg = 'bg-gray-100 dark:bg-gray-900',
   lineNumText = 'text-gray-500 dark:text-gray-500',
-  paneText = 'text-gray-900 dark:text-gray-100'
+  paneText = 'text-gray-900 dark:text-gray-100',
+  syntaxHighlight = false
 }: VirtualizedListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -272,11 +506,15 @@ function VirtualizedList({
               const lineNum = originalLineNumbers ? originalLineNumbers[virtualRow.index] : virtualRow.index
               let content: React.ReactNode
               if (type === 'analysis') {
-                content = highlightLine(line, lineOffsets[lineNum] ?? 0, replacements, 'original')
+                content = highlightLine(line, lineOffsets[lineNum] ?? 0, replacements, 'original', syntaxHighlight)
               } else if (type === 'output') {
-                content = showDiff && replacements.length > 0 ? highlightOutputLine(line, replacements, replacementLookup) : (line || ' ')
+                content = showDiff && replacements.length > 0
+                  ? highlightOutputLine(line, replacements, replacementLookup, syntaxHighlight)
+                  : highlightLine(line, 0, [], 'output', syntaxHighlight)
               } else {
-                content = showDiff && replacements.length > 0 ? highlightLine(line, lineOffsets[lineNum] ?? 0, replacements, 'original') : (line || ' ')
+                content = showDiff && replacements.length > 0
+                  ? highlightLine(line, lineOffsets[lineNum] ?? 0, replacements, 'original', syntaxHighlight)
+                  : highlightLine(line, 0, [], 'original', syntaxHighlight)
               }
               return (
                 <div
@@ -299,7 +537,7 @@ function VirtualizedList({
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, showChangedOnly: showChangedOnlyProp = false, onShowChangedOnlyChange }, ref) {
-  const { fileName, setFileName, replacements, analysisReplacements, terminalStyle } = useAppStore()
+  const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight } = useAppStore()
 
   // Terminal style classes
   const paneBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-white dark:bg-gray-800'
@@ -570,10 +808,14 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               onClick={() => handleLineClick(lineNum)}
             >
               {type === 'analysis'
-                ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original')
+                ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original', syntaxHighlight)
                 : type === 'output'
-                  ? (showDiff && reps.length > 0 ? highlightOutputLine(line, reps, replacementLookup) : (line || ' '))
-                  : (showDiff && reps.length > 0 ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original') : (line || ' '))
+                  ? (showDiff && reps.length > 0
+                      ? highlightOutputLine(line, reps, replacementLookup, syntaxHighlight)
+                      : highlightLine(line, 0, [], 'output', syntaxHighlight))
+                  : (showDiff && reps.length > 0
+                      ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original', syntaxHighlight)
+                      : highlightLine(line, 0, [], 'original', syntaxHighlight))
               }
             </div>
           )
@@ -663,6 +905,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 lineNumBg={lineNumBg}
                 lineNumText={lineNumText}
                 paneText={paneText}
+                syntaxHighlight={syntaxHighlight}
               />
             </div>
           ) : (
@@ -690,6 +933,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               lineNumBg={lineNumBg}
               lineNumText={lineNumText}
               paneText={paneText}
+              syntaxHighlight={syntaxHighlight}
             />
           </div>
         ) : (
@@ -792,6 +1036,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               lineNumBg={lineNumBg}
               lineNumText={lineNumText}
               paneText={paneText}
+              syntaxHighlight={syntaxHighlight}
             />
           </div>
         ) : (

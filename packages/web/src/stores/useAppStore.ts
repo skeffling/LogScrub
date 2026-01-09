@@ -84,6 +84,7 @@ interface AppState {
   showSuggestions: boolean
   analysisLogs: string[]
   terminalStyle: boolean
+  syntaxHighlight: boolean
 
   setInput: (input: string) => void
   setOutput: (output: string) => void
@@ -122,6 +123,7 @@ interface AppState {
   setPlainTextPatternStrategy: (id: string, strategy: ReplacementStrategy) => void
   setTimeShift: (config: Partial<TimeShiftConfig>) => void
   setTerminalStyle: (enabled: boolean) => void
+  setSyntaxHighlight: (enabled: boolean) => void
 }
 
 const DEFAULT_RULES: Record<string, Rule> = {
@@ -218,6 +220,7 @@ function saveCustomRulesToStorage(rules: CustomRule[]) {
 
 const PLAIN_TEXT_STORAGE_KEY = 'logscrub_plain_text'
 const TERMINAL_STYLE_STORAGE_KEY = 'logscrub_terminal_style'
+const SYNTAX_HIGHLIGHT_STORAGE_KEY = 'logscrub_syntax_highlight'
 
 function loadPlainTextPatternsFromStorage(): PlainTextPattern[] {
   try {
@@ -243,6 +246,19 @@ function loadTerminalStyleFromStorage(): boolean {
 
 function saveTerminalStyleToStorage(enabled: boolean) {
   localStorage.setItem(TERMINAL_STYLE_STORAGE_KEY, String(enabled))
+}
+
+function loadSyntaxHighlightFromStorage(): boolean {
+  try {
+    const stored = localStorage.getItem(SYNTAX_HIGHLIGHT_STORAGE_KEY)
+    return stored === 'true'
+  } catch {
+    return false
+  }
+}
+
+function saveSyntaxHighlightToStorage(enabled: boolean) {
+  localStorage.setItem(SYNTAX_HIGHLIGHT_STORAGE_KEY, String(enabled))
 }
 
 let worker: Worker | null = null
@@ -294,6 +310,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   showSuggestions: false,
   analysisLogs: [],
   terminalStyle: loadTerminalStyleFromStorage(),
+  syntaxHighlight: loadSyntaxHighlightFromStorage(),
 
   setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [] }),
   setOutput: (output) => set({ output }),
@@ -414,6 +431,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTerminalStyle: (enabled) => {
     saveTerminalStyleToStorage(enabled)
     set({ terminalStyle: enabled })
+  },
+
+  setSyntaxHighlight: (enabled) => {
+    saveSyntaxHighlightToStorage(enabled)
+    set({ syntaxHighlight: enabled })
   },
 
   savePreset: (name) => {

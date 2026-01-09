@@ -108,11 +108,11 @@ function saveUiPreference<T>(key: string, value: T): void {
 }
 
 function App() {
-  const { 
+  const {
     input, setInput, output, setOutput, isProcessing, processText, setFileName, fileName,
     processingProgress, cancelProcessing, canCancel,
     analyzeText, isAnalyzing, analysisReplacements, analysisCompleted, clearAnalysis, analysisLogs,
-    replacements
+    replacements, syntaxHighlight, setSyntaxHighlight
   } = useAppStore()
   const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
   const [fullscreenView, setFullscreenView] = useState(false)
@@ -597,6 +597,20 @@ function App() {
                 >
                   <span className={`w-2 h-2 rounded-full ${!input.trim() ? 'bg-gray-300 dark:bg-gray-600' : showDiffHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
                   Highlight
+                </button>
+                <button
+                  onClick={() => input.trim() && setSyntaxHighlight(!syntaxHighlight)}
+                  className={`text-sm flex items-center gap-1 hidden md:flex ${
+                    !input.trim()
+                      ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                      : syntaxHighlight
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500 dark:text-gray-500'
+                  }`}
+                  title={!input.trim() ? 'Load a log file first' : 'Toggle syntax highlighting (JSON, XML, SQL)'}
+                >
+                  <span className={`w-2 h-2 rounded-full ${!input.trim() ? 'bg-gray-300 dark:bg-gray-600' : syntaxHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                  Syntax
                 </button>
                 <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
                 {showGoToLine ? (

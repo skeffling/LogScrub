@@ -44,6 +44,8 @@ export interface RulePreset {
   rules: Record<string, Rule>
   customRules: CustomRule[]
   consistencyMode: boolean
+  categoryOrder?: string[]
+  ruleOrder?: Record<string, string[]>
 }
 
 export type DetectionStats = Record<string, number>
@@ -569,6 +571,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     const customRules = preset.customRules || []
     saveRulesToStorage(mergedRules)
     saveCustomRulesToStorage(customRules)
+
+    // Save ordering if present in preset
+    if (preset.categoryOrder) {
+      localStorage.setItem('logscrub_category_order', JSON.stringify(preset.categoryOrder))
+    }
+    if (preset.ruleOrder) {
+      localStorage.setItem('logscrub_rule_order', JSON.stringify(preset.ruleOrder))
+    }
+
     set({ rules: mergedRules, customRules, consistencyMode: preset.consistencyMode })
   },
 
@@ -597,7 +608,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   exportCurrentRules: () => {
     const { rules, customRules, consistencyMode } = get()
-    return { name: 'Exported Rules', rules: { ...rules }, customRules: [...customRules], consistencyMode }
+    // Include ordering from localStorage
+    let categoryOrder: string[] | undefined
+    let ruleOrder: Record<string, string[]> | undefined
+    try {
+      const catOrderStr = localStorage.getItem('logscrub_category_order')
+      if (catOrderStr) categoryOrder = JSON.parse(catOrderStr)
+      const ruleOrderStr = localStorage.getItem('logscrub_rule_order')
+      if (ruleOrderStr) ruleOrder = JSON.parse(ruleOrderStr)
+    } catch {}
+    return { name: 'Exported Rules', rules: { ...rules }, customRules: [...customRules], consistencyMode, categoryOrder, ruleOrder }
   },
 
   resetToDefaults: () => {

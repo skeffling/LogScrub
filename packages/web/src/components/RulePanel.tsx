@@ -74,13 +74,17 @@ const CATEGORIES: Record<string, string[]> = {
 
 const DEFAULT_CATEGORY_ORDER = Object.keys(CATEGORIES)
 const CATEGORY_ORDER_STORAGE_KEY = 'logscrub_category_order'
+const RULE_ORDER_STORAGE_KEY = 'logscrub_rule_order'
+
+interface RuleOrderMap {
+  [category: string]: string[]
+}
 
 function loadCategoryOrder(): string[] {
   try {
     const stored = localStorage.getItem(CATEGORY_ORDER_STORAGE_KEY)
     if (stored) {
       const order = JSON.parse(stored) as string[]
-      // Merge with current categories - add any new ones at the end
       const allCategories = Object.keys(CATEGORIES)
       const validOrder = order.filter(c => allCategories.includes(c))
       const newCategories = allCategories.filter(c => !validOrder.includes(c))
@@ -92,6 +96,31 @@ function loadCategoryOrder(): string[] {
 
 function saveCategoryOrder(order: string[]) {
   localStorage.setItem(CATEGORY_ORDER_STORAGE_KEY, JSON.stringify(order))
+}
+
+function loadRuleOrder(): RuleOrderMap {
+  try {
+    const stored = localStorage.getItem(RULE_ORDER_STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored) as RuleOrderMap
+    }
+  } catch {}
+  return {}
+}
+
+function saveRuleOrder(order: RuleOrderMap) {
+  localStorage.setItem(RULE_ORDER_STORAGE_KEY, JSON.stringify(order))
+}
+
+function getRulesInOrder(category: string, ruleOrderMap: RuleOrderMap): string[] {
+  const defaultOrder = CATEGORIES[category] || []
+  const customOrder = ruleOrderMap[category]
+  if (!customOrder) return defaultOrder
+
+  // Merge: use custom order for known rules, append any new rules
+  const validOrder = customOrder.filter(r => defaultOrder.includes(r))
+  const newRules = defaultOrder.filter(r => !validOrder.includes(r))
+  return [...validOrder, ...newRules]
 }
 
 function fuzzyMatch(query: string, target: string): boolean {
@@ -180,7 +209,7 @@ export function RulePanel() {
   const {
     rules, toggleRule, setRuleStrategy, setRuleTemplate, setAllStrategy,
     consistencyMode, setConsistencyMode,
-    savedPresets, savePreset, loadPreset, deletePreset, importPreset, exportCurrentRules, resetToDefaults,
+    savedPresets, loadPreset, deletePreset, importPreset, exportCurrentRules, resetToDefaults,
     customRules, addCustomRule, updateCustomRule, deleteCustomRule, toggleCustomRule, setCustomRuleStrategy,
     plainTextPatterns, addPlainTextPattern, updatePlainTextPattern, deletePlainTextPattern, togglePlainTextPattern, setPlainTextPatternStrategy,
     stats, analysisStats,
@@ -190,8 +219,9 @@ export function RulePanel() {
   
   const [showStats, setShowStats] = useState(false)
   const [categoryOrder, setCategoryOrder] = useState<string[]>(loadCategoryOrder)
+  const [ruleOrderMap, setRuleOrderMap] = useState<RuleOrderMap>(loadRuleOrder)
   const [draggedCategory, setDraggedCategory] = useState<string | null>(null)
-  const [dragOverCategory, setDragOverCategory] = useState<string | null>(null)
+  const [draggedRule, setDraggedRule] = useState<{ category: string; ruleId: string } | null>(null)
 
   const displayStats = Object.keys(stats).length > 0 ? stats : analysisStats
   const totalDetections = Object.values(displayStats).reduce((sum, count) => sum + count, 0)
@@ -263,8 +293,10 @@ export function RulePanel() {
 
     // Use category order for iteration
     for (const category of categoryOrder) {
-      const ruleIds = CATEGORIES[category]
-      if (!ruleIds) continue
+      if (!CATEGORIES[category]) continue
+
+      // Get rules in custom order
+      const ruleIds = getRulesInOrder(category, ruleOrderMap)
 
       if (!searchQuery) {
         result[category] = ruleIds
@@ -280,7 +312,7 @@ export function RulePanel() {
       }
     }
     return result
-  }, [searchQuery, rules, categoryOrder])
+  }, [searchQuery, rules, categoryOrder, ruleOrderMap])
 
   const filteredCustomRules = useMemo(() => {
     if (!searchQuery) return customRules
@@ -308,51 +340,108 @@ export function RulePanel() {
     })
   }
 
-  const handleDragStart = (e: React.DragEvent, category: string) => {
+  // Category drag handlers - live reordering
+  const handleCategoryDragStart = (e: React.DragEvent, category: string) => {
     setDraggedCategory(category)
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', category)
+    // Add a slight delay to allow the drag image to be captured
+    requestAnimationFrame(() => {
+      const el = e.currentTarget as HTMLElement
+      el.style.opacity = '0.5'
+    })
   }
 
-  const handleDragOver = (e: React.DragEvent, category: string) => {
+  const handleCategoryDragOver = (e: React.DragEvent, category: string) => {
     e.preventDefault()
     if (draggedCategory && draggedCategory !== category) {
-      setDragOverCategory(category)
-    }
-  }
-
-  const handleDragLeave = () => {
-    setDragOverCategory(null)
-  }
-
-  const handleDrop = (e: React.DragEvent, targetCategory: string) => {
-    e.preventDefault()
-    if (draggedCategory && draggedCategory !== targetCategory) {
+      // Live reorder during drag
       const newOrder = [...categoryOrder]
       const draggedIdx = newOrder.indexOf(draggedCategory)
-      const targetIdx = newOrder.indexOf(targetCategory)
+      const targetIdx = newOrder.indexOf(category)
 
-      if (draggedIdx !== -1 && targetIdx !== -1) {
+      if (draggedIdx !== -1 && targetIdx !== -1 && draggedIdx !== targetIdx) {
         newOrder.splice(draggedIdx, 1)
         newOrder.splice(targetIdx, 0, draggedCategory)
         setCategoryOrder(newOrder)
-        saveCategoryOrder(newOrder)
       }
     }
-    setDraggedCategory(null)
-    setDragOverCategory(null)
   }
 
-  const handleDragEnd = () => {
+  const handleCategoryDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    // Save the final order
+    saveCategoryOrder(categoryOrder)
     setDraggedCategory(null)
-    setDragOverCategory(null)
+  }
+
+  const handleCategoryDragEnd = (e: React.DragEvent) => {
+    const el = e.currentTarget as HTMLElement
+    el.style.opacity = '1'
+    saveCategoryOrder(categoryOrder)
+    setDraggedCategory(null)
+  }
+
+  // Rule drag handlers - reorder within category
+  const handleRuleDragStart = (e: React.DragEvent, category: string, ruleId: string) => {
+    e.stopPropagation()
+    setDraggedRule({ category, ruleId })
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', ruleId)
+  }
+
+  const handleRuleDragOver = (e: React.DragEvent, category: string, ruleId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (draggedRule && draggedRule.category === category && draggedRule.ruleId !== ruleId) {
+      // Live reorder during drag
+      const currentOrder = getRulesInOrder(category, ruleOrderMap)
+      const draggedIdx = currentOrder.indexOf(draggedRule.ruleId)
+      const targetIdx = currentOrder.indexOf(ruleId)
+
+      if (draggedIdx !== -1 && targetIdx !== -1 && draggedIdx !== targetIdx) {
+        const newOrder = [...currentOrder]
+        newOrder.splice(draggedIdx, 1)
+        newOrder.splice(targetIdx, 0, draggedRule.ruleId)
+        setRuleOrderMap(prev => ({ ...prev, [category]: newOrder }))
+      }
+    }
+  }
+
+  const handleRuleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    saveRuleOrder(ruleOrderMap)
+    setDraggedRule(null)
+  }
+
+  const handleRuleDragEnd = () => {
+    saveRuleOrder(ruleOrderMap)
+    setDraggedRule(null)
   }
 
   const handleSavePreset = () => {
     const name = newPresetName.trim()
     if (!name) return
-    savePreset(name)
+    // Save current ordering to the preset
+    const preset = exportCurrentRules()
+    preset.name = name
+    preset.categoryOrder = categoryOrder
+    preset.ruleOrder = ruleOrderMap
+    // Use importPreset to save with ordering
+    importPreset(preset)
     setNewPresetName('')
+  }
+
+  const handleLoadUserPreset = (preset: RulePreset) => {
+    loadPreset(preset)
+    // Reload ordering from localStorage (which loadPreset just updated)
+    if (preset.categoryOrder) {
+      setCategoryOrder(preset.categoryOrder)
+    }
+    if (preset.ruleOrder) {
+      setRuleOrderMap(preset.ruleOrder)
+    }
   }
 
   const handleLoadBuiltinPreset = (preset: BuiltinPreset) => {
@@ -736,7 +825,7 @@ export function RulePanel() {
                 {savedPresets.map((preset) => (
                   <div key={preset.name} className="flex items-center justify-between gap-1 text-xs">
                     <button
-                      onClick={() => loadPreset(preset)}
+                      onClick={() => handleLoadUserPreset(preset)}
                       className="flex-1 text-left px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 truncate"
                     >
                       {preset.name}
@@ -910,27 +999,25 @@ export function RulePanel() {
           const enabledCount = categoryRules.filter(id => rules[id]?.enabled).length
           const isExpanded = searchQuery ? true : expandedCategories[category]
           const isDragging = draggedCategory === category
-          const isDragOver = dragOverCategory === category
 
           return (
             <div
               key={category}
-              className={`border-b dark:border-gray-700 pb-2 last:border-b-0 transition-all ${
-                isDragging ? 'opacity-50' : ''
-              } ${isDragOver ? 'border-t-2 border-t-blue-500 pt-1' : ''}`}
-              onDragOver={(e) => handleDragOver(e, category)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, category)}
+              className={`border-b dark:border-gray-700 pb-2 last:border-b-0 transition-all duration-150 ${
+                isDragging ? 'opacity-40 scale-[0.98]' : ''
+              }`}
+              onDragOver={(e) => handleCategoryDragOver(e, category)}
+              onDrop={handleCategoryDrop}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1">
                   {!searchQuery && (
                     <span
                       draggable
-                      onDragStart={(e) => handleDragStart(e, category)}
-                      onDragEnd={handleDragEnd}
+                      onDragStart={(e) => handleCategoryDragStart(e, category)}
+                      onDragEnd={handleCategoryDragEnd}
                       className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 select-none px-0.5"
-                      title="Drag to reorder"
+                      title="Drag to reorder category"
                     >
                       ⋮⋮
                     </span>
@@ -968,28 +1055,50 @@ export function RulePanel() {
               </div>
 
               {isExpanded && (
-                <div className="space-y-2 ml-4">
+                <div className="space-y-1 ml-4">
                   {categoryRules.map(id => {
                     const rule = rules[id]
                     if (!rule) return null
+                    const isRuleDragging = draggedRule?.ruleId === id
 
                     return (
-                      <RuleRow
+                      <div
                         key={id}
-                        label={rule.label}
-                        enabled={rule.enabled}
-                        strategy={rule.strategy}
-                        matchCount={displayStats[id]}
-                        onToggle={() => toggleRule(id)}
-                        onStrategyChange={(newStrategy) => {
-                          setRuleStrategy(id, newStrategy)
-                          if (newStrategy === 'template' && !rule.template) {
-                            setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })
-                          }
-                        }}
-                        onViewPattern={() => setViewingPattern({ id, label: rule.label, pattern: BUILTIN_PATTERNS[id] || '' })}
-                        onEditTemplate={() => setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })}
-                      />
+                        className={`flex items-center gap-1 transition-all duration-150 ${
+                          isRuleDragging ? 'opacity-40 scale-[0.98]' : ''
+                        }`}
+                        onDragOver={(e) => handleRuleDragOver(e, category, id)}
+                        onDrop={handleRuleDrop}
+                      >
+                        {!searchQuery && (
+                          <span
+                            draggable
+                            onDragStart={(e) => handleRuleDragStart(e, category, id)}
+                            onDragEnd={handleRuleDragEnd}
+                            className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 select-none text-xs"
+                            title="Drag to reorder"
+                          >
+                            ⋮
+                          </span>
+                        )}
+                        <div className="flex-1">
+                          <RuleRow
+                            label={rule.label}
+                            enabled={rule.enabled}
+                            strategy={rule.strategy}
+                            matchCount={displayStats[id]}
+                            onToggle={() => toggleRule(id)}
+                            onStrategyChange={(newStrategy) => {
+                              setRuleStrategy(id, newStrategy)
+                              if (newStrategy === 'template' && !rule.template) {
+                                setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })
+                              }
+                            }}
+                            onViewPattern={() => setViewingPattern({ id, label: rule.label, pattern: BUILTIN_PATTERNS[id] || '' })}
+                            onEditTemplate={() => setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })}
+                          />
+                        </div>
+                      </div>
                     )
                   })}
                 </div>

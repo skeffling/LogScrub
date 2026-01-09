@@ -537,8 +537,25 @@ function VirtualizedList({
   )
 }
 
+const DONATION_DISMISSED_KEY = 'logscrub_donation_dismissed'
+
+function shouldShowDonationModal(): boolean {
+  try {
+    return localStorage.getItem(DONATION_DISMISSED_KEY) !== 'true'
+  } catch {
+    return true
+  }
+}
+
+function dismissDonationForever() {
+  try {
+    localStorage.setItem(DONATION_DISMISSED_KEY, 'true')
+  } catch {}
+}
+
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, showChangedOnly: showChangedOnlyProp = false, onShowChangedOnlyChange, onClearAll }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight } = useAppStore()
+  const [showDonationModal, setShowDonationModal] = useState(false)
 
   // Terminal style classes
   const paneBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-white dark:bg-gray-800'
@@ -640,6 +657,12 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     return { filteredInputLines: inLines, filteredOutputLines: outLines, filteredLineNumbers: lineNums }
   }, [inputLines, outputLines, changedLines, showChangedOnly])
 
+  const triggerDonationModal = useCallback(() => {
+    if (shouldShowDonationModal()) {
+      setTimeout(() => setShowDonationModal(true), 500)
+    }
+  }, [])
+
   const handleDownload = () => {
     if (!output) return
     const blob = new Blob([output], { type: 'text/plain' })
@@ -651,11 +674,13 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+    triggerDonationModal()
   }
 
   const handleCopy = async () => {
     if (!output) return
     await navigator.clipboard.writeText(output)
+    triggerDonationModal()
   }
 
   const processCompressedFile = async (file: File): Promise<{ content: string; name: string }> => {
@@ -711,6 +736,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+    triggerDonationModal()
   }
 
   const handleDownloadGzip = async () => {
@@ -727,6 +753,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+    triggerDonationModal()
   }
 
   const handleScroll = useCallback((source: 'input' | 'output') => {
@@ -1075,6 +1102,47 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           </div>
         )}
       </div>
+
+      {showDonationModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowDonationModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <div className="text-center">
+              <div className="text-4xl mb-4">☕</div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Enjoying LogScrub?
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                We want to keep this tool free for everyone. If you find it useful, please consider supporting us with a coffee!
+              </p>
+              <a
+                href="https://ko-fi.com/logscrub"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block px-6 py-3 bg-[#FF5E5B] hover:bg-[#e54e4b] text-white font-medium rounded-lg mb-4 transition-colors"
+              >
+                Buy us a coffee on Ko-fi
+              </a>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setShowDonationModal(false)}
+                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    dismissDonationForever()
+                    setShowDonationModal(false)
+                  }}
+                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
+                >
+                  Don't show this again
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 })

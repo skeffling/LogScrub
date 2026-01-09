@@ -3,7 +3,6 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { Header } from './components/Header'
 import { Editor } from './components/Editor'
 import { RulePanel } from './components/RulePanel'
-import { TimeShift } from './components/TimeShift'
 import { AboutModal } from './components/AboutModal'
 import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
@@ -112,7 +111,8 @@ function App() {
     input, setInput, output, setOutput, isProcessing, processText, setFileName, fileName,
     processingProgress, cancelProcessing, canCancel,
     analyzeText, isAnalyzing, analysisReplacements, analysisCompleted, clearAnalysis, analysisLogs,
-    replacements, syntaxHighlight, setSyntaxHighlight
+    replacements, syntaxHighlight, setSyntaxHighlight,
+    timeShift, setTimeShift
   } = useAppStore()
   const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
   const [fullscreenView, setFullscreenView] = useState(false)
@@ -124,6 +124,7 @@ function App() {
   const [syncScroll, setSyncScroll] = useState(() => loadUiPreference('syncScroll', true))
   const [showStats, setShowStats] = useState(false)
   const [showAnalysisLogs, setShowAnalysisLogs] = useState(false)
+  const [showTimeShift, setShowTimeShift] = useState(false)
   const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
   const [fullscreenLoading, setFullscreenLoading] = useState(false)
   const [fullscreenGoToLine, setFullscreenGoToLine] = useState(false)
@@ -264,6 +265,20 @@ function App() {
 
   const inputLines = useMemo(() => input.split('\n'), [input])
   const fullscreenLines = useMemo(() => output.split('\n'), [output])
+
+  const hasTimestamps = useMemo(() => {
+    if (!input || input.length < 10) return false
+    const sample = input.slice(0, 5000)
+    const patterns = [
+      /\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}/,
+      /\d{4}-\d{2}-\d{2}/,
+      /\[[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\d{4}\]/,
+      /\[\d{1,2}\/[A-Za-z]{3}\/\d{4}:\d{2}:\d{2}:\d{2}/,
+      /\d{1,2}\/[A-Za-z]{3}\/\d{4}:\d{2}:\d{2}:\d{2}/,
+      /[A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}/,
+    ]
+    return patterns.some(pattern => pattern.test(sample))
+  }, [input])
   
   const lineOffsets = useMemo(() => {
     const offsets: number[] = []
@@ -558,11 +573,8 @@ function App() {
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 flex-1 min-h-0 lg:overflow-hidden">
           {showRules && (
-            <aside className="lg:col-span-3 xl:col-span-3 2xl:col-span-2 min-h-0 lg:overflow-hidden flex flex-col gap-4">
+            <aside className="lg:col-span-3 xl:col-span-3 2xl:col-span-2 min-h-0 lg:overflow-hidden flex flex-col">
               <RulePanel />
-              <div className="flex-shrink-0">
-                <TimeShift />
-              </div>
             </aside>
           )}
           
@@ -694,15 +706,6 @@ function App() {
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                {input && (
-                  <button
-                    onClick={handleClear}
-                    className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                    title="Clear all input and output text"
-                  >
-                    Clear
-                  </button>
-                )}
                 {analysisReplacements.length > 0 && !output && (
                   <button
                     onClick={clearAnalysis}
@@ -734,6 +737,156 @@ function App() {
                     )}
                     {isAnalyzing ? 'Analyzing...' : 'Analyze'}
                   </button>
+                )}
+                {hasTimestamps && !output && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowTimeShift(!showTimeShift)}
+                      className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm ${
+                        timeShift.enabled
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                      title="Shift timestamps to anonymize temporal data"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      TimeShift
+                      {timeShift.enabled && <span className="text-xs">On</span>}
+                    </button>
+                    {showTimeShift && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowTimeShift(false)} />
+                        <div className="absolute right-0 top-full mt-2 p-4 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg shadow-lg z-50 min-w-[280px]">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">Time Shift</span>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={timeShift.enabled}
+                                onChange={(e) => setTimeShift({ enabled: e.target.checked })}
+                                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                              />
+                              <span className="text-xs text-gray-500 dark:text-gray-400">Enable</span>
+                            </label>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Mode</label>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setTimeShift({ mode: 'offset' })}
+                                  className={`flex-1 px-2 py-1.5 text-xs rounded border ${
+                                    timeShift.mode === 'offset'
+                                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+                                  }`}
+                                >
+                                  Offset
+                                </button>
+                                <button
+                                  onClick={() => setTimeShift({ mode: 'start' })}
+                                  className={`flex-1 px-2 py-1.5 text-xs rounded border ${
+                                    timeShift.mode === 'start'
+                                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+                                  }`}
+                                >
+                                  Start From
+                                </button>
+                              </div>
+                            </div>
+
+                            {timeShift.mode === 'offset' ? (
+                              <div>
+                                <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Shift by (hours:minutes)</label>
+                                <div className="flex gap-2 items-center">
+                                  <input
+                                    type="number"
+                                    value={timeShift.offsetHours}
+                                    onChange={(e) => setTimeShift({ offsetHours: parseInt(e.target.value) || 0 })}
+                                    className="w-16 px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                                    placeholder="0"
+                                  />
+                                  <span className="text-gray-500">:</span>
+                                  <input
+                                    type="number"
+                                    value={timeShift.offsetMinutes}
+                                    onChange={(e) => setTimeShift({ offsetMinutes: parseInt(e.target.value) || 0 })}
+                                    min="-59"
+                                    max="59"
+                                    className="w-16 px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                                    placeholder="0"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <div>
+                                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Start Date</label>
+                                  <input
+                                    type="date"
+                                    value={timeShift.startDate}
+                                    onChange={(e) => setTimeShift({ startDate: e.target.value })}
+                                    className="w-full px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Start Time</label>
+                                  <input
+                                    type="time"
+                                    value={timeShift.startTime}
+                                    onChange={(e) => setTimeShift({ startTime: e.target.value })}
+                                    className="w-full px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            <div>
+                              <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Scope</label>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setTimeShift({ lineOnly: true })}
+                                  className={`flex-1 px-2 py-1.5 text-xs rounded border ${
+                                    timeShift.lineOnly
+                                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+                                  }`}
+                                  title="Only shift timestamps at line start"
+                                >
+                                  Line Start
+                                </button>
+                                <button
+                                  onClick={() => setTimeShift({ lineOnly: false })}
+                                  className={`flex-1 px-2 py-1.5 text-xs rounded border ${
+                                    !timeShift.lineOnly
+                                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+                                  }`}
+                                  title="Shift all timestamps"
+                                >
+                                  All
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {timeShift.enabled && (
+                            <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-300">
+                              {timeShift.mode === 'offset' ? (
+                                <>Shifting by {timeShift.offsetHours >= 0 ? '+' : ''}{timeShift.offsetHours}h {timeShift.offsetMinutes >= 0 ? '+' : ''}{timeShift.offsetMinutes}m</>
+                              ) : (
+                                <>First timestamp → {timeShift.startDate || 'not set'} {timeShift.startTime || ''}</>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 )}
                 {isProcessing && canCancel ? (
                   <button
@@ -819,6 +972,7 @@ function App() {
                 syncScroll={syncScroll}
                 showChangedOnly={showChangedOnly}
                 onShowChangedOnlyChange={setShowChangedOnly}
+                onClearAll={handleClear}
               />
             </div>
           </div>

@@ -86,6 +86,7 @@ interface AppState {
   terminalStyle: boolean
   syntaxHighlight: boolean
   labelFormat: LabelFormat
+  globalTemplate: string
 
   setInput: (input: string) => void
   setOutput: (output: string) => void
@@ -126,6 +127,7 @@ interface AppState {
   setTerminalStyle: (enabled: boolean) => void
   setSyntaxHighlight: (enabled: boolean) => void
   setLabelFormat: (format: LabelFormat) => void
+  setGlobalTemplate: (template: string) => void
 }
 
 const DEFAULT_RULES: Record<string, Rule> = {
@@ -290,6 +292,22 @@ function saveLabelFormatToStorage(format: LabelFormat) {
   localStorage.setItem(LABEL_FORMAT_STORAGE_KEY, JSON.stringify(format))
 }
 
+const GLOBAL_TEMPLATE_STORAGE_KEY = 'logscrub_global_template'
+
+function loadGlobalTemplateFromStorage(): string {
+  try {
+    const stored = localStorage.getItem(GLOBAL_TEMPLATE_STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch {}
+  return '[{TYPE}-{n}]'
+}
+
+function saveGlobalTemplateToStorage(template: string) {
+  localStorage.setItem(GLOBAL_TEMPLATE_STORAGE_KEY, JSON.stringify(template))
+}
+
 let worker: Worker | null = null
 
 function getWorker(): Worker {
@@ -341,6 +359,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   terminalStyle: loadTerminalStyleFromStorage(),
   syntaxHighlight: loadSyntaxHighlightFromStorage(),
   labelFormat: loadLabelFormatFromStorage(),
+  globalTemplate: loadGlobalTemplateFromStorage(),
 
   setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [] }),
   setOutput: (output) => set({ output }),
@@ -473,6 +492,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ labelFormat: format })
   },
 
+  setGlobalTemplate: (template) => {
+    saveGlobalTemplateToStorage(template)
+    set({ globalTemplate: template })
+  },
+
   savePreset: (name) => {
     const { rules, customRules, consistencyMode, savedPresets } = get()
     const newPreset: RulePreset = { name, rules: { ...rules }, customRules: [...customRules], consistencyMode }
@@ -545,7 +569,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isProcessing: true, processingProgress: 0, canCancel: true, analysisReplacements: [], analysisStats: {}, analysisCompleted: false })
 
     try {
-      const { rules, customRules, plainTextPatterns, consistencyMode, timeShift, labelFormat } = get()
+      const { rules, customRules, plainTextPatterns, consistencyMode, timeShift, labelFormat, globalTemplate } = get()
       const enabledRules = Object.entries(rules)
         .filter(([, rule]) => rule.enabled)
         .map(([id, rule]) => ({ id, strategy: rule.strategy, template: rule.template }))
@@ -583,7 +607,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             plainTextPatterns: enabledPlainTextPatterns,
             consistencyMode,
             timeShift: timeShift.enabled ? timeShift : null,
-            labelFormat
+            labelFormat,
+            globalTemplate
           }
         })
       })
@@ -604,7 +629,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [] })
 
     try {
-      const { rules, customRules, plainTextPatterns, consistencyMode, labelFormat } = get()
+      const { rules, customRules, plainTextPatterns, consistencyMode, labelFormat, globalTemplate } = get()
 
       const allRules = Object.entries(rules)
         .map(([id, rule]) => ({ id, strategy: rule.strategy, template: rule.template }))
@@ -636,7 +661,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         w.addEventListener('message', handler)
         w.postMessage({
           type: 'process',
-          payload: { text, rules: allRules, customRules: allCustomRules, plainTextPatterns: allPlainTextPatterns, consistencyMode, labelFormat }
+          payload: { text, rules: allRules, customRules: allCustomRules, plainTextPatterns: allPlainTextPatterns, consistencyMode, labelFormat, globalTemplate }
         })
       })
 

@@ -32,6 +32,7 @@ interface ProcessRequest {
   consistencyMode: boolean
   timeShift?: TimeShiftConfig | null
   labelFormat?: LabelFormat
+  globalTemplate?: string
 }
 
 interface Match {
@@ -414,16 +415,21 @@ self.onmessage = async (e: MessageEvent) => {
 
       self.postMessage({ type: 'progress', payload: 30 })
 
-      const { text, rules, customRules = [], plainTextPatterns = [], consistencyMode, timeShift, labelFormat } = e.data.payload as ProcessRequest
+      const { text, rules, customRules = [], plainTextPatterns = [], consistencyMode, timeShift, labelFormat, globalTemplate } = e.data.payload as ProcessRequest
       const labelPrefix = labelFormat?.prefix ?? '['
       const labelSuffix = labelFormat?.suffix ?? ']'
+      const defaultTemplate = globalTemplate ?? '[{TYPE}-{n}]'
 
       log(`Processing ${text.length.toLocaleString()} characters with ${rules.length} rules`)
 
       const TIMESTAMP_RULES = ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'timestamp_unix']
-      const filteredRules = timeShift?.enabled
+      const filteredRules = (timeShift?.enabled
         ? rules.filter(r => !TIMESTAMP_RULES.includes(r.id))
         : rules
+      ).map(r => ({
+        ...r,
+        template: r.strategy === 'template' && !r.template ? defaultTemplate : r.template
+      }))
 
       log(`Running ${filteredRules.length} pattern rules...`)
       const sanitizeStart = performance.now()
@@ -453,7 +459,11 @@ self.onmessage = async (e: MessageEvent) => {
 
       if (customRules.length > 0) {
         log(`Processing ${customRules.length} custom regex rules...`)
-        const customResult = processCustomRules(parsed.output, customRules, consistencyMode, labelPrefix, labelSuffix)
+        const rulesWithGlobalTemplate = customRules.map(r => ({
+          ...r,
+          template: r.strategy === 'template' && !r.template ? defaultTemplate : r.template
+        }))
+        const customResult = processCustomRules(parsed.output, rulesWithGlobalTemplate, consistencyMode, labelPrefix, labelSuffix)
 
         const adjustedCustomReplacements = customResult.replacements.map(r => ({
           ...r,

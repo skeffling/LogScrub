@@ -21,6 +21,7 @@ interface EditorProps {
   syncScroll?: boolean
   showChangedOnly?: boolean
   onShowChangedOnlyChange?: (value: boolean) => void
+  onClearAll?: () => void
 }
 
 export interface EditorHandle {
@@ -536,7 +537,7 @@ function VirtualizedList({
   )
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, showChangedOnly: showChangedOnlyProp = false, onShowChangedOnlyChange }, ref) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, showChangedOnly: showChangedOnlyProp = false, onShowChangedOnlyChange, onClearAll }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight } = useAppStore()
 
   // Terminal style classes
@@ -881,14 +882,27 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
         </div>
         
         {!output && analysisReplacements.length === 0 ? (
-          <textarea
-            value={input}
-            onChange={(e) => onInputChange(e.target.value)}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            placeholder="Paste your logs here, upload, or drag & drop a file..."
-            className={`flex-1 min-h-0 p-4 font-mono text-sm border dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${paneBg} ${paneText} ${terminalStyle ? 'placeholder-[#858585]' : 'placeholder-gray-400 dark:placeholder-gray-500'}`}
-          />
+          <div className="flex-1 min-h-0 relative">
+            <textarea
+              value={input}
+              onChange={(e) => onInputChange(e.target.value)}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              className={`w-full h-full p-4 font-mono text-sm border dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${paneBg} ${paneText}`}
+            />
+            {!input && (
+              <div className={`absolute inset-0 p-4 pointer-events-none ${terminalStyle ? 'text-[#858585]' : 'text-gray-400 dark:text-gray-500'}`}>
+                <div className="font-mono text-sm space-y-2">
+                  <p className="font-semibold">Getting Started:</p>
+                  <p>1. Paste logs here, or use Upload/drag & drop</p>
+                  <p>2. Click <span className="text-purple-500 dark:text-purple-400">Analyze</span> to detect PII and get rule suggestions</p>
+                  <p>3. Enable/disable rules in Detection Rules panel</p>
+                  <p>4. Click <span className="text-blue-500 dark:text-blue-400">Scrub</span> to apply replacements</p>
+                  <p>5. Use diff view to review changes, then Copy or Download</p>
+                </div>
+              </div>
+            )}
+          </div>
         ) : !output && analysisReplacements.length > 0 ? (
           useVirtualScrolling ? (
             <div className={`flex-1 min-h-0 border-2 border-purple-400 dark:border-purple-600 rounded-lg ${paneBg}`}>
@@ -957,8 +971,18 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               </span>
             )}
           </label>
+          <div className="flex gap-2">
+            {onClearAll && (input || output) && (
+              <button
+                onClick={onClearAll}
+                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                title="Clear all input and output text"
+              >
+                Clear All
+              </button>
+            )}
           {output && (
-            <div className="flex gap-2">
+            <>
               <button
                 onClick={handleCopy}
                 className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
@@ -1010,8 +1034,9 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 </svg>
                 .gz
               </button>
-            </div>
+            </>
           )}
+          </div>
         </div>
         
         {!output ? (

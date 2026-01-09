@@ -42,13 +42,25 @@ export function AboutModal({ onClose }: AboutModalProps) {
             <li>Paste text or upload a log file</li>
             <li>Select which PII types to detect</li>
             <li>Choose replacement strategy per type (label, fake data, or redact)</li>
-<li>Click "Scrub" to process</li>
-  <li>Download or copy the scrubbed output</li>
+            <li>Click "Scrub" to process</li>
+            <li>Download or copy the scrubbed output</li>
           </ol>
         </div>
 
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Keyboard Shortcuts</h3>
+          <ul className="text-sm space-y-1">
+            <li>
+              <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">⌘/Ctrl</kbd> + <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">Enter</kbd> — Scrub
+            </li>
+            <li>
+              <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">⌘/Ctrl</kbd> + <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">S</kbd> — Download
+            </li>
+          </ul>
+        </div>
+
         <hr className="dark:border-gray-700" />
-        
+
         <div>
           <h3 className="font-semibold text-gray-900 dark:text-white mb-2">How It Works Technically</h3>
           <div className="text-sm space-y-3">

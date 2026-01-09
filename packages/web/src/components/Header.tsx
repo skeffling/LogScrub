@@ -13,21 +13,32 @@ export function Header({ onAboutClick }: HeaderProps) {
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">LogScrub</h1>
         </div>
         <div className="flex items-center gap-4">
-          <a 
+          <a
             href="./help.html"
             className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           >
             Help
           </a>
-          <button 
+          <button
             onClick={onAboutClick}
             className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           >
             About
           </button>
-          <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline">
+          <span
+            className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline cursor-help"
+            title="Your data never leaves your browser."
+          >
             100% client-side
           </span>
+          <a
+            href="https://ko-fi.com/pitstopper"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden sm:inline"
+          >
+            ☕ Ko-fi
+          </a>
         </div>
       </div>
     </header>

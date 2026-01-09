@@ -769,18 +769,6 @@ function App() {
         </div>
       </main>
 
-      <footer className="flex-shrink-0 py-3 text-center text-xs text-gray-500 dark:text-gray-400 border-t dark:border-gray-700">
-        <span>100% client-side. Your data never leaves your browser.</span>
-        <span className="mx-2">•</span>
-        <span className="hidden sm:inline">
-          <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">⌘/Ctrl</kbd>+<kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Enter</kbd> to scrub
-          <span className="mx-2">•</span>
-          <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">⌘/Ctrl</kbd>+<kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">S</kbd> to download
-          <span className="mx-2">•</span>
-        </span>
-        <span>Find this useful? <a href="https://ko-fi.com/pitstopper" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300">Buy us a coffee ☕</a></span>
-      </footer>
-      
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
       
       {showStats && (

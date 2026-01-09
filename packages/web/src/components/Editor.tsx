@@ -880,7 +880,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           </div>
         </div>
         
-        {!output && analysisReplacements.length === 0 ? (
+        {!output && analysisReplacements.length === 0 && (!syntaxHighlight || !input) ? (
           <textarea
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
@@ -889,6 +889,32 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             placeholder="Paste your logs here, upload, or drag & drop a file..."
             className={`flex-1 min-h-0 p-4 font-mono text-sm border dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${paneBg} ${paneText} ${terminalStyle ? 'placeholder-[#858585]' : 'placeholder-gray-400 dark:placeholder-gray-500'}`}
           />
+        ) : !output && analysisReplacements.length === 0 && syntaxHighlight && input ? (
+          useVirtualScrolling ? (
+            <div className={`flex-1 min-h-0 border dark:border-gray-600 rounded-lg ${paneBg}`}>
+              <VirtualizedList
+                lines={inputLines}
+                lineOffsets={lineOffsets}
+                replacements={[]}
+                selectedLine={selectedLine}
+                onLineClick={handleLineClick}
+                showDiff={false}
+                type="input"
+                scrollRef={inputContainerRef}
+                lineNumBg={lineNumBg}
+                lineNumText={lineNumText}
+                paneText={paneText}
+                syntaxHighlight={syntaxHighlight}
+              />
+            </div>
+          ) : (
+            <div
+              ref={inputContainerRef}
+              className={`flex-1 min-h-0 border dark:border-gray-600 rounded-lg overflow-auto ${paneBg}`}
+            >
+              {renderNonVirtualLines(inputLines, 'input', [], undefined, undefined)}
+            </div>
+          )
         ) : !output && analysisReplacements.length > 0 ? (
           useVirtualScrolling ? (
             <div className={`flex-1 min-h-0 border-2 border-purple-400 dark:border-purple-600 rounded-lg ${paneBg}`}>

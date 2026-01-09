@@ -12,6 +12,20 @@ async function ensureWasm(): Promise<void> {
   await wasmReady
 }
 
+function loadEditorPreference<T>(key: string, defaultValue: T): T {
+  try {
+    const stored = localStorage.getItem(`logscrub_editor_${key}`)
+    if (stored !== null) return JSON.parse(stored) as T
+  } catch {}
+  return defaultValue
+}
+
+function saveEditorPreference<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(`logscrub_editor_${key}`, JSON.stringify(value))
+  } catch {}
+}
+
 type LineFilter = 'all' | 'changed' | 'unchanged'
 
 interface EditorProps {
@@ -558,6 +572,9 @@ function dismissDonationForever() {
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
+  const [splitRatio, setSplitRatio] = useState(() => loadEditorPreference('splitRatio', 50))
+  const [isResizingSplit, setIsResizingSplit] = useState(false)
+  const editorContainerRef = useRef<HTMLDivElement>(null)
 
   // Terminal style classes
   const paneBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-white dark:bg-gray-800'
@@ -585,6 +602,41 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
       setShowDiff(true)
     }
   }, [output, replacements.length])
+
+  // Save split ratio preference
+  useEffect(() => {
+    saveEditorPreference('splitRatio', splitRatio)
+  }, [splitRatio])
+
+  // Handle split resize
+  useEffect(() => {
+    if (!isResizingSplit) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!editorContainerRef.current) return
+      const rect = editorContainerRef.current.getBoundingClientRect()
+      const newRatio = Math.max(20, Math.min(80, ((e.clientX - rect.left) / rect.width) * 100))
+      setSplitRatio(newRatio)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizingSplit(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizingSplit])
 
   useImperativeHandle(ref, () => ({
     scrollToLine: (line: number) => {
@@ -862,8 +914,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const titleBg = paneBg
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
-      <div className="flex flex-col min-h-0 relative">
+    <div ref={editorContainerRef} className="flex flex-col md:flex-row gap-4 md:gap-0 flex-1 min-h-0">
+      <div className="flex flex-col min-h-0 relative w-full md:w-auto" style={{ flex: `0 0 ${splitRatio}%` }}>
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
           <label className={`text-sm font-medium text-gray-700 dark:text-gray-300 ${titleBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
             Original {fileName && <span className="text-gray-500 dark:text-gray-400" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
@@ -1013,7 +1065,19 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
         )}
       </div>
 
-      <div className="flex flex-col min-h-0 relative">
+      {/* Resize handle between Original and Scrubbed */}
+      <div
+        className="hidden md:flex items-center justify-center w-4 flex-shrink-0 cursor-col-resize group"
+        onMouseDown={(e) => {
+          e.preventDefault()
+          setIsResizingSplit(true)
+        }}
+        title="Drag to resize"
+      >
+        <div className="w-1 h-16 rounded-full bg-gray-200 dark:bg-gray-700 group-hover:bg-blue-400 group-active:bg-blue-500 transition-colors" />
+      </div>
+
+      <div className="flex flex-col min-h-0 relative flex-1">
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
           <label className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'} ${output ? outputPaneBg : placeholderBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
             Scrubbed

@@ -423,7 +423,7 @@ function App() {
               title="Toggle highlighting of replaced values"
             >
               <span className={`w-2 h-2 rounded-full ${fullscreenHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
-              Highlight
+              Diff
             </button>
             <span className="text-gray-300 dark:text-gray-600">|</span>
             {changedLinesSet.size > 0 && (
@@ -608,7 +608,7 @@ function App() {
                   title={!input.trim() ? 'Load a log file first' : 'Toggle diff highlighting'}
                 >
                   <span className={`w-2 h-2 rounded-full ${!input.trim() ? 'bg-gray-300 dark:bg-gray-600' : showDiffHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
-                  Highlight
+                  Diff
                 </button>
                 <button
                   onClick={() => input.trim() && setSyntaxHighlight(!syntaxHighlight)}

@@ -7,7 +7,11 @@ import { useAppStore, type ThemeMode } from './stores/useAppStore'
 // Apply theme on initial load
 function applyTheme(mode: ThemeMode) {
   const isDark = mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  document.documentElement.classList.toggle('dark', isDark)
+  if (isDark) {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
 }
 
 // Get initial theme and apply it

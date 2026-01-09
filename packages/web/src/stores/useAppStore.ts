@@ -321,7 +321,11 @@ function saveThemeModeToStorage(mode: ThemeMode) {
 
 function applyTheme(mode: ThemeMode) {
   const isDark = mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  document.documentElement.classList.toggle('dark', isDark)
+  if (isDark) {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
 }
 
 const LABEL_FORMAT_STORAGE_KEY = 'logscrub_label_format'

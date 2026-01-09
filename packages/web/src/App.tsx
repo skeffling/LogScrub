@@ -513,10 +513,10 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className="min-h-screen lg:h-screen flex flex-col bg-gray-50 dark:bg-gray-900 lg:overflow-hidden">
       <Header onAboutClick={() => setShowAbout(true)} />
-      
-      <main className={`flex-1 flex flex-col mx-auto px-4 py-4 w-full min-h-0 overflow-hidden ${constrainWidth ? 'max-w-7xl' : ''}`}>
+
+      <main className={`flex-1 flex flex-col mx-auto px-4 py-4 w-full min-h-0 overflow-auto lg:overflow-hidden ${constrainWidth ? 'max-w-7xl' : ''}`}>
         <FeatureBanner />
 
         {(isProcessing || isAnalyzing) && processingProgress > 0 && (
@@ -534,9 +534,9 @@ function App() {
           </div>
         )}
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 flex-1 min-h-0 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 flex-1 min-h-0 lg:overflow-hidden">
           {showRules && (
-            <aside className="lg:col-span-3 xl:col-span-3 2xl:col-span-2 min-h-0 overflow-hidden flex flex-col gap-4">
+            <aside className="lg:col-span-3 xl:col-span-3 2xl:col-span-2 min-h-0 lg:overflow-hidden flex flex-col gap-4">
               <RulePanel />
               <div className="flex-shrink-0">
                 <TimeShift />
@@ -544,7 +544,7 @@ function App() {
             </aside>
           )}
           
-          <div className={`flex flex-col min-h-0 overflow-hidden ${showRules ? "lg:col-span-9 xl:col-span-9 2xl:col-span-10" : "lg:col-span-12"}`}>
+          <div className={`flex flex-col min-h-0 lg:overflow-hidden ${showRules ? "lg:col-span-9 xl:col-span-9 2xl:col-span-10" : "lg:col-span-12"}`}>
             <div className="flex flex-wrap justify-between items-center gap-2 mb-3 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <button

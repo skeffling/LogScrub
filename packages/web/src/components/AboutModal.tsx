@@ -168,7 +168,14 @@ export function AboutModal({ onClose }: AboutModalProps) {
             Found a pattern that should be detected? Have a suggestion or want to report a problem? We'd love to hear from you at <a href="mailto:skeffling@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">skeffling@gmail.com</a>
           </p>
         </div>
-        
+
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Support</h3>
+          <p className="text-sm">
+            Find LogScrub useful? <a href="https://ko-fi.com/pitstopper" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300">Buy us a coffee ☕</a>
+          </p>
+        </div>
+
         <div className="pt-4 border-t dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Built with React, TypeScript, Rust/WebAssembly, TanStack Virtual, Tailwind CSS, and Zustand. Press ESC to close.

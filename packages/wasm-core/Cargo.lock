@@ -423,7 +423,6 @@ dependencies = [
  "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-test",
- "web-sys",
  "zip",
 ]
 

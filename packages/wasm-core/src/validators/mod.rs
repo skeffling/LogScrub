@@ -190,6 +190,39 @@ pub fn calculate_entropy(s: &str) -> f64 {
     entropy
 }
 
+/// UK National Insurance Number validation
+/// Checks for invalid prefixes and valid character ranges
+pub fn uk_nino_check(nino: &str) -> bool {
+    let upper = nino.to_uppercase();
+    let chars: Vec<char> = upper.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+
+    if chars.len() < 9 {
+        return false;
+    }
+
+    let prefix: String = chars[0..2].iter().collect();
+
+    // Invalid prefixes
+    let invalid_prefixes = ["BG", "GB", "NK", "KN", "NT", "TN", "ZZ"];
+    if invalid_prefixes.contains(&prefix.as_str()) {
+        return false;
+    }
+
+    // First letter must be A-Z excluding D, F, I, Q, U, V
+    let first = chars[0];
+    if matches!(first, 'D' | 'F' | 'I' | 'Q' | 'U' | 'V') {
+        return false;
+    }
+
+    // Second letter must be A-Z excluding D, F, I, O, Q, U, V
+    let second = chars[1];
+    if matches!(second, 'D' | 'F' | 'I' | 'O' | 'Q' | 'U' | 'V') {
+        return false;
+    }
+
+    true
+}
+
 /// Check if a string has high entropy (likely a secret/password)
 /// Threshold: 3.5 bits per character (higher than ScrubDuck's 3.2 to reduce false positives)
 pub fn high_entropy_check(s: &str) -> bool {

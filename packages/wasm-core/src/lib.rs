@@ -4,7 +4,7 @@ mod validators;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use patterns::{Match, PiiDetector};
+use patterns::{DetectResult, Match, PiiDetector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Cursor, Read, Write};
@@ -34,6 +34,7 @@ struct SanitizeResult {
     stats: HashMap<String, usize>,
     matches: HashMap<String, Vec<String>>,
     replacements: Vec<Replacement>,
+    logs: Vec<String>,
 }
 
 #[wasm_bindgen]
@@ -50,7 +51,7 @@ pub fn sanitize(text: &str, rules_json: &str, consistency_mode: bool) -> String 
         .collect();
 
     let detector = PiiDetector::new();
-    let matches = detector.detect(text, &enabled_rules);
+    let DetectResult { matches, logs } = detector.detect(text, &enabled_rules);
 
     let mut stats: HashMap<String, usize> = HashMap::new();
     let mut found_matches: HashMap<String, Vec<String>> = HashMap::new();
@@ -76,6 +77,7 @@ pub fn sanitize(text: &str, rules_json: &str, consistency_mode: bool) -> String 
         stats,
         matches: found_matches,
         replacements,
+        logs,
     };
     serde_json::to_string(&result).unwrap_or_else(|_| "{}".to_string())
 }

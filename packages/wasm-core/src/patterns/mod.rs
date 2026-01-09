@@ -1,7 +1,6 @@
 use crate::validators;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use web_sys::console;
 
 #[derive(Debug, Clone)]
 pub struct Match {
@@ -177,8 +176,9 @@ static CEREBRAS_KEY_REGEX: Lazy<Regex> =
 static UK_NHS_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\b([0-9]{3})[- ]?([0-9]{3})[- ]?([0-9]{4})\b").unwrap());
 
+// UK National Insurance - simplified regex, validation done in validator
 static UK_NINO_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?i)\b(?!BG|GB|NK|KN|NT|TN|ZZ)[A-CEGHJ-PR-TW-Z]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[A-D]\b").unwrap()
+    Regex::new(r"(?i)\b[A-Z]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[A-D]\b").unwrap()
 });
 
 // US Additional Patterns
@@ -454,7 +454,7 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "uk_nino",
             regex: &UK_NINO_REGEX,
-            validator: None,
+            validator: Some(validators::uk_nino_check),
         },
         PatternDef {
             id: "us_itin",
@@ -549,6 +549,11 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
     ]
 });
 
+pub struct DetectResult {
+    pub matches: Vec<Match>,
+    pub logs: Vec<String>,
+}
+
 pub struct PiiDetector;
 
 impl PiiDetector {
@@ -556,15 +561,16 @@ impl PiiDetector {
         Self
     }
 
-    pub fn detect(&self, text: &str, enabled_rules: &[&str]) -> Vec<Match> {
+    pub fn detect(&self, text: &str, enabled_rules: &[&str]) -> DetectResult {
         let mut matches = Vec::new();
+        let mut logs = Vec::new();
 
         for pattern in PATTERNS.iter() {
             if !enabled_rules.contains(&pattern.id) {
                 continue;
             }
 
-            console::log_1(&format!("  Pattern: {}", pattern.id).into());
+            logs.push(format!("Pattern: {}", pattern.id));
 
             let mut pattern_matches = 0;
             for cap in pattern.regex.find_iter(text) {
@@ -586,11 +592,11 @@ impl PiiDetector {
             }
 
             if pattern_matches > 0 {
-                console::log_1(&format!("    -> {} matches", pattern_matches).into());
+                logs.push(format!("  -> {} matches", pattern_matches));
             }
         }
 
-        matches
+        DetectResult { matches, logs }
     }
 }
 

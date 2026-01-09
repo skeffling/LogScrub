@@ -424,8 +424,16 @@ self.onmessage = async (e: MessageEvent) => {
 
       log(`Pattern matching completed in ${(performance.now() - sanitizeStart).toFixed(0)}ms`)
       self.postMessage({ type: 'progress', payload: 60 })
-      
+
       let parsed = JSON.parse(wasmResult)
+
+      // Send pattern logs to Info pane
+      if (parsed.logs && Array.isArray(parsed.logs)) {
+        for (const logEntry of parsed.logs) {
+          log(logEntry)
+        }
+      }
+
       const matchCount = Object.values(parsed.stats as Record<string, number>).reduce((a, b) => a + b, 0)
       log(`Found ${matchCount} matches across ${Object.keys(parsed.stats).length} pattern types`)
 

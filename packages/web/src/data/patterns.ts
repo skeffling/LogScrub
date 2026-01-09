@@ -40,7 +40,7 @@ export const BUILTIN_PATTERNS: Record<string, string> = {
   xai_key: String.raw`\bxai-[a-zA-Z0-9]{32,64}\b`,
   cerebras_key: String.raw`\bcsk-[a-zA-Z0-9]{40,50}\b`,
   uk_nhs: String.raw`\b([0-9]{3})[- ]?([0-9]{3})[- ]?([0-9]{4})\b`,
-  uk_nino: String.raw`(?i)\b(?!BG|GB|NK|KN|NT|TN|ZZ)[A-CEGHJ-PR-TW-Z]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[A-D]\b`,
+  uk_nino: String.raw`(?i)\b[A-Z]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[A-D]\b`,
   us_itin: String.raw`\b9[0-9]{2}[- ]?(5[0-9]|6[0-5]|7[0-9]|8[0-8]|9[0-24-9])[- ]?[0-9]{4}\b`,
   au_tfn: String.raw`\b[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}\b`,
   in_pan: String.raw`\b[A-Z]{3}[ABCFGHLJPT][A-Z][0-9]{4}[A-Z]\b`,

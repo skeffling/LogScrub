@@ -1,6 +1,7 @@
 use crate::validators;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use web_sys::console;
 
 #[derive(Debug, Clone)]
 pub struct Match {
@@ -563,6 +564,9 @@ impl PiiDetector {
                 continue;
             }
 
+            console::log_1(&format!("  Pattern: {}", pattern.id).into());
+
+            let mut pattern_matches = 0;
             for cap in pattern.regex.find_iter(text) {
                 let value = cap.as_str();
 
@@ -578,6 +582,11 @@ impl PiiDetector {
                     start: cap.start(),
                     end: cap.end(),
                 });
+                pattern_matches += 1;
+            }
+
+            if pattern_matches > 0 {
+                console::log_1(&format!("    -> {} matches", pattern_matches).into());
             }
         }
 

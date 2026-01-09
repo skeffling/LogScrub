@@ -15,6 +15,7 @@ regex = "1.10"
 once_cell = "1.19"
 flate2 = "1.0"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
+web-sys = { version = "0.3", features = ["console"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"

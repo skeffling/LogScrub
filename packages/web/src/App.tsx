@@ -527,7 +527,8 @@ function App() {
               <span className="text-xs text-gray-500 dark:text-gray-400">{isAnalyzing ? 'Analyzing...' : 'Processing...'}</span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setShowAnalysisLogs(!showAnalysisLogs)}
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowAnalysisLogs(!showAnalysisLogs); }}
                   className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                   title="Show analysis logs"
                 >

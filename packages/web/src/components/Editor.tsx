@@ -1027,7 +1027,7 @@ The log structure, timestamps, error messages, and non-sensitive data remain int
 
   return (
     <div ref={editorContainerRef} className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
-      <div className="flex flex-col min-h-0 relative w-full md:w-auto" style={{ flex: `0 0 ${splitRatio}%` }}>
+      <div className="flex flex-col min-h-0 relative w-full md:w-0" style={{ flex: `0 0 ${splitRatio}%` }}>
         {/* Resize handle on left edge of Original panel (controls Rules panel width) */}
         {showLeftHandle && onLeftResize && (
           <div

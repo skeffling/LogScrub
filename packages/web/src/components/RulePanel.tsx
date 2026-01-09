@@ -4,6 +4,24 @@ import { Modal } from './Modal'
 import { BUILTIN_PATTERNS } from '../data/patterns'
 import { BUILTIN_PRESETS, type BuiltinPreset } from '../data/presets'
 import { Stats } from './Stats'
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface PatternMatch {
   ruleId: string
@@ -205,6 +223,151 @@ const RuleRow = memo(function RuleRow({
   )
 })
 
+// Sortable rule item within a category
+interface SortableRuleItemProps {
+  id: string
+  category: string
+  rule: { label: string; enabled: boolean; strategy: ReplacementStrategy; template?: string }
+  matchCount?: number
+  onToggle: () => void
+  onStrategyChange: (strategy: ReplacementStrategy) => void
+  onViewPattern: () => void
+  onEditTemplate: () => void
+  isDragDisabled?: boolean
+}
+
+function SortableRuleItem({
+  id, rule, matchCount, onToggle, onStrategyChange, onViewPattern, onEditTemplate, isDragDisabled
+}: SortableRuleItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled: isDragDisabled })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1 : 0,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-1">
+      {!isDragDisabled && (
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 select-none text-xs touch-none"
+          title="Drag to reorder"
+        >
+          ⋮
+        </button>
+      )}
+      <div className="flex-1">
+        <RuleRow
+          label={rule.label}
+          enabled={rule.enabled}
+          strategy={rule.strategy}
+          matchCount={matchCount}
+          onToggle={onToggle}
+          onStrategyChange={onStrategyChange}
+          onViewPattern={onViewPattern}
+          onEditTemplate={onEditTemplate}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Sortable category item
+interface SortableCategoryItemProps {
+  id: string
+  isExpanded: boolean
+  enabledCount: number
+  totalCount: number
+  isDragDisabled?: boolean
+  onToggleExpand: () => void
+  onEnableAll: () => void
+  onDisableAll: () => void
+  children: React.ReactNode
+}
+
+function SortableCategoryItem({
+  id, isExpanded, enabledCount, totalCount, isDragDisabled, onToggleExpand, onEnableAll, onDisableAll, children
+}: SortableCategoryItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled: isDragDisabled })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="border-b dark:border-gray-700 pb-2 last:border-b-0"
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1">
+          {!isDragDisabled && (
+            <button
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 select-none px-0.5 touch-none"
+              title="Drag to reorder category"
+            >
+              ⋮⋮
+            </button>
+          )}
+          <button
+            onClick={onToggleExpand}
+            className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+          >
+            <span className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+              ▶
+            </span>
+            {id}
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              ({enabledCount}/{totalCount})
+            </span>
+          </button>
+        </div>
+        <div className="flex gap-1">
+          <button
+            onClick={onEnableAll}
+            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+            title={`Enable all rules in ${id}`}
+          >
+            All
+          </button>
+          <span className="text-gray-300 dark:text-gray-600">|</span>
+          <button
+            onClick={onDisableAll}
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            title={`Disable all rules in ${id}`}
+          >
+            None
+          </button>
+        </div>
+      </div>
+      {isExpanded && children}
+    </div>
+  )
+}
+
 export function RulePanel() {
   const {
     rules, toggleRule, setRuleStrategy, setRuleTemplate, setAllStrategy,
@@ -220,8 +383,18 @@ export function RulePanel() {
   const [showStats, setShowStats] = useState(false)
   const [categoryOrder, setCategoryOrder] = useState<string[]>(loadCategoryOrder)
   const [ruleOrderMap, setRuleOrderMap] = useState<RuleOrderMap>(loadRuleOrder)
-  const [draggedCategory, setDraggedCategory] = useState<string | null>(null)
-  const [draggedRule, setDraggedRule] = useState<{ category: string; ruleId: string } | null>(null)
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [activeRule, setActiveRule] = useState<{ category: string; ruleId: string } | null>(null)
+
+  // @dnd-kit sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   const displayStats = Object.keys(stats).length > 0 ? stats : analysisStats
   const totalDetections = Object.values(displayStats).reduce((sum, count) => sum + count, 0)
@@ -340,84 +513,51 @@ export function RulePanel() {
     })
   }
 
-  // Category drag handlers - live reordering
-  const handleCategoryDragStart = (e: React.DragEvent, category: string) => {
-    setDraggedCategory(category)
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', category)
-    // Add a slight delay to allow the drag image to be captured
-    requestAnimationFrame(() => {
-      const el = e.currentTarget as HTMLElement
-      el.style.opacity = '0.5'
-    })
+  // @dnd-kit handlers for categories
+  const handleCategoryDragStart = (event: DragStartEvent) => {
+    setActiveCategory(event.active.id as string)
   }
 
-  const handleCategoryDragOver = (e: React.DragEvent, category: string) => {
-    e.preventDefault()
-    if (draggedCategory && draggedCategory !== category) {
-      // Live reorder during drag
-      const newOrder = [...categoryOrder]
-      const draggedIdx = newOrder.indexOf(draggedCategory)
-      const targetIdx = newOrder.indexOf(category)
+  const handleCategoryDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveCategory(null)
 
-      if (draggedIdx !== -1 && targetIdx !== -1 && draggedIdx !== targetIdx) {
-        newOrder.splice(draggedIdx, 1)
-        newOrder.splice(targetIdx, 0, draggedCategory)
+    if (over && active.id !== over.id) {
+      const oldIndex = categoryOrder.indexOf(active.id as string)
+      const newIndex = categoryOrder.indexOf(over.id as string)
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = [...categoryOrder]
+        newOrder.splice(oldIndex, 1)
+        newOrder.splice(newIndex, 0, active.id as string)
         setCategoryOrder(newOrder)
+        saveCategoryOrder(newOrder)
       }
     }
   }
 
-  const handleCategoryDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    // Save the final order
-    saveCategoryOrder(categoryOrder)
-    setDraggedCategory(null)
+  // @dnd-kit handlers for rules within a category
+  const handleRuleDragStart = (event: DragStartEvent, category: string) => {
+    setActiveRule({ category, ruleId: event.active.id as string })
   }
 
-  const handleCategoryDragEnd = (e: React.DragEvent) => {
-    const el = e.currentTarget as HTMLElement
-    el.style.opacity = '1'
-    saveCategoryOrder(categoryOrder)
-    setDraggedCategory(null)
-  }
+  const handleRuleDragEnd = (event: DragEndEvent, category: string) => {
+    const { active, over } = event
+    setActiveRule(null)
 
-  // Rule drag handlers - reorder within category
-  const handleRuleDragStart = (e: React.DragEvent, category: string, ruleId: string) => {
-    e.stopPropagation()
-    setDraggedRule({ category, ruleId })
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', ruleId)
-  }
-
-  const handleRuleDragOver = (e: React.DragEvent, category: string, ruleId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (draggedRule && draggedRule.category === category && draggedRule.ruleId !== ruleId) {
-      // Live reorder during drag
+    if (over && active.id !== over.id) {
       const currentOrder = getRulesInOrder(category, ruleOrderMap)
-      const draggedIdx = currentOrder.indexOf(draggedRule.ruleId)
-      const targetIdx = currentOrder.indexOf(ruleId)
+      const oldIndex = currentOrder.indexOf(active.id as string)
+      const newIndex = currentOrder.indexOf(over.id as string)
 
-      if (draggedIdx !== -1 && targetIdx !== -1 && draggedIdx !== targetIdx) {
+      if (oldIndex !== -1 && newIndex !== -1) {
         const newOrder = [...currentOrder]
-        newOrder.splice(draggedIdx, 1)
-        newOrder.splice(targetIdx, 0, draggedRule.ruleId)
+        newOrder.splice(oldIndex, 1)
+        newOrder.splice(newIndex, 0, active.id as string)
         setRuleOrderMap(prev => ({ ...prev, [category]: newOrder }))
+        saveRuleOrder({ ...ruleOrderMap, [category]: newOrder })
       }
     }
-  }
-
-  const handleRuleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    saveRuleOrder(ruleOrderMap)
-    setDraggedRule(null)
-  }
-
-  const handleRuleDragEnd = () => {
-    saveRuleOrder(ruleOrderMap)
-    setDraggedRule(null)
   }
 
   const handleSavePreset = () => {
@@ -992,120 +1132,95 @@ export function RulePanel() {
           </div>
         )}
 
-        {Object.entries(filteredCategories).map(([category, ruleIds]) => {
-          const categoryRules = ruleIds.filter(id => rules[id])
-          if (categoryRules.length === 0) return null
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleCategoryDragStart}
+          onDragEnd={handleCategoryDragEnd}
+        >
+          <SortableContext items={categoryOrder} strategy={verticalListSortingStrategy}>
+            {Object.entries(filteredCategories).map(([category, ruleIds]) => {
+              const categoryRules = ruleIds.filter(id => rules[id])
+              if (categoryRules.length === 0) return null
 
-          const enabledCount = categoryRules.filter(id => rules[id]?.enabled).length
-          const isExpanded = searchQuery ? true : expandedCategories[category]
-          const isDragging = draggedCategory === category
+              const enabledCount = categoryRules.filter(id => rules[id]?.enabled).length
+              const isExpanded = searchQuery ? true : expandedCategories[category]
 
-          return (
-            <div
-              key={category}
-              className={`border-b dark:border-gray-700 pb-2 last:border-b-0 transition-all duration-150 ${
-                isDragging ? 'opacity-40 scale-[0.98]' : ''
-              }`}
-              onDragOver={(e) => handleCategoryDragOver(e, category)}
-              onDrop={handleCategoryDrop}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1">
-                  {!searchQuery && (
-                    <span
-                      draggable
-                      onDragStart={(e) => handleCategoryDragStart(e, category)}
-                      onDragEnd={handleCategoryDragEnd}
-                      className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 select-none px-0.5"
-                      title="Drag to reorder category"
-                    >
-                      ⋮⋮
-                    </span>
-                  )}
-                  <button
-                    onClick={() => toggleCategory(category)}
-                    className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+              return (
+                <SortableCategoryItem
+                  key={category}
+                  id={category}
+                  isExpanded={isExpanded}
+                  enabledCount={enabledCount}
+                  totalCount={categoryRules.length}
+                  isDragDisabled={!!searchQuery}
+                  onToggleExpand={() => toggleCategory(category)}
+                  onEnableAll={() => toggleAllInCategory(category, true)}
+                  onDisableAll={() => toggleAllInCategory(category, false)}
+                >
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={(e) => handleRuleDragStart(e, category)}
+                    onDragEnd={(e) => handleRuleDragEnd(e, category)}
                   >
-                    <span className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
-                      ▶
-                    </span>
-                    {category}
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      ({enabledCount}/{categoryRules.length})
-                    </span>
-                  </button>
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => toggleAllInCategory(category, true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                    title={`Enable all rules in ${category}`}
-                  >
-                    All
-                  </button>
-                  <span className="text-gray-300 dark:text-gray-600">|</span>
-                  <button
-                    onClick={() => toggleAllInCategory(category, false)}
-                    className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                    title={`Disable all rules in ${category}`}
-                  >
-                    None
-                  </button>
-                </div>
-              </div>
+                    <SortableContext items={categoryRules} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-1 ml-4">
+                        {categoryRules.map(id => {
+                          const rule = rules[id]
+                          if (!rule) return null
 
-              {isExpanded && (
-                <div className="space-y-1 ml-4">
-                  {categoryRules.map(id => {
-                    const rule = rules[id]
-                    if (!rule) return null
-                    const isRuleDragging = draggedRule?.ruleId === id
-
-                    return (
-                      <div
-                        key={id}
-                        className={`flex items-center gap-1 transition-all duration-150 ${
-                          isRuleDragging ? 'opacity-40 scale-[0.98]' : ''
-                        }`}
-                        onDragOver={(e) => handleRuleDragOver(e, category, id)}
-                        onDrop={handleRuleDrop}
-                      >
-                        {!searchQuery && (
-                          <span
-                            draggable
-                            onDragStart={(e) => handleRuleDragStart(e, category, id)}
-                            onDragEnd={handleRuleDragEnd}
-                            className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 select-none text-xs"
-                            title="Drag to reorder"
-                          >
-                            ⋮
-                          </span>
-                        )}
-                        <div className="flex-1">
+                          return (
+                            <SortableRuleItem
+                              key={id}
+                              id={id}
+                              category={category}
+                              rule={rule}
+                              matchCount={displayStats[id]}
+                              onToggle={() => toggleRule(id)}
+                              onStrategyChange={(newStrategy) => {
+                                setRuleStrategy(id, newStrategy)
+                                if (newStrategy === 'template' && !rule.template) {
+                                  setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })
+                                }
+                              }}
+                              onViewPattern={() => setViewingPattern({ id, label: rule.label, pattern: BUILTIN_PATTERNS[id] || '' })}
+                              onEditTemplate={() => setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })}
+                              isDragDisabled={!!searchQuery}
+                            />
+                          )
+                        })}
+                      </div>
+                    </SortableContext>
+                    <DragOverlay>
+                      {activeRule?.category === category && activeRule?.ruleId && rules[activeRule.ruleId] && (
+                        <div className="bg-white dark:bg-gray-800 shadow-lg rounded p-1 border dark:border-gray-600">
                           <RuleRow
-                            label={rule.label}
-                            enabled={rule.enabled}
-                            strategy={rule.strategy}
-                            matchCount={displayStats[id]}
-                            onToggle={() => toggleRule(id)}
-                            onStrategyChange={(newStrategy) => {
-                              setRuleStrategy(id, newStrategy)
-                              if (newStrategy === 'template' && !rule.template) {
-                                setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })
-                              }
-                            }}
-                            onViewPattern={() => setViewingPattern({ id, label: rule.label, pattern: BUILTIN_PATTERNS[id] || '' })}
-                            onEditTemplate={() => setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })}
+                            label={rules[activeRule.ruleId].label}
+                            enabled={rules[activeRule.ruleId].enabled}
+                            strategy={rules[activeRule.ruleId].strategy}
+                            matchCount={displayStats[activeRule.ruleId]}
+                            onToggle={() => {}}
+                            onStrategyChange={() => {}}
+                            onViewPattern={() => {}}
+                            onEditTemplate={() => {}}
                           />
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })}
+                      )}
+                    </DragOverlay>
+                  </DndContext>
+                </SortableCategoryItem>
+              )
+            })}
+          </SortableContext>
+          <DragOverlay>
+            {activeCategory && (
+              <div className="bg-white dark:bg-gray-800 shadow-lg rounded p-2 border dark:border-gray-600">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{activeCategory}</span>
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
 
         {Object.keys(filteredCategories).length === 0 && filteredCustomRules.length === 0 && searchQuery && (
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">

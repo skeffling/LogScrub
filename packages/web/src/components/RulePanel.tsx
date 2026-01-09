@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, memo } from 'react'
+import { useState, useRef, useMemo, memo, useEffect } from 'react'
 import { useAppStore, type ReplacementStrategy, type RulePreset, type CustomRule, type PlainTextPattern } from '../stores/useAppStore'
 import { Modal } from './Modal'
 import { BUILTIN_PATTERNS } from '../data/patterns'
@@ -192,6 +192,18 @@ export function RulePanel() {
   const [editingPlainText, setEditingPlainText] = useState<PlainTextPattern | null>(null)
   const [showLabelConfig, setShowLabelConfig] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Close label config on ESC
+  useEffect(() => {
+    if (!showLabelConfig) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        setShowLabelConfig(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [showLabelConfig])
 
   const testResults = useMemo(() => {
     if (!testText.trim()) return []
@@ -426,6 +438,8 @@ export function RulePanel() {
                 </svg>
               </button>
               {showLabelConfig && (
+                <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowLabelConfig(false)} />
                 <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg shadow-lg z-50 min-w-[200px]">
                   <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Label Format</div>
                   <div className="flex items-center gap-2 mb-2">
@@ -478,6 +492,7 @@ export function RulePanel() {
                     </button>
                   </div>
                 </div>
+                </>
               )}
             </div>
           ) : (

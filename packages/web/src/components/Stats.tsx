@@ -91,6 +91,54 @@ const getTypeColor = (type: string): string => {
   return TYPE_COLORS[type] || '#6b7280'
 }
 
+// Category definitions for grouping
+const CATEGORIES: Record<string, string[]> = {
+  'Contact': ['email', 'phone_us', 'phone_uk', 'phone_intl'],
+  'Network': ['ipv4', 'ipv6', 'mac_address', 'hostname', 'url', 'url_params'],
+  'Identity (US)': ['ssn', 'us_itin', 'passport', 'drivers_license'],
+  'Identity (UK)': ['uk_nhs', 'uk_nino'],
+  'Identity (Intl)': ['au_tfn', 'in_pan', 'sg_nric'],
+  'Financial': ['credit_card', 'iban', 'btc_address', 'eth_address'],
+  'Tokens & Keys': ['jwt', 'bearer_token', 'aws_access_key', 'aws_secret_key', 'stripe_key', 'gcp_api_key', 'github_token', 'slack_token', 'openai_key', 'anthropic_key', 'xai_key', 'cerebras_key'],
+  'Secrets': ['generic_secret', 'high_entropy_secret', 'private_key', 'basic_auth', 'url_credentials', 'session_id'],
+  'Location': ['gps_coordinates', 'postcode_uk', 'postcode_us'],
+  'Date & Time': ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'timestamp_unix'],
+  'SQL': ['sql_tables', 'sql_strings', 'sql_identifiers'],
+  'Exim': ['exim_subject', 'exim_sender', 'exim_auth', 'exim_user', 'exim_dn'],
+  'Hashes': ['md5_hash', 'sha1_hash', 'sha256_hash', 'docker_container_id'],
+  'Other': ['uuid', 'email_message_id', 'file_path_unix', 'file_path_windows'],
+}
+
+// Category colors
+const CATEGORY_COLORS: Record<string, string> = {
+  'Contact': '#3b82f6',
+  'Network': '#22c55e',
+  'Identity (US)': '#a855f7',
+  'Identity (UK)': '#9333ea',
+  'Identity (Intl)': '#7c3aed',
+  'Financial': '#ef4444',
+  'Tokens & Keys': '#eab308',
+  'Secrets': '#f59e0b',
+  'Location': '#14b8a6',
+  'Date & Time': '#6366f1',
+  'SQL': '#ec4899',
+  'Exim': '#8b5cf6',
+  'Hashes': '#64748b',
+  'Other': '#6b7280',
+}
+
+const getCategoryColor = (category: string): string => {
+  return CATEGORY_COLORS[category] || '#6b7280'
+}
+
+// Find category for a type
+const getCategoryForType = (type: string): string | null => {
+  for (const [category, types] of Object.entries(CATEGORIES)) {
+    if (types.includes(type)) return category
+  }
+  return null
+}
+
 interface MatchesModalProps {
   type: string
   matches: string[]
@@ -199,7 +247,8 @@ export function Stats() {
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [showAuditReport, setShowAuditReport] = useState(false)
   const [activeTab, setActiveTab] = useState<'stats' | 'mapping'>('stats')
-  const [statsView, setStatsView] = useState<'list' | 'chart'>('chart')
+  const [statsView, setStatsView] = useState<'chart' | 'category' | 'list'>('chart')
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [mappingSearch, setMappingSearch] = useState('')
   const [showMappingExport, setShowMappingExport] = useState(false)
 
@@ -210,6 +259,42 @@ export function Stats() {
 
   const total = Object.values(displayStats).reduce((sum, count) => sum + count, 0)
   const entries = Object.entries(displayStats).filter(([, count]) => count > 0)
+
+  // Group entries by category
+  const categoryGroupings = useMemo(() => {
+    const groups: Record<string, { types: Array<{ type: string; count: number }>; total: number }> = {}
+
+    for (const [type, count] of entries) {
+      const category = getCategoryForType(type) || 'Other'
+      if (!groups[category]) {
+        groups[category] = { types: [], total: 0 }
+      }
+      groups[category].types.push({ type, count })
+      groups[category].total += count
+    }
+
+    // Sort types within each category by count
+    for (const group of Object.values(groups)) {
+      group.types.sort((a, b) => b.count - a.count)
+    }
+
+    // Convert to array and sort by total
+    return Object.entries(groups)
+      .map(([category, data]) => ({ category, ...data }))
+      .sort((a, b) => b.total - a.total)
+  }, [entries])
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev)
+      if (next.has(category)) {
+        next.delete(category)
+      } else {
+        next.add(category)
+      }
+      return next
+    })
+  }
 
   const mappingTable = useMemo(() => buildMappingTable(displayReplacements, input), [displayReplacements, input])
 
@@ -418,6 +503,19 @@ ${entries.map(([type]) => {
                   </svg>
                 </button>
                 <button
+                  onClick={() => setStatsView('category')}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                    statsView === 'category'
+                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                  title="Category groupings"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </button>
+                <button
                   onClick={() => setStatsView('list')}
                   className={`px-2 py-1 text-xs rounded-md transition-colors ${
                     statsView === 'list'
@@ -558,6 +656,98 @@ ${entries.map(([type]) => {
                     </svg>
                   </div>
                 )}
+              </div>
+            ) : statsView === 'category' ? (
+              <div className="space-y-2">
+                {categoryGroupings.map(({ category, types, total: categoryTotal }) => {
+                  const isExpanded = expandedCategories.has(category)
+                  const percentage = total > 0 ? (categoryTotal / total) * 100 : 0
+                  const color = getCategoryColor(category)
+
+                  return (
+                    <div key={category} className="border dark:border-gray-700 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => toggleCategory(category)}
+                        className="w-full flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                      >
+                        <svg
+                          className={`w-3 h-3 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="flex-1 text-left text-sm font-medium text-gray-900 dark:text-white">
+                          {category}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {types.length} type{types.length !== 1 ? 's' : ''}
+                        </span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
+                          {categoryTotal}
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 w-12 text-right">
+                          {percentage.toFixed(1)}%
+                        </span>
+                      </button>
+
+                      {/* Category bar */}
+                      <div className="h-1.5 bg-gray-100 dark:bg-gray-700">
+                        <div
+                          className="h-full transition-all duration-300"
+                          style={{ width: `${percentage}%`, backgroundColor: color }}
+                        />
+                      </div>
+
+                      {/* Expanded types */}
+                      {isExpanded && (
+                        <div className="bg-gray-50 dark:bg-gray-800/50 divide-y dark:divide-gray-700">
+                          {types.map(({ type, count }) => {
+                            const typePercentage = categoryTotal > 0 ? (count / categoryTotal) * 100 : 0
+                            return (
+                              <button
+                                key={type}
+                                onClick={(e) => { e.stopPropagation(); setSelectedType(type) }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 pl-8 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                              >
+                                <span
+                                  className="w-2 h-2 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: getTypeColor(type) }}
+                                />
+                                <span className="flex-1 text-left text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+                                  {TYPE_LABELS[type] || type}
+                                </span>
+                                <span className="text-xs font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                                  {count}
+                                </span>
+                                <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full"
+                                    style={{ width: `${typePercentage}%`, backgroundColor: getTypeColor(type) }}
+                                  />
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* Summary */}
+                <div className="flex items-center justify-between pt-2 mt-2 border-t dark:border-gray-700">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {categoryGroupings.length} categories
+                  </span>
+                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                    {total} total
+                  </span>
+                </div>
               </div>
             ) : (
               <div className="space-y-1 max-h-64 overflow-y-auto">

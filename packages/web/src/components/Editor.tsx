@@ -899,6 +899,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                   <p>3. Enable/disable rules in Detection Rules panel</p>
                   <p>4. Click <span className="text-blue-500 dark:text-blue-400">Scrub</span> to apply replacements</p>
                   <p>5. Use diff view to review changes, then Copy or Download</p>
+                  <p className="text-yellow-600 dark:text-yellow-500 mt-2">⚠ Always double-check for PII before sharing the file!</p>
                 </div>
               </div>
             )}

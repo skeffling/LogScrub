@@ -116,6 +116,8 @@ function App() {
     setStats, setMatches, setReplacements
   } = useAppStore()
   const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
+  const [rulePanelWidth, setRulePanelWidth] = useState(() => loadUiPreference('rulePanelWidth', 320))
+  const [isResizing, setIsResizing] = useState(false)
   const [fullscreenView, setFullscreenView] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [constrainWidth, setConstrainWidth] = useState(() => loadUiPreference('constrainWidth', false))
@@ -146,9 +148,38 @@ function App() {
   }, [])
 
   useEffect(() => { saveUiPreference('showRules', showRules) }, [showRules])
+  useEffect(() => { saveUiPreference('rulePanelWidth', rulePanelWidth) }, [rulePanelWidth])
   useEffect(() => { saveUiPreference('constrainWidth', constrainWidth) }, [constrainWidth])
   useEffect(() => { saveUiPreference('showDiffHighlight', showDiffHighlight) }, [showDiffHighlight])
   useEffect(() => { saveUiPreference('syncScroll', syncScroll) }, [syncScroll])
+
+  // Handle panel resize
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.max(200, Math.min(600, e.clientX - 16)) // 16px for padding
+      setRulePanelWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizing])
 
   useEffect(() => {
     if (!input && !output) return
@@ -592,14 +623,27 @@ function App() {
           </div>
         )}
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 flex-1 min-h-0 lg:overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-0 flex-1 min-h-0 lg:overflow-hidden">
           {showRules && (
-            <aside className="lg:col-span-3 xl:col-span-3 2xl:col-span-2 min-h-0 lg:overflow-hidden flex flex-col">
+            <aside className="min-h-0 lg:overflow-hidden flex flex-col flex-shrink-0 relative rule-panel-aside">
+              <style>{`
+                .rule-panel-aside { width: 100%; }
+                @media (min-width: 1024px) { .rule-panel-aside { width: ${rulePanelWidth}px; } }
+              `}</style>
               <RulePanel />
+              {/* Resize handle */}
+              <div
+                className="hidden lg:block absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  setIsResizing(true)
+                }}
+                title="Drag to resize"
+              />
             </aside>
           )}
-          
-          <div className={`flex flex-col min-h-0 lg:overflow-hidden ${showRules ? "lg:col-span-9 xl:col-span-9 2xl:col-span-10" : "lg:col-span-12"}`}>
+
+          <div className={`flex flex-col min-h-0 lg:overflow-hidden flex-1 ${showRules ? 'lg:pl-4' : ''}`}>
             <div className="flex flex-wrap justify-between items-center gap-2 mb-3 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <button

@@ -248,6 +248,7 @@
         <li><a href="#time-shift">Time Shift</a></li>
         <li><a href="#analyze-mode">Analyze Mode</a></li>
         <li><a href="#audit-reports">Audit Reports</a></li>
+        <li><a href="#reverse-lookup">Reverse Lookup</a></li>
         <li><a href="#keyboard-shortcuts">Keyboard Shortcuts</a></li>
         <li><a href="#network-captures">Working with Network Captures</a></li>
         <li><a href="#file-size">File Size &amp; Performance</a></li>
@@ -958,6 +959,60 @@ User [EMAIL-3] logged in</div>
       </ul>
 
       <p>Access audit reports by clicking the detection count badge, then "Download Audit Report".</p>
+    </section>
+
+    <section id="reverse-lookup">
+      <h2>Reverse Lookup</h2>
+      <p>When sharing scrubbed logs with others for analysis, you may receive feedback like "the IP on line 100 is causing the issue." LogScrub provides several ways to map scrubbed values back to their originals.</p>
+
+      <h3>Hover Tooltips</h3>
+      <p>The quickest way to see the original value: hover your mouse over any replacement in the scrubbed output (e.g., <code>[IP-1]</code> or <code>[EMAIL-2]</code>). A tooltip will show:</p>
+      <ul>
+        <li><strong>Original</strong> — The actual value that was replaced</li>
+        <li><strong>Type</strong> — The detection rule that matched (email, ipv4, etc.)</li>
+        <li><strong>Lines</strong> — Line numbers where this replacement appears</li>
+      </ul>
+      <p>This works in both the side-by-side editor view and the fullscreen output view.</p>
+
+      <h3>Mapping Table</h3>
+      <p>For a complete overview of all replacements, open the Stats panel and click the <strong>Mapping</strong> tab. This shows a searchable table with:</p>
+      <ul>
+        <li>Every unique replacement label</li>
+        <li>The original value it replaced</li>
+        <li>How many times it appears</li>
+        <li>Which line numbers contain it</li>
+      </ul>
+      <p>Use the search box to quickly find a specific replacement by typing part of the label, original value, or type.</p>
+
+      <h3>Export Mapping Dictionary</h3>
+      <p>For documentation or programmatic use, export the complete mapping as a file:</p>
+      <ol>
+        <li>Open Stats → Mapping tab</li>
+        <li>Click <strong>Export</strong></li>
+        <li>Choose <strong>JSON</strong> (for scripts/tools) or <strong>CSV</strong> (for spreadsheets)</li>
+      </ol>
+
+      <div class="card">
+        <h4>JSON Format Example</h4>
+        <pre>{
+  "[EMAIL-1]": {
+    "original": "john.doe@example.com",
+    "type": "email",
+    "count": 3,
+    "lines": [12, 45, 89]
+  },
+  "[IPV4-1]": {
+    "original": "192.168.1.105",
+    "type": "ipv4",
+    "count": 7,
+    "lines": [5, 23, 24, 56, 78, 102, 150]
+  }
+}</pre>
+      </div>
+
+      <div class="tip">
+        <strong>Tip:</strong> Enable <strong>Consistency Mode</strong> before scrubbing to ensure the same original value always gets the same replacement label. This makes reverse lookups reliable — every <code>[EMAIL-1]</code> in your output refers to the same email address.
+      </div>
     </section>
 
     <section id="keyboard-shortcuts">

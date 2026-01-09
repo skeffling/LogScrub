@@ -7,7 +7,8 @@ import { resolve } from 'path'
 
 const version = (() => {
   try {
-    return readFileSync(resolve(__dirname, '../../VERSION'), 'utf-8').trim()
+    const pkg = JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf-8'))
+    return pkg.version || 'dev'
   } catch {
     return 'dev'
   }

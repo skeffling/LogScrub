@@ -112,7 +112,8 @@ function App() {
     processingProgress, cancelProcessing, canCancel,
     analyzeText, isAnalyzing, analysisReplacements, analysisCompleted, clearAnalysis, analysisLogs,
     replacements, syntaxHighlight, setSyntaxHighlight,
-    timeShift, setTimeShift
+    timeShift, setTimeShift,
+    setStats, setMatches, setReplacements
   } = useAppStore()
   const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
   const [fullscreenView, setFullscreenView] = useState(false)
@@ -186,6 +187,9 @@ function App() {
     setInput('')
     setOutput('')
     setFileName(null)
+    setStats({})
+    setMatches({})
+    setReplacements([])
     clearAnalysis()
   }
 

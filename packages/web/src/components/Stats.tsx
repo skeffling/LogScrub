@@ -40,6 +40,57 @@ const TYPE_LABELS: Record<string, string> = {
   session_id: 'Session',
 }
 
+// Color palette for the chart - grouped by category
+const TYPE_COLORS: Record<string, string> = {
+  // Contact - Blues
+  email: '#3b82f6',
+  phone_us: '#60a5fa',
+  phone_uk: '#93c5fd',
+  phone_intl: '#2563eb',
+  // Network - Greens
+  ipv4: '#22c55e',
+  ipv6: '#4ade80',
+  mac_address: '#86efac',
+  hostname: '#16a34a',
+  url: '#15803d',
+  // Identity - Purples
+  ssn: '#a855f7',
+  passport: '#c084fc',
+  drivers_license: '#d8b4fe',
+  uk_nhs: '#9333ea',
+  uk_nino: '#7c3aed',
+  // Financial - Reds/Oranges
+  credit_card: '#ef4444',
+  iban: '#f87171',
+  btc_address: '#f97316',
+  eth_address: '#fb923c',
+  // Tokens/Secrets - Yellows/Ambers
+  jwt: '#eab308',
+  bearer_token: '#facc15',
+  aws_access_key: '#fbbf24',
+  aws_secret_key: '#f59e0b',
+  stripe_key: '#d97706',
+  gcp_api_key: '#b45309',
+  github_token: '#92400e',
+  slack_token: '#78350f',
+  generic_secret: '#fcd34d',
+  private_key: '#fde047',
+  basic_auth: '#fef08a',
+  url_credentials: '#ca8a04',
+  session_id: '#a16207',
+  // Other - Grays/Teals
+  uuid: '#14b8a6',
+  gps_coordinates: '#2dd4bf',
+  file_path_unix: '#64748b',
+  file_path_windows: '#94a3b8',
+  postcode_uk: '#5eead4',
+  postcode_us: '#99f6e4',
+}
+
+const getTypeColor = (type: string): string => {
+  return TYPE_COLORS[type] || '#6b7280'
+}
+
 interface MatchesModalProps {
   type: string
   matches: string[]
@@ -148,6 +199,7 @@ export function Stats() {
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [showAuditReport, setShowAuditReport] = useState(false)
   const [activeTab, setActiveTab] = useState<'stats' | 'mapping'>('stats')
+  const [statsView, setStatsView] = useState<'list' | 'chart'>('chart')
   const [mappingSearch, setMappingSearch] = useState('')
   const [showMappingExport, setShowMappingExport] = useState(false)
 
@@ -350,39 +402,192 @@ ${entries.map(([type]) => {
 
         {activeTab === 'stats' ? (
           <>
-            <div className="flex items-center justify-end mb-2">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+                <button
+                  onClick={() => setStatsView('chart')}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                    statsView === 'chart'
+                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                  title="Chart view"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setStatsView('list')}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                    statsView === 'list'
+                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                  title="List view"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                </button>
+              </div>
               {!isPreview && (
                 <button
                   onClick={() => setShowAuditReport(true)}
                   className="text-xs px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/50"
                   title="Download a detailed audit report"
                 >
-                  Download Audit Report
+                  Audit Report
                 </button>
               )}
             </div>
 
-            <div className="space-y-1 max-h-64 overflow-y-auto">
-              {entries.map(([type, count]) => (
-                <button
-                  key={type}
-                  onClick={() => setSelectedType(type)}
-                  className="w-full flex items-center justify-between text-sm hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded transition-colors"
-                >
-                  <span className="text-blue-600 dark:text-blue-400 hover:underline truncate">
-                    {TYPE_LABELS[type] || type}
+            {statsView === 'chart' ? (
+              <div className="space-y-2">
+                {/* Horizontal bar chart */}
+                <div className="space-y-1.5">
+                  {entries
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([type, count]) => {
+                      const percentage = total > 0 ? (count / total) * 100 : 0
+                      const color = getTypeColor(type)
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => setSelectedType(type)}
+                          className="w-full group"
+                        >
+                          <div className="flex items-center gap-2 text-xs mb-0.5">
+                            <span
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: color }}
+                            />
+                            <span className="text-gray-700 dark:text-gray-300 truncate flex-1 text-left group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                              {TYPE_LABELS[type] || type}
+                            </span>
+                            <span className="text-gray-500 dark:text-gray-400 tabular-nums">
+                              {count} ({percentage.toFixed(1)}%)
+                            </span>
+                          </div>
+                          <div className="h-4 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-300 group-hover:opacity-80"
+                              style={{
+                                width: `${percentage}%`,
+                                backgroundColor: color,
+                                minWidth: count > 0 ? '4px' : '0'
+                              }}
+                            />
+                          </div>
+                        </button>
+                      )
+                    })}
+                </div>
+
+                {/* Summary row */}
+                <div className="flex items-center justify-between pt-2 mt-2 border-t dark:border-gray-700">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    Total
                   </span>
-                  <span className="font-medium text-gray-900 dark:text-white ml-2">{count}</span>
-                </button>
-              ))}
-            </div>
+                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                    {total} detections
+                  </span>
+                </div>
 
-            <hr className="my-3 dark:border-gray-700" />
+                {/* Pie chart visualization */}
+                {entries.length > 1 && (
+                  <div className="flex items-center justify-center pt-2">
+                    <svg viewBox="0 0 100 100" className="w-32 h-32">
+                      {(() => {
+                        let cumulativePercent = 0
+                        return entries
+                          .sort((a, b) => b[1] - a[1])
+                          .map(([type, count], i) => {
+                            const percentage = total > 0 ? (count / total) * 100 : 0
+                            const startAngle = cumulativePercent * 3.6 // 360 / 100
+                            cumulativePercent += percentage
+                            const endAngle = cumulativePercent * 3.6
 
-            <div className="flex items-center justify-between text-sm font-semibold">
-              <span className="text-gray-900 dark:text-white">Total Detections</span>
-              <span className="text-blue-600 dark:text-blue-400">{total}</span>
-            </div>
+                            // Convert angles to radians and calculate arc
+                            const startRad = (startAngle - 90) * Math.PI / 180
+                            const endRad = (endAngle - 90) * Math.PI / 180
+                            const largeArc = percentage > 50 ? 1 : 0
+
+                            const x1 = 50 + 40 * Math.cos(startRad)
+                            const y1 = 50 + 40 * Math.sin(startRad)
+                            const x2 = 50 + 40 * Math.cos(endRad)
+                            const y2 = 50 + 40 * Math.sin(endRad)
+
+                            // Handle case where one type is 100%
+                            if (percentage >= 99.9) {
+                              return (
+                                <circle
+                                  key={type}
+                                  cx="50"
+                                  cy="50"
+                                  r="40"
+                                  fill={getTypeColor(type)}
+                                  className="hover:opacity-80 cursor-pointer"
+                                  onClick={(e) => { e.stopPropagation(); setSelectedType(type) }}
+                                >
+                                  <title>{TYPE_LABELS[type] || type}: {count} ({percentage.toFixed(1)}%)</title>
+                                </circle>
+                              )
+                            }
+
+                            return (
+                              <path
+                                key={type}
+                                d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                                fill={getTypeColor(type)}
+                                className="hover:opacity-80 cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); setSelectedType(type) }}
+                              >
+                                <title>{TYPE_LABELS[type] || type}: {count} ({percentage.toFixed(1)}%)</title>
+                              </path>
+                            )
+                          })
+                      })()}
+                      <circle cx="50" cy="50" r="20" className="fill-white dark:fill-gray-800" />
+                      <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="fill-gray-900 dark:fill-white text-[8px] font-semibold">
+                        {entries.length}
+                      </text>
+                      <text x="50" y="58" textAnchor="middle" dominantBaseline="middle" className="fill-gray-500 dark:fill-gray-400 text-[5px]">
+                        types
+                      </text>
+                    </svg>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {entries.map(([type, count]) => (
+                  <button
+                    key={type}
+                    onClick={() => setSelectedType(type)}
+                    className="w-full flex items-center justify-between text-sm hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getTypeColor(type) }}
+                      />
+                      <span className="text-blue-600 dark:text-blue-400 hover:underline truncate">
+                        {TYPE_LABELS[type] || type}
+                      </span>
+                    </div>
+                    <span className="font-medium text-gray-900 dark:text-white ml-2">{count}</span>
+                  </button>
+                ))}
+
+                <hr className="my-3 dark:border-gray-700" />
+
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <span className="text-gray-900 dark:text-white">Total Detections</span>
+                  <span className="text-blue-600 dark:text-blue-400">{total}</span>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <>

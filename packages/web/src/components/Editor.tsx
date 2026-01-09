@@ -914,7 +914,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const titleBg = paneBg
 
   return (
-    <div ref={editorContainerRef} className="flex flex-col md:flex-row gap-4 md:gap-0 flex-1 min-h-0">
+    <div ref={editorContainerRef} className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
       <div className="flex flex-col min-h-0 relative w-full md:w-auto" style={{ flex: `0 0 ${splitRatio}%` }}>
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
           <label className={`text-sm font-medium text-gray-700 dark:text-gray-300 ${titleBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>

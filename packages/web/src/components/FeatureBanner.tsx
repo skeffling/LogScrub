@@ -96,6 +96,18 @@ export function FeatureBanner() {
             </li>
           </ul>
         </div>
+
+        <div className="mt-4 pt-3 border-t border-blue-200/50 dark:border-gray-700/50">
+          <h2 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
+            Why sanitize your logs?
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+            <strong>Share logs safely with AI assistants</strong> like ChatGPT, Claude, or Gemini for debugging help without exposing customer data or API keys.
+            Perfect for <strong>posting to GitHub issues</strong>, Stack Overflow, or support tickets without leaking sensitive information.
+            Essential for <strong>compliance teams</strong> preparing audit logs, and developers sharing production data with contractors or offshore teams.
+            Use it before uploading logs to third-party monitoring tools, or when creating <strong>sanitized test datasets</strong> from real production data.
+          </p>
+        </div>
       </div>
     </section>
   )

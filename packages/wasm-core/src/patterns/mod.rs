@@ -160,6 +160,18 @@ static SENDGRID_KEY_REGEX: Lazy<Regex> =
 static TWILIO_KEY_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\b(?:AC|SK)[a-f0-9]{32}\b").unwrap());
 
+static OPENAI_KEY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bsk-(?:proj-)?[a-zA-Z0-9]{32,64}\b").unwrap());
+
+static ANTHROPIC_KEY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bsk-ant-[a-zA-Z0-9_-]{32,64}\b").unwrap());
+
+static XAI_KEY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bxai-[a-zA-Z0-9]{32,64}\b").unwrap());
+
+static CEREBRAS_KEY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bcsk-[a-zA-Z0-9]{40,50}\b").unwrap());
+
 static DATE_MDY_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12][0-9]|3[01])[/-](?:19|20)?[0-9]{2}\b")
         .unwrap()
@@ -380,6 +392,26 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "twilio_key",
             regex: &TWILIO_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "openai_key",
+            regex: &OPENAI_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "anthropic_key",
+            regex: &ANTHROPIC_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "xai_key",
+            regex: &XAI_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "cerebras_key",
+            regex: &CEREBRAS_KEY_REGEX,
             validator: None,
         },
         PatternDef {

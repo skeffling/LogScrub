@@ -60,7 +60,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Network': ['ipv4', 'ipv6', 'mac_address', 'hostname', 'url'],
   'Identity': ['ssn', 'passport', 'drivers_license'],
   'Financial': ['credit_card', 'iban', 'btc_address', 'eth_address'],
-  'Tokens & Keys': ['jwt', 'bearer_token', 'aws_access_key', 'aws_secret_key', 'stripe_key', 'gcp_api_key', 'github_token', 'slack_token'],
+  'Tokens & Keys': ['jwt', 'bearer_token', 'aws_access_key', 'aws_secret_key', 'stripe_key', 'gcp_api_key', 'github_token', 'slack_token', 'openai_key', 'anthropic_key', 'xai_key', 'cerebras_key'],
   'Secrets': ['generic_secret', 'private_key', 'basic_auth', 'url_credentials', 'session_id'],
   'Location': ['gps_coordinates', 'postcode_uk', 'postcode_us'],
   'Date & Time': ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'timestamp_unix'],

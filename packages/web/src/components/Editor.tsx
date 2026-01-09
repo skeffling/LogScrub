@@ -858,11 +858,14 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
 
   const hasChanges = changedLines.size > 0
 
+  // Background color for title tab (matches the textarea/content area)
+  const titleBg = paneBg
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
-      <div className="flex flex-col min-h-0">
-        <div className="flex items-center justify-between mb-2 flex-shrink-0">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div className="flex flex-col min-h-0 relative">
+        <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
+          <label className={`text-sm font-medium text-gray-700 dark:text-gray-300 ${titleBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
             Original {fileName && <span className="text-gray-500 dark:text-gray-400" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
             {useVirtualScrolling && inputLines.length > VIRTUAL_THRESHOLD && (
               <span className="ml-2 text-xs text-gray-400">
@@ -870,7 +873,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               </span>
             )}
           </label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 pr-1">
             {hasChanges && output && (
               <div className="flex items-center gap-1 text-xs">
                 <button
@@ -898,7 +901,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 </button>
               </div>
             )}
-            <label 
+            <label
               className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer"
               title="Upload a log file (.log, .txt, .json, .xml, .csv, .zip, .gz). Compressed files are automatically extracted."
             >
@@ -936,7 +939,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               onChange={(e) => onInputChange(e.target.value)}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              className={`w-full h-full p-4 font-mono text-sm border dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${paneBg} ${paneText}`}
+              className={`w-full h-full p-4 font-mono text-sm border dark:border-gray-600 rounded-b-lg rounded-tr-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${paneBg} ${paneText}`}
             />
             {!input && (
               <div className={`absolute inset-0 p-4 pointer-events-none ${terminalStyle ? 'text-[#858585]' : 'text-gray-400 dark:text-gray-500'}`}>
@@ -954,7 +957,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           </div>
         ) : !output && analysisReplacements.length > 0 ? (
           useVirtualScrolling ? (
-            <div className={`flex-1 min-h-0 border-2 border-purple-400 dark:border-purple-600 rounded-lg ${paneBg}`}>
+            <div className={`flex-1 min-h-0 border-2 border-purple-400 dark:border-purple-600 rounded-b-lg rounded-tr-lg ${paneBg}`}>
               <VirtualizedList
                 lines={inputLines}
                 lineOffsets={lineOffsets}
@@ -974,13 +977,13 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           ) : (
             <div
               ref={inputContainerRef}
-              className={`flex-1 min-h-0 border-2 border-purple-400 dark:border-purple-600 rounded-lg overflow-auto ${paneBg}`}
+              className={`flex-1 min-h-0 border-2 border-purple-400 dark:border-purple-600 rounded-b-lg rounded-tr-lg overflow-auto ${paneBg}`}
             >
               {renderNonVirtualLines(inputLines, 'analysis', analysisReplacements, changedLines)}
             </div>
           )
         ) : useVirtualScrolling ? (
-          <div className={`flex-1 min-h-0 border dark:border-gray-600 rounded-lg ${paneBg}`}>
+          <div className={`flex-1 min-h-0 border dark:border-gray-600 rounded-b-lg rounded-tr-lg ${paneBg}`}>
             <VirtualizedList
               lines={filteredInputLines}
               lineOffsets={lineOffsets}
@@ -1003,16 +1006,16 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           <div
             ref={inputContainerRef}
             onScroll={() => handleScroll('input')}
-            className={`flex-1 min-h-0 border dark:border-gray-600 rounded-lg overflow-auto ${paneBg}`}
+            className={`flex-1 min-h-0 border dark:border-gray-600 rounded-b-lg rounded-tr-lg overflow-auto ${paneBg}`}
           >
             {renderNonVirtualLines(filteredInputLines, 'input', replacements, changedLines, filteredLineNumbers)}
           </div>
         )}
       </div>
-      
-      <div className="flex flex-col min-h-0">
-        <div className="flex items-center justify-between mb-2 flex-shrink-0">
-          <label className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>
+
+      <div className="flex flex-col min-h-0 relative">
+        <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
+          <label className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'} ${titleBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
             Scrubbed
             {useVirtualScrolling && outputLines.length > VIRTUAL_THRESHOLD && output && (
               <span className="ml-2 text-xs text-gray-400">
@@ -1020,7 +1023,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               </span>
             )}
           </label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 pr-1">
             {onClearAll && (input || output) && (
               <button
                 onClick={onClearAll}
@@ -1089,11 +1092,11 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
         </div>
         
         {!output ? (
-          <div className={`flex-1 min-h-0 p-4 font-mono text-sm border dark:border-gray-600 rounded-lg ${placeholderBg} ${placeholderText} overflow-auto`}>
+          <div className={`flex-1 min-h-0 p-4 font-mono text-sm border dark:border-gray-600 rounded-b-lg rounded-tr-lg ${placeholderBg} ${placeholderText} overflow-auto`}>
             Scrubbed output will appear here...
           </div>
         ) : useVirtualScrolling ? (
-          <div className={`flex-1 min-h-0 border dark:border-gray-600 rounded-lg ${outputPaneBg}`}>
+          <div className={`flex-1 min-h-0 border dark:border-gray-600 rounded-b-lg rounded-tr-lg ${outputPaneBg}`}>
             <VirtualizedList
               lines={filteredOutputLines}
               lineOffsets={[]}
@@ -1117,7 +1120,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           <div
             ref={outputContainerRef}
             onScroll={() => handleScroll('output')}
-            className={`flex-1 min-h-0 border dark:border-gray-600 rounded-lg overflow-auto ${outputPaneBg}`}
+            className={`flex-1 min-h-0 border dark:border-gray-600 rounded-b-lg rounded-tr-lg overflow-auto ${outputPaneBg}`}
           >
             {renderNonVirtualLines(filteredOutputLines, 'output', replacements, changedLines, filteredLineNumbers)}
           </div>

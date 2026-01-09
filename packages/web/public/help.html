@@ -10,1306 +10,1447 @@
   <script defer src="https://stats.skeffling.net/script.js" data-website-id="44266b4c-7a68-441e-8887-93d625a376db"></script>
   <style>
     :root {
-      --bg: #f9fafb;
-      --card: #ffffff;
-      --text: #111827;
-      --text-muted: #6b7280;
+      --sidebar-width: 280px;
+      --bg: #ffffff;
+      --sidebar-bg: #f8f9fa;
+      --text: #404040;
+      --text-light: #6c757d;
+      --heading: #1a1a1a;
       --border: #e5e7eb;
       --accent: #2563eb;
-      --accent-light: #dbeafe;
+      --accent-hover: #1d4ed8;
+      --accent-light: #eff6ff;
       --code-bg: #f3f4f6;
-      --success: #10b981;
-      --danger: #ef4444;
+      --success-bg: #ecfdf5;
+      --success-border: #10b981;
+      --warning-bg: #fffbeb;
+      --warning-border: #f59e0b;
+      --danger-bg: #fef2f2;
+      --danger-border: #ef4444;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #111827;
-        --card: #1f2937;
-        --text: #f9fafb;
-        --text-muted: #9ca3af;
+        --bg: #1a1a2e;
+        --sidebar-bg: #16162a;
+        --text: #d1d5db;
+        --text-light: #9ca3af;
+        --heading: #f9fafb;
         --border: #374151;
-        --accent: #3b82f6;
+        --accent: #60a5fa;
+        --accent-hover: #93c5fd;
         --accent-light: #1e3a5f;
-        --code-bg: #374151;
+        --code-bg: #2d2d44;
+        --success-bg: #064e3b;
+        --success-border: #10b981;
+        --warning-bg: #451a03;
+        --warning-border: #d97706;
+        --danger-bg: #450a0a;
+        --danger-border: #dc2626;
       }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.6;
+      line-height: 1.7;
+      font-size: 16px;
     }
-    .container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
-    header {
-      text-align: center;
-      padding: 3rem 0;
+
+    /* Layout */
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      overflow-y: auto;
+      z-index: 100;
+    }
+    .sidebar-header {
+      padding: 1.5rem;
       border-bottom: 1px solid var(--border);
-      margin-bottom: 3rem;
     }
-    header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-    header p { color: var(--text-muted); font-size: 1.1rem; }
-    .back-link {
-      display: inline-block;
-      margin-bottom: 1rem;
+    .sidebar-header h1 {
+      font-size: 1.25rem;
+      color: var(--heading);
+      margin-bottom: 0.25rem;
+    }
+    .sidebar-header .subtitle {
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
+    .sidebar-header .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--accent);
+      text-decoration: none;
+      margin-top: 0.75rem;
+    }
+    .sidebar-header .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .sidebar-nav {
+      padding: 1rem 0;
+    }
+    .nav-section {
+      margin-bottom: 0.5rem;
+    }
+    .nav-section-title {
+      padding: 0.5rem 1.5rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-light);
+    }
+    .nav-section a {
+      display: block;
+      padding: 0.4rem 1.5rem;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.9rem;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+    .nav-section a:hover {
+      color: var(--accent);
+      background: var(--accent-light);
+    }
+    .nav-section a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: var(--accent-light);
+      font-weight: 500;
+    }
+
+    .sidebar-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
+    .sidebar-footer a {
       color: var(--accent);
       text-decoration: none;
     }
-    .back-link:hover { text-decoration: underline; }
-    nav.toc {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin-bottom: 3rem;
+    .sidebar-footer a:hover {
+      text-decoration: underline;
     }
-    nav.toc h2 { font-size: 1.1rem; margin-bottom: 1rem; }
-    nav.toc ul { list-style: none; }
-    nav.toc li { margin: 0.5rem 0; }
-    nav.toc a { color: var(--accent); text-decoration: none; }
-    nav.toc a:hover { text-decoration: underline; }
-    section { margin-bottom: 3rem; }
+    .kofi-link {
+      color: #f97316 !important;
+    }
+
+    /* Search */
+    .sidebar-search {
+      padding: 0.75rem 1rem;
+      position: relative;
+    }
+    .sidebar-search input {
+      width: 100%;
+      padding: 0.5rem 2rem 0.5rem 2.25rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.85rem;
+    }
+    .sidebar-search input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-light);
+    }
+    .sidebar-search input::placeholder {
+      color: var(--text-light);
+    }
+    .search-icon {
+      position: absolute;
+      left: 1.6rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1rem;
+      height: 1rem;
+      color: var(--text-light);
+      pointer-events: none;
+    }
+    .search-clear {
+      position: absolute;
+      right: 1.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-light);
+      cursor: pointer;
+      font-size: 1.25rem;
+      line-height: 1;
+      padding: 0.25rem;
+      display: none;
+    }
+    .search-clear:hover {
+      color: var(--text);
+    }
+    .search-clear.visible {
+      display: block;
+    }
+    .search-results {
+      display: none;
+      max-height: 300px;
+      overflow-y: auto;
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 0;
+    }
+    .search-results.visible {
+      display: block;
+    }
+    .search-result {
+      display: block;
+      padding: 0.5rem 1.5rem;
+      text-decoration: none;
+      color: var(--text);
+      font-size: 0.85rem;
+    }
+    .search-result:hover {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+    .search-result-section {
+      font-size: 0.7rem;
+      color: var(--text-light);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .search-result-title {
+      font-weight: 500;
+    }
+    .search-result mark {
+      background: #fef08a;
+      color: inherit;
+      padding: 0 1px;
+      border-radius: 2px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .search-result mark {
+        background: #854d0e;
+      }
+    }
+    .search-no-results {
+      padding: 0.75rem 1.5rem;
+      color: var(--text-light);
+      font-size: 0.85rem;
+    }
+
+    /* Main content */
+    .main {
+      flex: 1;
+      margin-left: var(--sidebar-width);
+      min-width: 0;
+    }
+    .content {
+      max-width: 900px;
+      padding: 2rem 3rem 4rem;
+      margin: 0 auto;
+    }
+
+    /* Mobile menu */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--sidebar-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem;
+      z-index: 200;
+    }
+    .mobile-header h1 {
+      font-size: 1.1rem;
+      color: var(--heading);
+    }
+    .menu-toggle {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 99;
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s;
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .sidebar-overlay.open {
+        display: block;
+      }
+      .main {
+        margin-left: 0;
+      }
+      .mobile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .content {
+        padding: 5rem 1.5rem 3rem;
+      }
+    }
+
+    /* Typography */
     h2 {
       font-size: 1.75rem;
-      margin-bottom: 1rem;
+      color: var(--heading);
+      margin: 2.5rem 0 1rem;
       padding-bottom: 0.5rem;
-      border-bottom: 2px solid var(--accent);
+      border-bottom: 1px solid var(--border);
     }
-    h3 { font-size: 1.25rem; margin: 1.5rem 0 0.75rem; color: var(--text); }
-    h4 { font-size: 1rem; margin: 1rem 0 0.5rem; color: var(--text-muted); }
-    p { margin-bottom: 1rem; }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin: 1rem 0;
+    h2:first-child {
+      margin-top: 0;
     }
+    h3 {
+      font-size: 1.25rem;
+      color: var(--heading);
+      margin: 2rem 0 0.75rem;
+    }
+    h4 {
+      font-size: 1rem;
+      color: var(--heading);
+      margin: 1.5rem 0 0.5rem;
+    }
+    p {
+      margin-bottom: 1rem;
+    }
+    ul, ol {
+      margin: 0 0 1rem 1.5rem;
+    }
+    li {
+      margin-bottom: 0.35rem;
+    }
+    a {
+      color: var(--accent);
+    }
+    a:hover {
+      color: var(--accent-hover);
+    }
+    strong {
+      color: var(--heading);
+      font-weight: 600;
+    }
+
+    /* Code */
     code {
       background: var(--code-bg);
-      padding: 0.2rem 0.4rem;
+      padding: 0.15rem 0.4rem;
       border-radius: 4px;
-      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
-      font-size: 0.9em;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace;
+      font-size: 0.875em;
     }
     pre {
       background: var(--code-bg);
-      padding: 1rem;
+      padding: 1rem 1.25rem;
       border-radius: 8px;
       overflow-x: auto;
       margin: 1rem 0;
-      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace;
       font-size: 0.85rem;
-      line-height: 1.5;
+      line-height: 1.6;
     }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--sidebar-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin: 1rem 0;
+    }
+    .card h4 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+    .card p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Callouts */
+    .tip, .warning, .danger {
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      border-left: 4px solid;
+    }
+    .tip {
+      background: var(--accent-light);
+      border-color: var(--accent);
+    }
+    .warning {
+      background: var(--warning-bg);
+      border-color: var(--warning-border);
+    }
+    .danger {
+      background: var(--danger-bg);
+      border-color: var(--danger-border);
+    }
+    .callout-title {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--heading);
+    }
+
+    /* Examples */
     .example {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1rem;
       margin: 1rem 0;
     }
-    @media (max-width: 600px) {
+    @media (max-width: 700px) {
       .example { grid-template-columns: 1fr; }
     }
-    .example-before, .example-after {
+    .example-box {
       padding: 1rem;
       border-radius: 8px;
-      font-family: monospace;
+      font-family: 'SF Mono', Monaco, monospace;
       font-size: 0.85rem;
       white-space: pre-wrap;
-      word-break: break-all;
+      word-break: break-word;
     }
     .example-before {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
     }
     .example-after {
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-    }
-    @media (prefers-color-scheme: dark) {
-      .example-before { background: #451a1a; border-color: #7f1d1d; }
-      .example-after { background: #14532d; border-color: #166534; }
+      background: var(--success-bg);
+      border: 1px solid var(--success-border);
     }
     .example-label {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 600;
       text-transform: uppercase;
+      letter-spacing: 0.05em;
       margin-bottom: 0.5rem;
-      color: var(--text-muted);
+      color: var(--text-light);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
-    .highlight { background: #fef08a; padding: 0 2px; border-radius: 2px; }
+    .highlight {
+      background: #fef08a;
+      padding: 0 2px;
+      border-radius: 2px;
+    }
     @media (prefers-color-scheme: dark) {
       .highlight { background: #854d0e; }
     }
-    .rule-table {
+
+    /* Tables */
+    .table-wrapper {
+      overflow-x: auto;
+      margin: 1rem 0;
+    }
+    table {
       width: 100%;
       border-collapse: collapse;
-      margin: 1rem 0;
       font-size: 0.9rem;
     }
-    .rule-table th, .rule-table td {
-      padding: 0.75rem;
+    th, td {
+      padding: 0.75rem 1rem;
       text-align: left;
       border-bottom: 1px solid var(--border);
     }
-    .rule-table th {
-      background: var(--code-bg);
+    th {
+      background: var(--sidebar-bg);
       font-weight: 600;
+      color: var(--heading);
+      white-space: nowrap;
     }
-    .rule-table code {
+    td code {
       font-size: 0.8rem;
       word-break: break-all;
     }
+
+    /* Badges */
     .badge {
       display: inline-block;
-      padding: 0.2rem 0.5rem;
+      padding: 0.15rem 0.5rem;
       border-radius: 4px;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
     }
-    .badge-enabled { background: #dcfce7; color: #166534; }
-    .badge-disabled { background: #f3f4f6; color: #6b7280; }
+    .badge-enabled {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .badge-disabled {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
     @media (prefers-color-scheme: dark) {
       .badge-enabled { background: #166534; color: #dcfce7; }
       .badge-disabled { background: #374151; color: #9ca3af; }
     }
-    .strategy-list {
+
+    /* Strategy grid */
+    .strategy-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       margin: 1rem 0;
     }
-    .strategy-item {
-      background: var(--card);
+    .strategy-card {
+      background: var(--sidebar-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 1rem;
     }
-    .strategy-item h4 { margin-top: 0; }
-    .tip {
-      background: var(--accent-light);
-      border-left: 4px solid var(--accent);
-      padding: 1rem;
-      margin: 1rem 0;
-      border-radius: 0 8px 8px 0;
+    .strategy-card h4 {
+      margin: 0 0 0.5rem;
+      color: var(--accent);
     }
-    .warning {
-      background: #fef3c7;
-      border-left: 4px solid #f59e0b;
-      padding: 1rem;
-      margin: 1rem 0;
-      border-radius: 0 8px 8px 0;
+    .strategy-card p {
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
     }
-    @media (prefers-color-scheme: dark) {
-      .warning { background: #451a03; border-color: #d97706; }
+    .strategy-card code {
+      font-size: 0.8rem;
     }
+
+    /* Category sections */
+    .category-section {
+      margin: 1.5rem 0;
+      padding: 1.25rem;
+      background: var(--sidebar-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .category-section h3 {
+      margin: 0 0 1rem;
+      color: var(--accent);
+      font-size: 1.1rem;
+    }
+    .category-section table {
+      margin: 0;
+    }
+    .category-section p {
+      font-size: 0.85rem;
+      color: var(--text-light);
+      margin: 0.75rem 0 0;
+    }
+
+    /* Footer */
     footer {
       margin-top: 4rem;
       padding: 2rem 0;
       border-top: 1px solid var(--border);
       text-align: center;
-      color: var(--text-muted);
+      color: var(--text-light);
+      font-size: 0.9rem;
     }
-    footer a { color: var(--accent); }
-    .category-section {
-      margin: 2rem 0;
-      padding: 1.5rem;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+    footer p {
+      margin-bottom: 0.5rem;
     }
-    .category-section h3 {
-      margin-top: 0;
+    footer a {
       color: var(--accent);
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <a href="/" class="back-link">&larr; Back to LogScrub</a>
-    
-    <header>
-      <h1>LogScrub Help</h1>
-      <p>Complete guide to sanitizing sensitive data from your logs and text files</p>
-      <p style="margin-top: 1rem;"><a href="https://ko-fi.com/pitstopper" target="_blank" rel="noopener noreferrer" style="color: #f97316; text-decoration: none;" title="Buy us a coffee!">☕ Support us on Ko-fi</a></p>
-    </header>
+  <div class="mobile-header">
+    <h1>LogScrub Help</h1>
+    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">&#9776;</button>
+  </div>
+  <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-    <nav class="toc">
-      <h2>Contents</h2>
-      <ul>
-        <li><a href="#why-logscrub">Why Use LogScrub?</a></li>
-        <li><a href="#getting-started">Getting Started</a></li>
-        <li><a href="#how-it-works">How It Works</a></li>
-        <li><a href="#replacement-strategies">Replacement Strategies</a></li>
-        <li><a href="#detection-rules">Detection Rules Reference</a></li>
-        <li><a href="#custom-rules">Custom Rules</a></li>
-        <li><a href="#plain-text-patterns">Plain Text Patterns</a></li>
-        <li><a href="#presets">Presets</a></li>
-        <li><a href="#organizing-rules">Organizing Rules</a></li>
-        <li><a href="#time-shift">Time Shift</a></li>
-        <li><a href="#analyze-mode">Analyze Mode</a></li>
-        <li><a href="#audit-reports">Audit Reports</a></li>
-        <li><a href="#reverse-lookup">Reverse Lookup</a></li>
-        <li><a href="#keyboard-shortcuts">Keyboard Shortcuts</a></li>
-        <li><a href="#network-captures">Working with Network Captures</a></li>
-        <li><a href="#file-size">File Size &amp; Performance</a></li>
-        <li><a href="#privacy">Privacy &amp; Security</a></li>
-      </ul>
-    </nav>
-
-    <section id="why-logscrub">
-      <h2>Why Use LogScrub?</h2>
-      <p>Every day, developers and IT professionals need to share logs for debugging, support tickets, bug reports, and collaboration. But logs often contain sensitive information that shouldn't be shared.</p>
-
-      <h3>Common Scenarios</h3>
-      
-      <div class="card">
-        <h4>Sharing Logs with AI Assistants</h4>
-        <p>AI tools like ChatGPT, Claude, and Copilot are incredibly useful for debugging and analyzing logs. But pasting raw logs means sending customer emails, IP addresses, API keys, and other sensitive data to third-party services.</p>
-        <p><strong>Solution:</strong> Scrub your logs first. The AI can still understand error patterns, stack traces, and timing issues without seeing real customer data. A log showing <code>[EMAIL-1] failed to authenticate from [IPV4-1]</code> is just as useful for debugging as one with real values.</p>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>LogScrub</h1>
+        <div class="subtitle">Documentation</div>
+        <a href="/" class="back-link">&larr; Back to App</a>
       </div>
 
-      <div class="card">
-        <h4>Filing Bug Reports &amp; Support Tickets</h4>
-        <p>When reporting issues to software vendors or open-source projects, you often need to include logs. These logs may contain your company's internal hostnames, user data, or credentials that were accidentally logged.</p>
-        <p><strong>Solution:</strong> LogScrub removes PII while preserving the structure and timing that developers need to diagnose issues.</p>
+      <div class="sidebar-search">
+        <input type="text" id="search-input" placeholder="Search docs..." aria-label="Search documentation">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="M21 21l-4.35-4.35"></path>
+        </svg>
+        <button id="search-clear" class="search-clear" aria-label="Clear search">&times;</button>
       </div>
+      <div id="search-results" class="search-results"></div>
 
-      <div class="card">
-        <h4>Sharing with Colleagues &amp; Contractors</h4>
-        <p>Not everyone on your team needs to see production customer data. When sharing logs for code review or debugging, sanitizing first follows the principle of least privilege.</p>
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">Getting Started</div>
+          <a href="#why-logscrub">Why Use LogScrub?</a>
+          <a href="#getting-started">Quick Start</a>
+          <a href="#how-it-works">How It Works</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Features</div>
+          <a href="#replacement-strategies">Replacement Strategies</a>
+          <a href="#detection-rules">Detection Rules</a>
+          <a href="#custom-rules">Custom Rules</a>
+          <a href="#plain-text-patterns">Plain Text Patterns</a>
+          <a href="#presets">Presets</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Advanced</div>
+          <a href="#organizing-rules">Organizing Rules</a>
+          <a href="#time-shift">Time Shift</a>
+          <a href="#analyze-mode">Analyze Mode</a>
+          <a href="#audit-reports">Audit Reports</a>
+          <a href="#reverse-lookup">Reverse Lookup</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Reference</div>
+          <a href="#keyboard-shortcuts">Keyboard Shortcuts</a>
+          <a href="#network-captures">Network Captures</a>
+          <a href="#file-size">Performance</a>
+          <a href="#privacy">Privacy & Security</a>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <p><a href="mailto:skeffling@gmail.com">Contact</a></p>
+        <p><a href="https://ko-fi.com/pitstopper" class="kofi-link" target="_blank" rel="noopener">Support us on Ko-fi</a></p>
       </div>
+    </aside>
 
-      <div class="card">
-        <h4>Compliance &amp; Data Protection</h4>
-        <p>Regulations like GDPR, HIPAA, and CCPA restrict how personal data can be shared and processed. Sanitizing logs before sharing helps maintain compliance and reduces your data exposure footprint.</p>
-      </div>
+    <main class="main">
+      <div class="content">
 
-      <h3>Why Client-Side Processing Matters</h3>
-      <p>Many log sanitization tools require uploading your logs to a server. This defeats the purpose — you're sharing sensitive data with yet another third party.</p>
-      <p>LogScrub processes everything in your browser using WebAssembly. Your logs never leave your device. You can even use it offline or on an air-gapped machine.</p>
+        <section id="why-logscrub">
+          <h2>Why Use LogScrub?</h2>
+          <p>Every day, developers and IT professionals need to share logs for debugging, support tickets, bug reports, and collaboration. But logs often contain sensitive information that shouldn't be shared.</p>
 
-      <h3>Preserving Log Usefulness</h3>
-      <p>The goal isn't just to remove data — it's to keep logs useful for their intended purpose:</p>
-      <ul>
-        <li><strong>Consistency Mode</strong> ensures the same email always becomes <code>[EMAIL-1]</code>, so you can still trace a user's journey through the logs</li>
-        <li><strong>Time Shift</strong> lets you anonymize timestamps while preserving the relative timing between events</li>
-        <li><strong>Selective Rules</strong> let you keep non-sensitive data like UUIDs or timestamps when they're needed for debugging</li>
-      </ul>
-    </section>
+          <h3>Common Scenarios</h3>
 
-    <section id="getting-started">
-      <h2>Getting Started</h2>
-      <p>LogScrub helps you remove personally identifiable information (PII) and sensitive data from log files, debug output, and text documents before sharing them.</p>
-      
-      <h3>Quick Start</h3>
-      <ol>
-        <li><strong>Paste or upload</strong> your log content into the "Original" pane</li>
-        <li><strong>Review</strong> the detection rules in the left panel (enabled rules are checked)</li>
-        <li><strong>Click "Scrub"</strong> or press <code>⌘/Ctrl + Enter</code></li>
-        <li><strong>Copy or download</strong> the scrubbed output</li>
-      </ol>
+          <div class="card">
+            <h4>Sharing Logs with AI Assistants</h4>
+            <p>AI tools like ChatGPT, Claude, and Copilot are incredibly useful for debugging and analyzing logs. But pasting raw logs means sending customer emails, IP addresses, API keys, and other sensitive data to third-party services.</p>
+            <p><strong>Solution:</strong> Scrub your logs first. The AI can still understand error patterns, stack traces, and timing issues without seeing real customer data.</p>
+          </div>
 
-      <div class="example">
-        <div>
-          <div class="example-label">Before (Original)</div>
-          <div class="example-before">2024-01-15 10:23:45 INFO User login successful
+          <div class="card">
+            <h4>Filing Bug Reports & Support Tickets</h4>
+            <p>When reporting issues to software vendors or open-source projects, you often need to include logs. These logs may contain your company's internal hostnames, user data, or credentials that were accidentally logged.</p>
+          </div>
+
+          <div class="card">
+            <h4>Compliance & Data Protection</h4>
+            <p>Regulations like GDPR, HIPAA, and CCPA restrict how personal data can be shared and processed. Sanitizing logs before sharing helps maintain compliance and reduces your data exposure footprint.</p>
+          </div>
+
+          <h3>Why Client-Side Processing Matters</h3>
+          <p>Many log sanitization tools require uploading your logs to a server. This defeats the purpose — you're sharing sensitive data with yet another third party.</p>
+          <p>LogScrub processes everything in your browser using WebAssembly. Your logs never leave your device. You can even use it offline or on an air-gapped machine.</p>
+
+          <h3>Preserving Log Usefulness</h3>
+          <p>The goal isn't just to remove data — it's to keep logs useful for their intended purpose:</p>
+          <ul>
+            <li><strong>Consistency Mode</strong> ensures the same email always becomes <code>[EMAIL-1]</code>, so you can still trace a user's journey</li>
+            <li><strong>Time Shift</strong> lets you anonymize timestamps while preserving the relative timing between events</li>
+            <li><strong>Selective Rules</strong> let you keep non-sensitive data like UUIDs or timestamps when needed for debugging</li>
+          </ul>
+        </section>
+
+        <section id="getting-started">
+          <h2>Quick Start</h2>
+          <p>LogScrub helps you remove personally identifiable information (PII) and sensitive data from log files before sharing them.</p>
+
+          <h3>Basic Workflow</h3>
+          <ol>
+            <li><strong>Paste or upload</strong> your log content into the "Original" pane</li>
+            <li><strong>Review</strong> the detection rules in the left panel (enabled rules are checked)</li>
+            <li><strong>Click "Scrub"</strong> or press <code>⌘/Ctrl + Enter</code></li>
+            <li><strong>Copy or download</strong> the scrubbed output</li>
+          </ol>
+
+          <div class="example">
+            <div>
+              <div class="example-label">Before (Original)</div>
+              <div class="example-box example-before">2024-01-15 10:23:45 INFO User login
   email: <span class="highlight">john.doe@example.com</span>
   ip: <span class="highlight">192.168.1.105</span>
-  session: <span class="highlight">sid=abc123def456789</span></div>
-        </div>
-        <div>
-          <div class="example-label">After (Scrubbed)</div>
-          <div class="example-after">2024-01-15 10:23:45 INFO User login successful
+  session: <span class="highlight">sid=abc123def456</span></div>
+            </div>
+            <div>
+              <div class="example-label">After (Scrubbed)</div>
+              <div class="example-box example-after">2024-01-15 10:23:45 INFO User login
   email: [EMAIL-1]
   ip: [IPV4-1]
   session: [SESSION_ID-1]</div>
-        </div>
-      </div>
-    </section>
+            </div>
+          </div>
+        </section>
 
-    <section id="how-it-works">
-      <h2>How It Works</h2>
-      <p>LogScrub uses pattern matching to identify sensitive data in your text. Each detection rule has a regular expression (regex) that matches specific data formats.</p>
-      
-      <h3>Processing Pipeline</h3>
-      <ol>
-        <li><strong>Pattern Matching</strong> — Each enabled rule's regex is applied to find matches</li>
-        <li><strong>Replacement</strong> — Matched text is replaced according to your chosen strategy</li>
-        <li><strong>Consistency</strong> — When enabled, identical values get identical replacements</li>
-      </ol>
+        <section id="how-it-works">
+          <h2>How It Works</h2>
+          <p>LogScrub uses pattern matching to identify sensitive data in your text. Each detection rule has a regular expression (regex) that matches specific data formats.</p>
 
-      <div class="tip">
-        <strong>Tip:</strong> Use the "Analyze" feature to preview what will be detected before sanitizing. This also suggests disabled rules that would match content in your text.
-      </div>
+          <h3>Processing Pipeline</h3>
+          <ol>
+            <li><strong>Pattern Matching</strong> — Each enabled rule's regex is applied to find matches</li>
+            <li><strong>Replacement</strong> — Matched text is replaced according to your chosen strategy</li>
+            <li><strong>Consistency</strong> — When enabled, identical values get identical replacements</li>
+          </ol>
 
-      <div class="warning">
-        <strong>Important:</strong> Only enable rules for data types you expect to find in your content. Enabling all rules will likely cause false positives — for example, the "US Zip Code" pattern matches any 5-digit number, and "Date" patterns may match version numbers. Be selective to get accurate results.
-      </div>
-    </section>
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>Use the "Analyze" feature to preview what will be detected before sanitizing. This also suggests disabled rules that would match content in your text.</p>
+          </div>
 
-    <section id="replacement-strategies">
-      <h2>Replacement Strategies</h2>
-      <p>Choose how detected PII should be replaced:</p>
+          <div class="warning">
+            <div class="callout-title">Important</div>
+            <p>Only enable rules for data types you expect to find in your content. Enabling all rules will likely cause false positives — for example, the "US Zip Code" pattern matches any 5-digit number. Be selective to get accurate results.</p>
+          </div>
+        </section>
 
-      <div class="strategy-list">
-        <div class="strategy-item">
-          <h4>Label</h4>
-          <p>Replaces with a descriptive label and counter.</p>
-          <code>john@example.com</code> → <code>[EMAIL-1]</code>
-        </div>
-        <div class="strategy-item">
-          <h4>Fake</h4>
-          <p>Replaces with realistic fake data.</p>
-          <code>john@example.com</code> → <code>user42@redacted.net</code>
-        </div>
-        <div class="strategy-item">
-          <h4>Redact</h4>
-          <p>Replaces with asterisks matching the original length.</p>
-          <code>john@example.com</code> → <code>****************</code>
-        </div>
-        <div class="strategy-item">
-          <h4>Template</h4>
-          <p>Custom replacement format using variables.</p>
-          <code>{TYPE}</code>, <code>{n}</code>, <code>{len}</code>
-        </div>
-      </div>
+        <section id="replacement-strategies">
+          <h2>Replacement Strategies</h2>
+          <p>Choose how detected PII should be replaced:</p>
 
-      <h3>Consistency Mode</h3>
-      <p>When enabled, the same input value always produces the same replacement. This preserves relationships in your data:</p>
+          <div class="strategy-grid">
+            <div class="strategy-card">
+              <h4>Label</h4>
+              <p>Replaces with a descriptive label and counter.</p>
+              <code>john@example.com</code> → <code>[EMAIL-1]</code>
+            </div>
+            <div class="strategy-card">
+              <h4>Fake</h4>
+              <p>Replaces with realistic fake data.</p>
+              <code>john@example.com</code> → <code>user42@redacted.net</code>
+            </div>
+            <div class="strategy-card">
+              <h4>Redact</h4>
+              <p>Replaces with blocks matching the original length.</p>
+              <code>john@example.com</code> → <code>████████████████</code>
+            </div>
+            <div class="strategy-card">
+              <h4>Template</h4>
+              <p>Custom replacement format using variables.</p>
+              <code>{TYPE}</code>, <code>{n}</code>, <code>{len}</code>
+            </div>
+          </div>
 
-      <div class="example">
-        <div>
-          <div class="example-label">With Consistency Mode</div>
-          <div class="example-after">User [EMAIL-1] logged in
+          <h3>Consistency Mode</h3>
+          <p>When enabled, the same input value always produces the same replacement. This preserves relationships in your data:</p>
+
+          <div class="example">
+            <div>
+              <div class="example-label">With Consistency Mode</div>
+              <div class="example-box example-after">User [EMAIL-1] logged in
 User [EMAIL-1] viewed page
 User [EMAIL-2] logged in</div>
-        </div>
-        <div>
-          <div class="example-label">Without Consistency Mode</div>
-          <div class="example-after">User [EMAIL-1] logged in
+            </div>
+            <div>
+              <div class="example-label">Without Consistency Mode</div>
+              <div class="example-box example-after">User [EMAIL-1] logged in
 User [EMAIL-2] viewed page
 User [EMAIL-3] logged in</div>
-        </div>
-      </div>
-    </section>
+            </div>
+          </div>
+        </section>
 
-    <section id="detection-rules">
-      <h2>Detection Rules Reference</h2>
-      <p>LogScrub includes 35+ built-in detection rules organized by category. Rules marked as "enabled" are active by default.</p>
+        <section id="detection-rules">
+          <h2>Detection Rules Reference</h2>
+          <p>LogScrub includes 35+ built-in detection rules organized by category.</p>
 
-      <div class="category-section">
-        <h3>Contact Information</h3>
-        <table class="rule-table">
-          <tr>
-            <th>Rule</th>
-            <th>Pattern</th>
-            <th>Example Match</th>
-            <th>Default</th>
-          </tr>
-          <tr>
-            <td><strong>Email</strong></td>
-            <td><code>[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}</code></td>
-            <td>user@example.com</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Phone (US)</strong></td>
-            <td><code>(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}</code></td>
-            <td>(555) 123-4567</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Phone (UK)</strong></td>
-            <td><code>0[1-9][0-9]{8,9}</code></td>
-            <td>020 7946 0958</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Phone (Intl)</strong></td>
-            <td><code>\+[1-9][0-9]{1,3}[\s-]?[0-9]{6,14}</code></td>
-            <td>+44 7911 123456</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-        </table>
-      </div>
+          <div class="category-section">
+            <h3>Contact Information</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>Email</strong></td><td>user@example.com</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Phone (US)</strong></td><td>(555) 123-4567</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Phone (UK)</strong></td><td>020 7946 0958</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Phone (Intl)</strong></td><td>+44 7911 123456</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+              </table>
+            </div>
+          </div>
 
-      <div class="category-section">
-        <h3>Network</h3>
-        <table class="rule-table">
-          <tr>
-            <th>Rule</th>
-            <th>Pattern</th>
-            <th>Example Match</th>
-            <th>Default</th>
-          </tr>
-          <tr>
-            <td><strong>IPv4</strong></td>
-            <td><code>(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}...</code></td>
-            <td>192.168.1.1</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>IPv6</strong></td>
-            <td><code>[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}</code></td>
-            <td>2001:0db8:85a3:0000:0000:8a2e:0370:7334</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>MAC Address</strong></td>
-            <td><code>(?:[0-9A-F]{2}[:-]){5}[0-9A-F]{2}</code></td>
-            <td>00:1A:2B:3C:4D:5E</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Hostname</strong></td>
-            <td><code>[a-zA-Z0-9-]+\.)+(?:com|org|net|...)</code></td>
-            <td>api.example.com</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>URL</strong></td>
-            <td><code>https?://[^\s]+</code></td>
-            <td>https://example.com/path</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-        </table>
-      </div>
+          <div class="category-section">
+            <h3>Network</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>IPv4</strong></td><td>192.168.1.1</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>IPv6</strong></td><td>2001:0db8:85a3::8a2e:0370:7334</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>MAC Address</strong></td><td>00:1A:2B:3C:4D:5E</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Hostname</strong></td><td>api.example.com</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>URL</strong></td><td>https://example.com/path</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+              </table>
+            </div>
+          </div>
 
-      <div class="category-section">
-        <h3>Identity (US)</h3>
-        <table class="rule-table">
-          <tr>
-            <th>Rule</th>
-            <th>Pattern</th>
-            <th>Example Match</th>
-            <th>Default</th>
-          </tr>
-          <tr>
-            <td><strong>SSN</strong></td>
-            <td><code>[0-9]{3}-[0-9]{2}-[0-9]{4}</code></td>
-            <td>123-45-6789</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>US ITIN</strong></td>
-            <td><code>9[0-9]{2}[- ]?(5[0-9]|6[0-5]|...)[- ]?[0-9]{4}</code></td>
-            <td>912-54-1234</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Passport</strong></td>
-            <td><code>(?:passport[:\s#]*)?[A-Z]{1,2}[0-9]{6,9}</code></td>
-            <td>AB1234567</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Driver's License</strong></td>
-            <td><code>(?:d\.?l\.?|driver'?s?\s*license)[:\s#]*[A-Z0-9]{5,15}</code></td>
-            <td>DL: D1234567</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-        </table>
-      </div>
+          <div class="category-section">
+            <h3>Identity (US)</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>SSN</strong></td><td>123-45-6789</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>US ITIN</strong></td><td>912-54-1234</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Passport</strong></td><td>AB1234567</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Driver's License</strong></td><td>DL: D1234567</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+          </div>
 
-      <div class="category-section">
-        <h3>Identity (UK)</h3>
-        <table class="rule-table">
-          <tr>
-            <th>Rule</th>
-            <th>Pattern</th>
-            <th>Example Match</th>
-            <th>Default</th>
-          </tr>
-          <tr>
-            <td><strong>UK NHS Number</strong></td>
-            <td><code>[0-9]{3}[- ]?[0-9]{3}[- ]?[0-9]{4}</code></td>
-            <td>450 557 7104</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>UK National Insurance</strong></td>
-            <td><code>[A-Z]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[A-D]</code></td>
-            <td>AB 12 34 56 C</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-        </table>
-        <p><em>Note: NHS Number includes mod-11 checksum validation to reduce false positives.</em></p>
-      </div>
+          <div class="category-section">
+            <h3>Identity (UK & International)</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>UK NHS Number</strong></td><td>450 557 7104</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>UK National Insurance</strong></td><td>AB 12 34 56 C</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>AU Tax File Number</strong></td><td>123 456 789</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>India PAN</strong></td><td>ABCPD1234E</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Singapore NRIC</strong></td><td>S1234567A</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+            <p><em>Note: NHS Number and AU TFN include checksum validation to reduce false positives.</em></p>
+          </div>
 
-      <div class="category-section">
-        <h3>Identity (International)</h3>
-        <table class="rule-table">
-          <tr>
-            <th>Rule</th>
-            <th>Pattern</th>
-            <th>Example Match</th>
-            <th>Default</th>
-          </tr>
-          <tr>
-            <td><strong>AU Tax File Number</strong></td>
-            <td><code>[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}</code></td>
-            <td>123 456 789</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>India PAN</strong></td>
-            <td><code>[A-Z]{3}[ABCFGHLJPT][A-Z][0-9]{4}[A-Z]</code></td>
-            <td>ABCPD1234E</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Singapore NRIC</strong></td>
-            <td><code>[STFGM][0-9]{7}[A-Z]</code></td>
-            <td>S1234567A</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-        </table>
-        <p><em>Note: AU TFN includes weighted checksum validation to reduce false positives.</em></p>
-      </div>
+          <div class="category-section">
+            <h3>Financial</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>Credit Card</strong></td><td>4111111111111111</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>IBAN</strong></td><td>GB82WEST12345698765432</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Bitcoin Address</strong></td><td>1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Ethereum Address</strong></td><td>0x742d35Cc6634C0532925a3b844Bc...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+              </table>
+            </div>
+          </div>
 
-      <div class="category-section">
-        <h3>Financial</h3>
-        <table class="rule-table">
-          <tr>
-            <th>Rule</th>
-            <th>Pattern</th>
-            <th>Example Match</th>
-            <th>Default</th>
-          </tr>
-          <tr>
-            <td><strong>Credit Card</strong></td>
-            <td><code>4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|...</code></td>
-            <td>4111111111111111</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>IBAN</strong></td>
-            <td><code>[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{7}...</code></td>
-            <td>GB82WEST12345698765432</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Bitcoin Address</strong></td>
-            <td><code>(?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}</code></td>
-            <td>1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Ethereum Address</strong></td>
-            <td><code>0x[a-fA-F0-9]{40}</code></td>
-            <td>0x742d35Cc6634C0532925a3b844Bc9e7595f...</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-        </table>
-      </div>
+          <div class="category-section">
+            <h3>Tokens & API Keys</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>JWT</strong></td><td>eyJhbGciOiJIUzI1NiIsInR5cCI6...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Bearer Token</strong></td><td>Bearer abc123.def456</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>AWS Access Key</strong></td><td>AKIAIOSFODNN7EXAMPLE</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>AWS Secret Key</strong></td><td>aws_secret_access_key = wJalrXUt...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Stripe Key</strong></td><td>sk_test_4eC39HqLyjWDarjtT1zdp7dc</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>GCP API Key</strong></td><td>AIzaSyDaGmWKa4JsXZ-HjGw7ISLn...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>GitHub Token</strong></td><td>ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>OpenAI API Key</strong></td><td>sk-proj-abc123def456ghi789...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Anthropic API Key</strong></td><td>sk-ant-api03-abc123def456...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+              </table>
+            </div>
+          </div>
 
-      <div class="category-section">
-        <h3>Tokens &amp; API Keys</h3>
-        <table class="rule-table">
-          <tr>
-            <th>Rule</th>
-            <th>Pattern</th>
-            <th>Example Match</th>
-            <th>Default</th>
-          </tr>
-          <tr>
-            <td><strong>JWT</strong></td>
-            <td><code>eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+</code></td>
-            <td>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJz...</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Bearer Token</strong></td>
-            <td><code>bearer\s+[a-z0-9_-]+\.[a-z0-9_-]+</code></td>
-            <td>Bearer abc123.def456</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>AWS Access Key</strong></td>
-            <td><code>(?:AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}</code></td>
-            <td>AKIAIOSFODNN7EXAMPLE</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>AWS Secret Key</strong></td>
-            <td><code>(?:aws.?secret|secret.?access)...[a-z0-9/+=]{40}</code></td>
-            <td>aws_secret_access_key = wJalrXUtnFEMI/K7...</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Stripe Key</strong></td>
-            <td><code>(?:sk|pk)_(?:test|live)_[0-9a-zA-Z]{24,}</code></td>
-            <td>sk_test_4eC39HqLyjWDarjtT1zdp7dc</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>GCP API Key</strong></td>
-            <td><code>AIza[0-9A-Za-z_-]{35}</code></td>
-            <td>AIzaSyDaGmWKa4JsXZ-HjGw7ISLn_3namBGewQe</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>GitHub Token</strong></td>
-            <td><code>(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}</code></td>
-            <td>ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Slack Token</strong></td>
-            <td><code>xox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*</code></td>
-            <td>xoxb-1234567890-1234567890123-AbCdEf...</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>OpenAI API Key</strong></td>
-            <td><code>sk-(?:proj-)?[a-zA-Z0-9]{32,64}</code></td>
-            <td>sk-proj-abc123def456ghi789...</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Anthropic API Key</strong></td>
-            <td><code>sk-ant-[a-zA-Z0-9_-]{32,64}</code></td>
-            <td>sk-ant-api03-abc123def456...</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>X AI API Key</strong></td>
-            <td><code>xai-[a-zA-Z0-9]{32,64}</code></td>
-            <td>xai-abc123def456ghi789jkl012...</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Cerebras API Key</strong></td>
-            <td><code>csk-[a-zA-Z0-9]{40,50}</code></td>
-            <td>csk-abc123def456ghi789jkl012mno345...</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-        </table>
-      </div>
+          <div class="category-section">
+            <h3>Secrets</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>Generic Secret</strong></td><td>password=MyS3cr3tP@ss!</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>High Entropy Secret</strong></td><td>xK9#mP2$vL7@nQ4!</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Private Key</strong></td><td>-----BEGIN RSA PRIVATE KEY-----</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Basic Auth</strong></td><td>Basic dXNlcjpwYXNzd29yZA==</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>URL Credentials</strong></td><td>https://user:pass@example.com</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Session ID</strong></td><td>JSESSIONID=ABC123DEF456789XYZ</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+              </table>
+            </div>
+          </div>
 
-      <div class="category-section">
-        <h3>Secrets</h3>
-        <table class="rule-table">
-          <tr>
-            <th>Rule</th>
-            <th>Pattern</th>
-            <th>Example Match</th>
-            <th>Default</th>
-          </tr>
-          <tr>
-            <td><strong>Generic Secret</strong></td>
-            <td><code>(?:password|secret|token|api_key)\s*[:=]\s*[^\s]{8,}</code></td>
-            <td>password=MyS3cr3tP@ss!</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>High Entropy Secret</strong></td>
-            <td><code>Shannon entropy &gt; 3.5 bits</code></td>
-            <td>xK9#mP2$vL7@nQ4!</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Private Key</strong></td>
-            <td><code>-----BEGIN (?:RSA |EC )?PRIVATE KEY-----</code></td>
-            <td>-----BEGIN RSA PRIVATE KEY-----</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Basic Auth</strong></td>
-            <td><code>basic\s+[a-z0-9+/]+=*</code></td>
-            <td>Basic dXNlcjpwYXNzd29yZA==</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>URL Credentials</strong></td>
-            <td><code>https?://[^:]+:[^@]+@[^\s/]+</code></td>
-            <td>https://user:pass@example.com</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Session ID</strong></td>
-            <td><code>(?:session_id|sid|jsessionid)\s*=\s*[a-z0-9_-]{16,}</code></td>
-            <td>JSESSIONID=ABC123DEF456789XYZ</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-        </table>
-      </div>
+          <div class="category-section">
+            <h3>Location</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>GPS Coordinates</strong></td><td>51.5074, -0.1278</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>UK Postcode</strong></td><td>SW1A 1AA</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>US Zip Code</strong></td><td>90210</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+          </div>
 
-      <div class="category-section">
-        <h3>Location</h3>
-        <table class="rule-table">
-          <tr>
-            <th>Rule</th>
-            <th>Pattern</th>
-            <th>Example Match</th>
-            <th>Default</th>
-          </tr>
-          <tr>
-            <td><strong>GPS Coordinates</strong></td>
-            <td><code>-?[1-8]?[0-9]\.[0-9]{4,}\s*,\s*-?1?[0-9]{1,2}\.[0-9]{4,}</code></td>
-            <td>51.5074, -0.1278</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>UK Postcode</strong></td>
-            <td><code>[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}</code></td>
-            <td>SW1A 1AA</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>US Zip Code</strong></td>
-            <td><code>[0-9]{5}(?:-[0-9]{4})?</code></td>
-            <td>90210 or 90210-1234</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-        </table>
-      </div>
+          <div class="category-section">
+            <h3>Date & Time</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>Date (ISO)</strong></td><td>2024-01-15</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>DateTime (ISO)</strong></td><td>2024-01-15T10:30:00Z</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Unix Timestamp</strong></td><td>1705312200</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+            <p>Date/time rules are disabled by default as they often match non-sensitive data.</p>
+          </div>
 
-      <div class="category-section">
-        <h3>Date &amp; Time</h3>
-        <p>Date/time rules are disabled by default as they often match non-sensitive data. Enable them if your logs contain sensitive temporal information.</p>
-        <table class="rule-table">
-          <tr>
-            <th>Rule</th>
-            <th>Pattern</th>
-            <th>Example Match</th>
-            <th>Default</th>
-          </tr>
-          <tr>
-            <td><strong>Date (ISO)</strong></td>
-            <td><code>(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])</code></td>
-            <td>2024-01-15</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>DateTime (ISO)</strong></td>
-            <td><code>2024-01-15T10:30:00Z</code></td>
-            <td>2024-01-15T10:30:00.000Z</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>Unix Timestamp</strong></td>
-            <td><code>1[0-9]{9}(?:[0-9]{3})?</code></td>
-            <td>1705312200</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-        </table>
-      </div>
+          <div class="category-section">
+            <h3>Other</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>UUID</strong></td><td>550e8400-e29b-41d4-a716-446655440000</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>File Path (Unix)</strong></td><td>/home/john/documents/file.txt</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>File Path (Windows)</strong></td><td>C:\Users\John\Documents\file.txt</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+          </div>
+        </section>
 
-      <div class="category-section">
-        <h3>Other</h3>
-        <table class="rule-table">
-          <tr>
-            <th>Rule</th>
-            <th>Pattern</th>
-            <th>Example Match</th>
-            <th>Default</th>
-          </tr>
-          <tr>
-            <td><strong>UUID</strong></td>
-            <td><code>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}</code></td>
-            <td>550e8400-e29b-41d4-a716-446655440000</td>
-            <td><span class="badge badge-enabled">Enabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>File Path (Unix)</strong></td>
-            <td><code>/(?:home|Users)/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9._-]+)+</code></td>
-            <td>/home/john/documents/file.txt</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-          <tr>
-            <td><strong>File Path (Windows)</strong></td>
-            <td><code>[A-Z]:\\(?:Users|Documents)\\[^\s\\]+...</code></td>
-            <td>C:\Users\John\Documents\file.txt</td>
-            <td><span class="badge badge-disabled">Disabled</span></td>
-          </tr>
-        </table>
-      </div>
-    </section>
+        <section id="custom-rules">
+          <h2>Custom Rules</h2>
+          <p>Create your own detection rules using regular expressions for patterns specific to your organization.</p>
 
-    <section id="custom-rules">
-      <h2>Custom Rules</h2>
-      <p>Create your own detection rules using regular expressions for patterns specific to your organization.</p>
+          <h3>Adding a Custom Rule</h3>
+          <ol>
+            <li>Click the <strong>"+ Regex"</strong> button in the rules panel</li>
+            <li>Enter a descriptive name for the rule</li>
+            <li>Enter your regex pattern (JavaScript syntax)</li>
+            <li>Click "Add Rule"</li>
+          </ol>
 
-      <h3>Adding a Custom Rule</h3>
-      <ol>
-        <li>Click the <strong>"+ Regex"</strong> button in the rules panel</li>
-        <li>Enter a descriptive name for the rule</li>
-        <li>Enter your regex pattern (JavaScript syntax)</li>
-        <li>Click "Add Rule"</li>
-      </ol>
+          <h3>Example: Company Employee IDs</h3>
+          <div class="card">
+            <p><strong>Name:</strong> Employee ID</p>
+            <p><strong>Pattern:</strong> <code>EMP-[0-9]{6}</code></p>
+            <p><strong>Matches:</strong> EMP-123456, EMP-000001</p>
+          </div>
 
-      <h3>Example: Company Employee IDs</h3>
-      <div class="card">
-        <p><strong>Name:</strong> Employee ID</p>
-        <p><strong>Pattern:</strong> <code>EMP-[0-9]{6}</code></p>
-        <p><strong>Matches:</strong> EMP-123456, EMP-000001</p>
-      </div>
+          <h3>Example: Internal Hostnames</h3>
+          <div class="card">
+            <p><strong>Name:</strong> Internal Servers</p>
+            <p><strong>Pattern:</strong> <code>\b[a-z]+-(?:prod|staging|dev)-[0-9]+\.internal\.company\.com\b</code></p>
+            <p><strong>Matches:</strong> api-prod-01.internal.company.com</p>
+          </div>
 
-      <h3>Example: Internal Hostnames</h3>
-      <div class="card">
-        <p><strong>Name:</strong> Internal Servers</p>
-        <p><strong>Pattern:</strong> <code>\b[a-z]+-(?:prod|staging|dev)-[0-9]+\.internal\.company\.com\b</code></p>
-        <p><strong>Matches:</strong> api-prod-01.internal.company.com</p>
-      </div>
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>Test your regex pattern using the "View Pattern" button (⚙) which includes a pattern tester.</p>
+          </div>
+        </section>
 
-      <div class="tip">
-        <strong>Tip:</strong> Test your regex pattern using the "View Pattern" button (⚙) which includes a pattern tester.
-      </div>
-    </section>
+        <section id="plain-text-patterns">
+          <h2>Plain Text Patterns</h2>
+          <p>For exact text matches that don't require regex (like specific hostnames or identifiers), use Plain Text patterns.</p>
 
-    <section id="plain-text-patterns">
-      <h2>Plain Text Patterns</h2>
-      <p>For exact text matches that don't require regex (like specific hostnames or identifiers), use Plain Text patterns.</p>
+          <h3>Adding a Plain Text Pattern</h3>
+          <ol>
+            <li>Click the <strong>"+ Text"</strong> button in the rules panel</li>
+            <li>Enter a label for the pattern</li>
+            <li>Enter the exact text to match</li>
+            <li>Click "Add Pattern"</li>
+          </ol>
 
-      <h3>Adding a Plain Text Pattern</h3>
-      <ol>
-        <li>Click the <strong>"+ Text"</strong> button in the rules panel</li>
-        <li>Enter a label for the pattern</li>
-        <li>Enter the exact text to match</li>
-        <li>Click "Add Pattern"</li>
-      </ol>
+          <h3>When to Use Plain Text vs Regex</h3>
+          <div class="table-wrapper">
+            <table>
+              <tr><th>Use Plain Text</th><th>Use Regex</th></tr>
+              <tr>
+                <td>Specific hostnames: <code>db-master.prod.internal</code></td>
+                <td>Pattern-based hostnames: <code>db-\d+\.prod\.internal</code></td>
+              </tr>
+              <tr>
+                <td>Known usernames: <code>admin_system</code></td>
+                <td>Username patterns: <code>user_[a-z]+_[0-9]+</code></td>
+              </tr>
+              <tr>
+                <td>Fixed identifiers: <code>ACME-CORP</code></td>
+                <td>Variable IDs: <code>ACME-[A-Z]{3}-[0-9]+</code></td>
+              </tr>
+            </table>
+          </div>
+        </section>
 
-      <h3>When to Use Plain Text vs Regex</h3>
-      <table class="rule-table">
-        <tr>
-          <th>Use Plain Text</th>
-          <th>Use Regex</th>
-        </tr>
-        <tr>
-          <td>Specific hostnames: <code>db-master.prod.internal</code></td>
-          <td>Pattern-based hostnames: <code>db-\d+\.prod\.internal</code></td>
-        </tr>
-        <tr>
-          <td>Known usernames: <code>admin_system</code></td>
-          <td>Username patterns: <code>user_[a-z]+_[0-9]+</code></td>
-        </tr>
-        <tr>
-          <td>Fixed identifiers: <code>ACME-CORP</code></td>
-          <td>Variable IDs: <code>ACME-[A-Z]{3}-[0-9]+</code></td>
-        </tr>
-      </table>
-    </section>
+        <section id="presets">
+          <h2>Presets</h2>
+          <p>Presets let you save and quickly switch between different rule configurations.</p>
 
-    <section id="presets">
-      <h2>Presets</h2>
-      <p>Presets let you save and quickly switch between different rule configurations.</p>
+          <h3>Built-in Presets</h3>
+          <ul>
+            <li><strong>Minimal</strong> — Only critical PII (emails, SSN, credit cards)</li>
+            <li><strong>Standard</strong> — Common PII without dates/paths</li>
+            <li><strong>Paranoid</strong> — Everything enabled for maximum redaction</li>
+            <li><strong>Dev/Debug</strong> — Focus on secrets, tokens, and credentials</li>
+            <li><strong>GDPR</strong> — EU personal data (includes UK postcodes, IBAN)</li>
+          </ul>
 
-      <h3>Built-in Presets</h3>
-      <ul>
-        <li><strong>Minimal</strong> — Only critical PII (emails, SSN, credit cards)</li>
-        <li><strong>Standard</strong> — Common PII without dates/paths</li>
-        <li><strong>Paranoid</strong> — Everything enabled for maximum redaction</li>
-        <li><strong>Dev/Debug</strong> — Focus on secrets, tokens, and credentials</li>
-        <li><strong>GDPR</strong> — EU personal data (includes UK postcodes, IBAN)</li>
-      </ul>
+          <h3>Custom Presets</h3>
+          <p>Save your current rule configuration as a preset:</p>
+          <ol>
+            <li>Configure your rules as desired</li>
+            <li>Click "Presets" to expand the presets panel</li>
+            <li>Enter a name and click "Save"</li>
+          </ol>
 
-      <h3>Custom Presets</h3>
-      <p>Save your current rule configuration as a preset:</p>
-      <ol>
-        <li>Configure your rules as desired</li>
-        <li>Click "Presets" to expand the presets panel</li>
-        <li>Enter a name and click "Save"</li>
-      </ol>
+          <h3>Import/Export</h3>
+          <p>Share configurations between computers or team members using JSON export/import.</p>
+        </section>
 
-      <h3>Import/Export</h3>
-      <p>Share configurations between computers or team members using JSON export/import.</p>
-    </section>
+        <section id="organizing-rules">
+          <h2>Organizing Rules</h2>
+          <p>Customize the order of rule categories and individual rules to match your workflow.</p>
 
-    <section id="organizing-rules">
-      <h2>Organizing Rules</h2>
-      <p>Customize the order of rule categories and individual rules to match your workflow.</p>
+          <h3>Reordering Categories</h3>
+          <p>Drag categories to change their display order:</p>
+          <ol>
+            <li>Grab the drag handle (<code>⋮⋮</code>) to the left of a category name</li>
+            <li>Drag the category up or down to your preferred position</li>
+            <li>Release to drop it in place</li>
+          </ol>
 
-      <h3>Reordering Categories</h3>
-      <p>Drag categories to change their display order in the Detection Rules panel:</p>
-      <ol>
-        <li>Grab the drag handle (<code>⋮⋮</code>) to the left of a category name</li>
-        <li>Drag the category up or down to your preferred position</li>
-        <li>Release to drop it in place</li>
-      </ol>
-      <p>As you drag, you'll see a preview of the category with its rules. Other categories will shift to make room.</p>
+          <h3>Reordering Rules Within a Category</h3>
+          <ol>
+            <li>Expand the category by clicking its name</li>
+            <li>Grab the drag handle (<code>⋮</code>) to the left of a rule</li>
+            <li>Drag the rule up or down within the category</li>
+            <li>Release to set its new position</li>
+          </ol>
 
-      <h3>Reordering Rules Within a Category</h3>
-      <p>You can also reorder individual rules within each category:</p>
-      <ol>
-        <li>Expand the category by clicking its name</li>
-        <li>Grab the drag handle (<code>⋮</code>) to the left of a rule</li>
-        <li>Drag the rule up or down within the category</li>
-        <li>Release to set its new position</li>
-      </ol>
+          <h3>Persistence</h3>
+          <p>Your custom ordering is automatically saved to your browser's local storage and will be restored on your next visit. When you save a preset, the ordering is included.</p>
 
-      <h3>Persistence</h3>
-      <p>Your custom ordering is automatically saved to your browser's local storage and will be restored on your next visit.</p>
-      <p>When you save a preset, the current category and rule ordering is included. Loading a preset will restore both the rule settings and the ordering.</p>
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>Put frequently-used categories at the top for quick access. For example, if you primarily work with network logs, drag the "Network" category to the top.</p>
+          </div>
+        </section>
 
-      <div class="tip">
-        <strong>Tip:</strong> Put frequently-used categories and rules at the top for quick access. For example, if you primarily work with network logs, drag the "Network" category to the top.
-      </div>
-    </section>
+        <section id="time-shift">
+          <h2>Time Shift</h2>
+          <p>Timestamps in logs can reveal when incidents occurred, work patterns, or timezone information. Time Shift lets you anonymize temporal data while preserving the relative timing between events.</p>
 
-    <section id="time-shift">
-      <h2>Time Shift</h2>
-      <p>Timestamps in logs can reveal when incidents occurred, work patterns, or timezone information. Time Shift lets you anonymize temporal data while preserving the relative timing between events.</p>
+          <div class="tip">
+            <div class="callout-title">Note</div>
+            <p>Time Shift only appears when LogScrub detects timestamps in your input.</p>
+          </div>
 
-      <div class="tip">
-        <strong>Note:</strong> Time Shift only appears when LogScrub detects timestamps in your input.
-      </div>
+          <h3>Supported Timestamp Formats</h3>
+          <ul>
+            <li><strong>ISO 8601</strong> — <code>2024-01-15T10:30:00Z</code></li>
+            <li><strong>ISO Date</strong> — <code>2024-01-15</code></li>
+            <li><strong>Apache error log</strong> — <code>[Sat Aug 12 04:05:51 2006]</code></li>
+            <li><strong>Apache access log</strong> — <code>[17/May/2015:10:05:03 +0000]</code></li>
+            <li><strong>Syslog</strong> — <code>Jan 15 10:30:00</code></li>
+            <li><strong>US Format</strong> — <code>01/15/2024 10:30:00</code></li>
+          </ul>
 
-      <h3>Supported Timestamp Formats</h3>
-      <p>LogScrub automatically detects common timestamp formats:</p>
-      <ul>
-        <li><strong>ISO 8601</strong> — <code>2024-01-15T10:30:00Z</code>, <code>2024-01-15T10:30:00.123+00:00</code></li>
-        <li><strong>ISO Date</strong> — <code>2024-01-15</code></li>
-        <li><strong>Apache error log</strong> — <code>[Sat Aug 12 04:05:51 2006]</code></li>
-        <li><strong>Apache access log</strong> — <code>[17/May/2015:10:05:03 +0000]</code></li>
-        <li><strong>Syslog</strong> — <code>Jan 15 10:30:00</code></li>
-        <li><strong>US Format</strong> — <code>01/15/2024 10:30:00</code></li>
-      </ul>
+          <h3>Offset Mode</h3>
+          <p>Shift all timestamps by a fixed amount. Useful when you want to obscure the actual date/time while keeping the duration between events accurate.</p>
 
-      <h3>Offset Mode</h3>
-      <p>Shift all timestamps by a fixed amount. Useful when you want to obscure the actual date/time while keeping the duration between events accurate.</p>
-      <div class="example">
-        <div>
-          <div class="example-label">Original</div>
-          <div class="example-before">2024-01-15T10:30:00Z Request started
+          <div class="example">
+            <div>
+              <div class="example-label">Original</div>
+              <div class="example-box example-before">2024-01-15T10:30:00Z Request started
 2024-01-15T10:30:05Z Database query
 2024-01-15T10:30:07Z Response sent</div>
-        </div>
-        <div>
-          <div class="example-label">Shifted by -48 hours</div>
-          <div class="example-after">2024-01-13T10:30:00Z Request started
+            </div>
+            <div>
+              <div class="example-label">Shifted by -48 hours</div>
+              <div class="example-box example-after">2024-01-13T10:30:00Z Request started
 2024-01-13T10:30:05Z Database query
 2024-01-13T10:30:07Z Response sent</div>
-        </div>
-      </div>
+            </div>
+          </div>
 
-      <h3>Start From Mode</h3>
-      <p>Set the first timestamp to a specific date/time. All subsequent timestamps shift by the same amount, preserving relative timing.</p>
-      <p>This is useful when you want logs to appear to start from a neutral date like <code>2000-01-01</code>.</p>
+          <h3>Start From Mode</h3>
+          <p>Set the first timestamp to a specific date/time. All subsequent timestamps shift by the same amount, preserving relative timing.</p>
 
-      <h3>Scope: Line Start vs All Timestamps</h3>
-      <p>Logs often contain two types of timestamps:</p>
-      <ul>
-        <li><strong>Log timestamps</strong> — At the start of each line, indicating when the event occurred</li>
-        <li><strong>Content dates</strong> — Within the log message itself (DOBs, appointment dates, expiry dates, etc.)</li>
-      </ul>
-      
-      <div class="example">
-        <div>
-          <div class="example-label">Example log with both types</div>
-          <div class="example-before">2024-01-15T10:30:00Z User created. DOB: 1985-03-22, subscription expires: 2025-06-01
-2024-01-15T10:31:00Z Appointment scheduled for 2024-02-20 at 14:00</div>
-        </div>
-      </div>
+          <h3>Scope: Line Start vs All Timestamps</h3>
+          <p>Logs often contain two types of timestamps:</p>
+          <ul>
+            <li><strong>Log timestamps</strong> — At the start of each line</li>
+            <li><strong>Content dates</strong> — Within the log message itself (DOBs, expiry dates, etc.)</li>
+          </ul>
 
-      <p>The <strong>Scope</strong> setting controls which timestamps are shifted:</p>
-      
-      <table class="rule-table">
-        <tr>
-          <th>Scope</th>
-          <th>Shifts</th>
-          <th>Leaves Alone</th>
-          <th>Best For</th>
-        </tr>
-        <tr>
-          <td><strong>Line Start</strong></td>
-          <td>Log timestamps at line beginning</td>
-          <td>Dates within message content</td>
-          <td>Shifting log timing while sanitizing content dates with detection rules</td>
-        </tr>
-        <tr>
-          <td><strong>All Timestamps</strong></td>
-          <td>Every timestamp found</td>
-          <td>Nothing</td>
-          <td>When all dates should shift together (e.g., test data generation)</td>
-        </tr>
-      </table>
+          <div class="table-wrapper">
+            <table>
+              <tr><th>Scope</th><th>Best For</th></tr>
+              <tr>
+                <td><strong>Line Start</strong></td>
+                <td>Shifting log timing while sanitizing content dates with detection rules</td>
+              </tr>
+              <tr>
+                <td><strong>All Timestamps</strong></td>
+                <td>When all dates should shift together (e.g., test data generation)</td>
+              </tr>
+            </table>
+          </div>
 
-      <div class="example">
-        <div>
-          <div class="example-label">Line Start mode (shifted -30 days)</div>
-          <div class="example-after">2023-12-16T10:30:00Z User created. DOB: 1985-03-22, subscription expires: 2025-06-01
-2023-12-16T10:31:00Z Appointment scheduled for 2024-02-20 at 14:00</div>
-        </div>
-        <div>
-          <div class="example-label">All Timestamps mode (shifted -30 days)</div>
-          <div class="example-after">2023-12-16T10:30:00Z User created. DOB: 1985-02-20, subscription expires: 2025-05-02
-2023-12-16T10:31:00Z Appointment scheduled for 2024-01-21 at 14:00</div>
-        </div>
-      </div>
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>Use "Line Start" scope with date/time detection rules enabled. Log timestamps get shifted while content dates like DOBs get scrubbed to <code>[DATE-1]</code>.</p>
+          </div>
+        </section>
 
-      <div class="tip">
-        <strong>Tip:</strong> Use "Line Start" scope with date/time detection rules enabled. This way, log timestamps get shifted while content dates like DOBs get scrubbed to <code>[DATE-1]</code>.
-      </div>
+        <section id="analyze-mode">
+          <h2>Analyze Mode</h2>
+          <p>Preview detections before scrubbing to fine-tune your rules.</p>
 
-      <h3>Interaction with Date/Time Rules</h3>
-      <p>When Time Shift is enabled, date/time detection rules (DateTime ISO, DateTime CLF, Date, Time, etc.) are automatically skipped to prevent conflicts. This ensures timestamps are shifted rather than replaced with labels.</p>
-    </section>
+          <h3>Using Analyze</h3>
+          <ol>
+            <li>Paste your content</li>
+            <li>Click "Analyze" above the Original pane</li>
+            <li>Review highlighted matches (shown in red)</li>
+            <li>Check the suggestions for disabled rules that would match</li>
+            <li>Adjust rules as needed, then Scrub</li>
+          </ol>
 
-    <section id="analyze-mode">
-      <h2>Analyze Mode</h2>
-      <p>Preview detections before scrubbing to fine-tune your rules.</p>
+          <h3>Smart Suggestions</h3>
+          <p>After analysis, LogScrub suggests disabled rules that found matches in your text. This helps you discover rules you might want to enable.</p>
+        </section>
 
-      <h3>Using Analyze</h3>
-      <ol>
-        <li>Paste your content</li>
-        <li>Click "Analyze" above the Original pane</li>
-        <li>Review highlighted matches (shown in red)</li>
-        <li>Check the suggestions for disabled rules that would match</li>
-        <li>Adjust rules as needed, then Scrub</li>
-      </ol>
+        <section id="audit-reports">
+          <h2>Audit Reports</h2>
+          <p>Generate detailed reports of all detected PII for compliance documentation.</p>
 
-      <h3>Smart Suggestions</h3>
-      <p>After analysis, LogScrub suggests disabled rules that found matches in your text. This helps you discover rules you might want to enable.</p>
-    </section>
+          <h3>Report Contents</h3>
+          <ul>
+            <li>Timestamp and source file name</li>
+            <li>Summary of detection counts by type</li>
+            <li>List of unique detected values (up to 100 per type)</li>
+          </ul>
 
-    <section id="audit-reports">
-      <h2>Audit Reports</h2>
-      <p>Generate detailed reports of all detected PII for compliance documentation.</p>
+          <h3>Export Formats</h3>
+          <ul>
+            <li><strong>Text (.txt)</strong> — Plain text, easy to read</li>
+            <li><strong>JSON (.json)</strong> — Machine-readable, for integration</li>
+            <li><strong>HTML (.html)</strong> — Formatted report for sharing</li>
+          </ul>
 
-      <h3>Report Contents</h3>
-      <ul>
-        <li>Timestamp and source file name</li>
-        <li>Summary of detection counts by type</li>
-        <li>List of unique detected values (up to 100 per type)</li>
-      </ul>
+          <p>Access audit reports by clicking the detection count badge, then "Download Audit Report".</p>
+        </section>
 
-      <h3>Export Formats</h3>
-      <ul>
-        <li><strong>Text (.txt)</strong> — Plain text, easy to read</li>
-        <li><strong>JSON (.json)</strong> — Machine-readable, for integration</li>
-        <li><strong>HTML (.html)</strong> — Formatted report for sharing</li>
-      </ul>
+        <section id="reverse-lookup">
+          <h2>Reverse Lookup</h2>
+          <p>When sharing scrubbed logs with others for analysis, you may receive feedback like "the IP on line 100 is causing the issue." LogScrub provides several ways to map scrubbed values back to their originals.</p>
 
-      <p>Access audit reports by clicking the detection count badge, then "Download Audit Report".</p>
-    </section>
+          <h3>Hover Tooltips</h3>
+          <p>Hover your mouse over any replacement in the scrubbed output (e.g., <code>[IP-1]</code>). A tooltip will show the original value, type, and line numbers.</p>
 
-    <section id="reverse-lookup">
-      <h2>Reverse Lookup</h2>
-      <p>When sharing scrubbed logs with others for analysis, you may receive feedback like "the IP on line 100 is causing the issue." LogScrub provides several ways to map scrubbed values back to their originals.</p>
+          <h3>Mapping Table</h3>
+          <p>For a complete overview, open the Stats panel and click the <strong>Mapping</strong> tab. This shows a searchable table with every unique replacement.</p>
 
-      <h3>Hover Tooltips</h3>
-      <p>The quickest way to see the original value: hover your mouse over any replacement in the scrubbed output (e.g., <code>[IP-1]</code> or <code>[EMAIL-2]</code>). A tooltip will show:</p>
-      <ul>
-        <li><strong>Original</strong> — The actual value that was replaced</li>
-        <li><strong>Type</strong> — The detection rule that matched (email, ipv4, etc.)</li>
-        <li><strong>Lines</strong> — Line numbers where this replacement appears</li>
-      </ul>
-      <p>This works in both the side-by-side editor view and the fullscreen output view.</p>
+          <h3>Export Mapping Dictionary</h3>
+          <ol>
+            <li>Open Stats → Mapping tab</li>
+            <li>Click <strong>Export</strong></li>
+            <li>Choose <strong>JSON</strong> (for scripts) or <strong>CSV</strong> (for spreadsheets)</li>
+          </ol>
 
-      <h3>Mapping Table</h3>
-      <p>For a complete overview of all replacements, open the Stats panel and click the <strong>Mapping</strong> tab. This shows a searchable table with:</p>
-      <ul>
-        <li>Every unique replacement label</li>
-        <li>The original value it replaced</li>
-        <li>How many times it appears</li>
-        <li>Which line numbers contain it</li>
-      </ul>
-      <p>Use the search box to quickly find a specific replacement by typing part of the label, original value, or type.</p>
-
-      <h3>Export Mapping Dictionary</h3>
-      <p>For documentation or programmatic use, export the complete mapping as a file:</p>
-      <ol>
-        <li>Open Stats → Mapping tab</li>
-        <li>Click <strong>Export</strong></li>
-        <li>Choose <strong>JSON</strong> (for scripts/tools) or <strong>CSV</strong> (for spreadsheets)</li>
-      </ol>
-
-      <div class="card">
-        <h4>JSON Format Example</h4>
-        <pre>{
+          <div class="card">
+            <h4>JSON Format Example</h4>
+            <pre><code>{
   "[EMAIL-1]": {
     "original": "john.doe@example.com",
     "type": "email",
     "count": 3,
     "lines": [12, 45, 89]
-  },
-  "[IPV4-1]": {
-    "original": "192.168.1.105",
-    "type": "ipv4",
-    "count": 7,
-    "lines": [5, 23, 24, 56, 78, 102, 150]
   }
-}</pre>
+}</code></pre>
+          </div>
+
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>Enable <strong>Consistency Mode</strong> before scrubbing to ensure the same original value always gets the same replacement label.</p>
+          </div>
+        </section>
+
+        <section id="keyboard-shortcuts">
+          <h2>Keyboard Shortcuts</h2>
+          <div class="table-wrapper">
+            <table>
+              <tr><th>Shortcut</th><th>Action</th></tr>
+              <tr><td><code>⌘/Ctrl + Enter</code></td><td>Scrub the input text</td></tr>
+              <tr><td><code>⌘/Ctrl + S</code></td><td>Download scrubbed output</td></tr>
+              <tr><td><code>⌘/Ctrl + G</code></td><td>Go to line number</td></tr>
+              <tr><td><code>Escape</code></td><td>Cancel processing / Close dialogs</td></tr>
+            </table>
+          </div>
+        </section>
+
+        <section id="network-captures">
+          <h2>Working with Network Captures</h2>
+          <p>LogScrub can scrub network packet captures (PCAP files), but they must first be converted to text format.</p>
+
+          <h3>Converting PCAP to Text</h3>
+
+          <h4>Using tcpdump</h4>
+          <pre><code>tcpdump -r capture.pcap -tttt > capture.txt</code></pre>
+
+          <h4>Using tshark (Wireshark CLI)</h4>
+          <pre><code>tshark -r capture.pcap > capture.txt</code></pre>
+
+          <h4>Using Wireshark</h4>
+          <ol>
+            <li>Open the PCAP file in Wireshark</li>
+            <li>Go to <strong>File → Export Packet Dissections → As Plain Text</strong></li>
+            <li>Save the text file, then upload to LogScrub</li>
+          </ol>
+
+          <h3>What Gets Detected</h3>
+          <div class="table-wrapper">
+            <table>
+              <tr><th>Data Type</th><th>Detection Rule</th><th>Example</th></tr>
+              <tr><td>IP addresses with ports</td><td>IPv4, IPv6</td><td><code>192.168.1.1:8080</code></td></tr>
+              <tr><td>MAC addresses</td><td>MAC Address</td><td><code>00:1A:2B:3C:4D:5E</code></td></tr>
+              <tr><td>Hostnames in DNS/HTTP</td><td>Hostname, URL</td><td><code>api.example.com</code></td></tr>
+              <tr><td>HTTP headers</td><td>Various token rules</td><td>Auth tokens, cookies</td></tr>
+            </table>
+          </div>
+        </section>
+
+        <section id="file-size">
+          <h2>File Size & Performance</h2>
+          <p>LogScrub runs entirely in your browser, so performance depends on your device's capabilities.</p>
+
+          <div class="table-wrapper">
+            <table>
+              <tr><th>File Size</th><th>Performance</th></tr>
+              <tr><td><strong>&lt; 10 MB</strong></td><td>Fast, smooth processing</td></tr>
+              <tr><td><strong>10–50 MB</strong></td><td>Works well, may take a few seconds</td></tr>
+              <tr><td><strong>50–100 MB</strong></td><td>Slower processing, may take 10–30 seconds</td></tr>
+              <tr><td><strong>&gt; 100 MB</strong></td><td>May cause browser memory issues</td></tr>
+            </table>
+          </div>
+
+          <h3>Tips for Large Files</h3>
+          <ul>
+            <li>Close other browser tabs to free up memory</li>
+            <li>Use a desktop browser rather than mobile</li>
+            <li>Consider splitting extremely large log files</li>
+            <li>The virtual scrolling feature helps keep the UI responsive</li>
+          </ul>
+        </section>
+
+        <section id="privacy">
+          <h2>Privacy & Security</h2>
+
+          <div class="warning">
+            <div class="callout-title">Important</div>
+            <p>LogScrub runs 100% in your browser. Your data is never uploaded to any server.</p>
+          </div>
+
+          <h3>How We Protect Your Data</h3>
+          <ul>
+            <li><strong>Client-side processing</strong> — All scrubbing happens in your browser using WebAssembly</li>
+            <li><strong>No server communication</strong> — Your text never leaves your device</li>
+            <li><strong>No analytics on content</strong> — We don't track what you scrub</li>
+            <li><strong>Local storage only</strong> — Presets and settings are stored in your browser</li>
+          </ul>
+
+          <div class="danger">
+            <div class="callout-title">Disclaimer</div>
+            <p>LogScrub does <strong>not</strong> guarantee detection of all PII. Pattern-based detection has inherent limitations. <strong>Always review your scrubbed output before sharing.</strong></p>
+          </div>
+
+          <h3>Best Practices</h3>
+          <ul>
+            <li>Always review the scrubbed output before sharing</li>
+            <li>Use "Analyze" first to understand what will be detected</li>
+            <li>Enable additional rules for sensitive data types not detected by default</li>
+            <li>Add custom patterns for organization-specific identifiers</li>
+            <li>Use the "Changed only" filter to quickly review modified lines</li>
+          </ul>
+        </section>
+
+        <footer>
+          <p><strong>LogScrub</strong> — Free, open-source PII redaction tool</p>
+          <p>Have a suggestion or want to report a problem? Email <a href="mailto:skeffling@gmail.com">skeffling@gmail.com</a></p>
+          <p>Find LogScrub useful? <a href="https://ko-fi.com/pitstopper" target="_blank" rel="noopener" style="color: #f97316;">Buy us a coffee ☕</a></p>
+          <p><a href="./">Back to LogScrub</a></p>
+        </footer>
       </div>
-
-      <div class="tip">
-        <strong>Tip:</strong> Enable <strong>Consistency Mode</strong> before scrubbing to ensure the same original value always gets the same replacement label. This makes reverse lookups reliable — every <code>[EMAIL-1]</code> in your output refers to the same email address.
-      </div>
-    </section>
-
-    <section id="keyboard-shortcuts">
-      <h2>Keyboard Shortcuts</h2>
-      <table class="rule-table">
-        <tr>
-          <th>Shortcut</th>
-          <th>Action</th>
-        </tr>
-        <tr>
-          <td><code>⌘/Ctrl + Enter</code></td>
-          <td>Scrub the input text</td>
-        </tr>
-        <tr>
-          <td><code>⌘/Ctrl + S</code></td>
-          <td>Download scrubbed output</td>
-        </tr>
-        <tr>
-          <td><code>⌘/Ctrl + G</code></td>
-          <td>Go to line number</td>
-        </tr>
-        <tr>
-          <td><code>Escape</code></td>
-          <td>Cancel processing / Close dialogs</td>
-        </tr>
-      </table>
-    </section>
-
-    <section id="network-captures">
-      <h2>Working with Network Captures</h2>
-      <p>LogScrub can scrub network packet captures (PCAP files), but they must first be converted to text format.</p>
-
-      <h3>Converting PCAP to Text</h3>
-      <p>Use standard packet analysis tools to export your capture as readable text:</p>
-
-      <h4>Using tcpdump</h4>
-      <pre>tcpdump -r capture.pcap -tttt > capture.txt</pre>
-      <p>The <code>-tttt</code> flag prints full timestamps. Add <code>-v</code> or <code>-vv</code> for more detail.</p>
-
-      <h4>Using tshark (Wireshark CLI)</h4>
-      <pre>tshark -r capture.pcap > capture.txt</pre>
-      <p>For specific protocols or fields:</p>
-      <pre>tshark -r capture.pcap -T fields -e ip.src -e ip.dst -e tcp.port > capture.txt</pre>
-
-      <h4>Using Wireshark</h4>
-      <ol>
-        <li>Open the PCAP file in Wireshark</li>
-        <li>Go to <strong>File → Export Packet Dissections → As Plain Text</strong></li>
-        <li>Save the text file, then upload to LogScrub</li>
-      </ol>
-
-      <h3>What Gets Detected</h3>
-      <p>Network capture text typically contains:</p>
-      <table class="rule-table">
-        <tr>
-          <th>Data Type</th>
-          <th>Detection Rule</th>
-          <th>Example</th>
-        </tr>
-        <tr>
-          <td>IP addresses with ports</td>
-          <td>IPv4, IPv6</td>
-          <td><code>192.168.1.1:8080</code>, <code>[::1]:443</code></td>
-        </tr>
-        <tr>
-          <td>MAC addresses</td>
-          <td>MAC Address</td>
-          <td><code>00:1A:2B:3C:4D:5E</code></td>
-        </tr>
-        <tr>
-          <td>Hostnames in DNS/HTTP</td>
-          <td>Hostname, URL</td>
-          <td><code>api.example.com</code></td>
-        </tr>
-        <tr>
-          <td>HTTP headers</td>
-          <td>Various token rules</td>
-          <td>Auth tokens, cookies, etc.</td>
-        </tr>
-      </table>
-
-      <div class="tip">
-        <strong>Tip:</strong> IP addresses with port numbers (like <code>192.168.1.1:8080</code> or <code>[2001:db8::1]:443</code>) are automatically matched by the IPv4 and IPv6 rules.
-      </div>
-    </section>
-
-    <section id="file-size">
-      <h2>File Size &amp; Performance</h2>
-      
-      <p>LogScrub runs entirely in your browser, so performance depends on your device's capabilities. Here's what to expect:</p>
-      
-      <table class="rule-table">
-        <tr>
-          <th>File Size</th>
-          <th>Performance</th>
-        </tr>
-        <tr>
-          <td><strong>&lt; 10 MB</strong></td>
-          <td>Fast, smooth processing</td>
-        </tr>
-        <tr>
-          <td><strong>10–50 MB</strong></td>
-          <td>Works well, may take a few seconds</td>
-        </tr>
-        <tr>
-          <td><strong>50–100 MB</strong></td>
-          <td>Slower processing, may take 10–30 seconds</td>
-        </tr>
-        <tr>
-          <td><strong>&gt; 100 MB</strong></td>
-          <td>May cause browser memory issues on some devices</td>
-        </tr>
-      </table>
-      
-      <h3>Technical Limits</h3>
-      <ul>
-        <li><strong>JavaScript string limit</strong> — Browsers typically support strings up to 512MB–1GB</li>
-        <li><strong>Browser tab memory</strong> — Usually 1–4GB depending on your device</li>
-        <li><strong>WebAssembly memory</strong> — Can use up to 4GB</li>
-      </ul>
-      
-      <h3>Tips for Large Files</h3>
-      <ul>
-        <li>Close other browser tabs to free up memory</li>
-        <li>Use a desktop browser rather than mobile for very large files</li>
-        <li>Consider splitting extremely large log files before processing</li>
-        <li>The virtual scrolling feature (for files with 500+ lines) helps keep the UI responsive</li>
-      </ul>
-    </section>
-
-    <section id="privacy">
-      <h2>Privacy &amp; Security</h2>
-      
-      <div class="warning">
-        <strong>Important:</strong> LogScrub runs 100% in your browser. Your data is never uploaded to any server.
-      </div>
-
-      <h3>How We Protect Your Data</h3>
-      <ul>
-        <li><strong>Client-side processing</strong> — All scrubbing happens in your browser using WebAssembly</li>
-        <li><strong>No server communication</strong> — Your text never leaves your device</li>
-        <li><strong>No analytics on content</strong> — We don't track what you scrub</li>
-        <li><strong>Local storage only</strong> — Presets and settings are stored in your browser</li>
-      </ul>
-
-      <div class="warning" style="background: #fef3c7; border-color: #f59e0b;">
-        <strong>Disclaimer:</strong> LogScrub does <strong>not</strong> guarantee detection of all PII. Pattern-based detection has inherent limitations and may miss sensitive data in unexpected formats, custom identifiers, or context-dependent information. <strong>Always review your scrubbed output before sharing.</strong> You are responsible for ensuring adequate sanitization of your data.
-      </div>
-
-      <h3>Open Source</h3>
-      <p>LogScrub is open source. You can inspect the code, run it locally, or host your own instance.</p>
-
-      <h3>Best Practices</h3>
-      <ul>
-        <li><strong>Always review the scrubbed output before sharing</strong></li>
-        <li>Use "Analyze" first to understand what will be detected</li>
-        <li>Enable additional rules if your logs contain sensitive data types that aren't detected by default</li>
-        <li>Add custom patterns for organization-specific identifiers</li>
-        <li>Consider using "Redact" strategy for highly sensitive data to completely obscure the original values</li>
-        <li>Use the "Changed only" filter to quickly review all lines that were modified</li>
-      </ul>
-
-      <h3>Feedback</h3>
-      <p>Found a pattern that should be detected? Have a suggestion or want to report a problem? We'd love to hear from you at <a href="mailto:skeffling@gmail.com">skeffling@gmail.com</a></p>
-    </section>
-
-    <footer>
-      <p>LogScrub — Free, open-source PII redaction tool</p>
-      <p>Have a suggestion or want to report a problem? Email <a href="mailto:skeffling@gmail.com">skeffling@gmail.com</a></p>
-      <p>Find LogScrub useful? <a href="https://ko-fi.com/pitstopper" target="_blank" rel="noopener noreferrer" style="color: #f97316;" title="Buy us a coffee!">Buy us a coffee ☕</a></p>
-      <p><a href="./">Back to LogScrub</a></p>
-    </footer>
+    </main>
   </div>
+
+  <script>
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.querySelector('.sidebar-overlay').classList.toggle('open');
+    }
+
+    // Close sidebar when clicking a link on mobile
+    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 900) {
+          toggleSidebar();
+        }
+      });
+    });
+
+    // Highlight active section on scroll
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+
+    function highlightNav() {
+      const scrollPos = window.scrollY + 100;
+
+      sections.forEach(section => {
+        const top = section.offsetTop;
+        const height = section.offsetHeight;
+        const id = section.getAttribute('id');
+
+        if (scrollPos >= top && scrollPos < top + height) {
+          navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + id) {
+              link.classList.add('active');
+            }
+          });
+        }
+      });
+    }
+
+    window.addEventListener('scroll', highlightNav);
+    highlightNav();
+
+    // Search functionality
+    const searchInput = document.getElementById('search-input');
+    const searchClear = document.getElementById('search-clear');
+    const searchResults = document.getElementById('search-results');
+    const sidebarNav = document.querySelector('.sidebar-nav');
+
+    // Build search index from page content
+    const searchIndex = [];
+    document.querySelectorAll('section[id]').forEach(section => {
+      const id = section.getAttribute('id');
+      const h2 = section.querySelector('h2');
+      const title = h2 ? h2.textContent : id;
+
+      // Get all text content from the section
+      const content = section.textContent.toLowerCase();
+
+      // Also index h3 headings as sub-entries
+      section.querySelectorAll('h3').forEach(h3 => {
+        searchIndex.push({
+          id: id,
+          section: title,
+          title: h3.textContent,
+          content: h3.parentElement ? h3.parentElement.textContent.toLowerCase() : h3.textContent.toLowerCase(),
+          isSubsection: true
+        });
+      });
+
+      // Add the main section
+      searchIndex.push({
+        id: id,
+        section: null,
+        title: title,
+        content: content,
+        isSubsection: false
+      });
+    });
+
+    function highlightText(text, query) {
+      const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return text.replace(regex, '<mark>$1</mark>');
+    }
+
+    function performSearch(query) {
+      if (!query || query.length < 2) {
+        searchResults.classList.remove('visible');
+        sidebarNav.style.display = '';
+        return;
+      }
+
+      const queryLower = query.toLowerCase();
+      const results = [];
+      const seen = new Set();
+
+      searchIndex.forEach(item => {
+        if (item.content.includes(queryLower) || item.title.toLowerCase().includes(queryLower)) {
+          const key = item.isSubsection ? `${item.id}-${item.title}` : item.id;
+          if (!seen.has(key)) {
+            seen.add(key);
+            results.push(item);
+          }
+        }
+      });
+
+      // Sort: exact title matches first, then subsections, then by relevance
+      results.sort((a, b) => {
+        const aExact = a.title.toLowerCase().includes(queryLower);
+        const bExact = b.title.toLowerCase().includes(queryLower);
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+        if (!a.isSubsection && b.isSubsection) return -1;
+        if (a.isSubsection && !b.isSubsection) return 1;
+        return 0;
+      });
+
+      // Limit results
+      const limitedResults = results.slice(0, 10);
+
+      if (limitedResults.length === 0) {
+        searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
+      } else {
+        searchResults.innerHTML = limitedResults.map(item => `
+          <a href="#${item.id}" class="search-result" onclick="clearSearch()">
+            ${item.section ? `<div class="search-result-section">${item.section}</div>` : ''}
+            <div class="search-result-title">${highlightText(item.title, query)}</div>
+          </a>
+        `).join('');
+      }
+
+      searchResults.classList.add('visible');
+      sidebarNav.style.display = 'none';
+    }
+
+    function clearSearch() {
+      searchInput.value = '';
+      searchClear.classList.remove('visible');
+      searchResults.classList.remove('visible');
+      sidebarNav.style.display = '';
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+      searchClear.classList.toggle('visible', query.length > 0);
+      performSearch(query);
+    });
+
+    searchClear.addEventListener('click', clearSearch);
+
+    // Keyboard shortcut: / to focus search
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '/' && document.activeElement !== searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+      }
+      if (e.key === 'Escape' && document.activeElement === searchInput) {
+        clearSearch();
+        searchInput.blur();
+      }
+    });
+  </script>
 </body>
 </html>

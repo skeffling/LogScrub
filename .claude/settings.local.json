@@ -22,7 +22,9 @@
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
       "WebSearch",
-      "WebFetch(domain:www.exim.org)"
+      "WebFetch(domain:www.exim.org)",
+      "Bash(cat:*)",
+      "Bash(tr:*)"
     ]
   }
 }

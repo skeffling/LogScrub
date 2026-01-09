@@ -94,7 +94,7 @@ export function TimeShift() {
                   type="number"
                   value={timeShift.offsetHours}
                   onChange={(e) => setTimeShift({ offsetHours: parseInt(e.target.value) || 0 })}
-                  className="w-20 px-2 py-1.5 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                  className="w-20 px-2 py-1.5 text-sm border dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
                   placeholder="Hours"
                 />
                 <span className="text-gray-500">:</span>
@@ -104,7 +104,7 @@ export function TimeShift() {
                   onChange={(e) => setTimeShift({ offsetMinutes: parseInt(e.target.value) || 0 })}
                   min="-59"
                   max="59"
-                  className="w-20 px-2 py-1.5 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                  className="w-20 px-2 py-1.5 text-sm border dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
                   placeholder="Min"
                 />
               </div>
@@ -122,7 +122,7 @@ export function TimeShift() {
                   type="date"
                   value={timeShift.startDate}
                   onChange={(e) => setTimeShift({ startDate: e.target.value })}
-                  className="w-full px-2 py-1.5 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                  className="w-full px-2 py-1.5 text-sm border dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -133,7 +133,7 @@ export function TimeShift() {
                   type="time"
                   value={timeShift.startTime}
                   onChange={(e) => setTimeShift({ startTime: e.target.value })}
-                  className="w-full px-2 py-1.5 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                  className="w-full px-2 py-1.5 text-sm border dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">

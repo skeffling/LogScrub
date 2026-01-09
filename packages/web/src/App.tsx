@@ -872,7 +872,7 @@ function App() {
                                     type="number"
                                     value={timeShift.offsetHours}
                                     onChange={(e) => setTimeShift({ offsetHours: parseInt(e.target.value) || 0 })}
-                                    className="w-16 px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                                    className="w-16 px-2 py-1 text-sm border dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
                                     placeholder="0"
                                   />
                                   <span className="text-gray-500">:</span>
@@ -882,7 +882,7 @@ function App() {
                                     onChange={(e) => setTimeShift({ offsetMinutes: parseInt(e.target.value) || 0 })}
                                     min="-59"
                                     max="59"
-                                    className="w-16 px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                                    className="w-16 px-2 py-1 text-sm border dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
                                     placeholder="0"
                                   />
                                 </div>
@@ -895,7 +895,7 @@ function App() {
                                     type="date"
                                     value={timeShift.startDate}
                                     onChange={(e) => setTimeShift({ startDate: e.target.value })}
-                                    className="w-full px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                                    className="w-full px-2 py-1 text-sm border dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
                                   />
                                 </div>
                                 <div>
@@ -904,7 +904,7 @@ function App() {
                                     type="time"
                                     value={timeShift.startTime}
                                     onChange={(e) => setTimeShift({ startTime: e.target.value })}
-                                    className="w-full px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                                    className="w-full px-2 py-1 text-sm border dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
                                   />
                                 </div>
                               </div>

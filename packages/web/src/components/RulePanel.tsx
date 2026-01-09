@@ -202,7 +202,7 @@ const RuleRow = memo(function RuleRow({
         value={strategy}
         onChange={(e) => onStrategyChange(e.target.value as ReplacementStrategy)}
         disabled={!enabled}
-        className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 dark:bg-gray-700 dark:text-gray-300"
+        className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
       >
         {STRATEGY_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -734,7 +734,7 @@ export function RulePanel() {
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="Search rules... (e.g. ip4, phone)"
-        className="w-full px-3 py-1.5 text-sm border dark:border-gray-600 rounded-md mb-3 dark:bg-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-shrink-0"
+        className="w-full px-3 py-1.5 text-sm border dark:border-gray-600 rounded-md mb-3 bg-white dark:bg-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-shrink-0"
       />
       
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -853,7 +853,7 @@ export function RulePanel() {
                 onChange={(e) => setNewPresetName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSavePreset()}
                 placeholder="Save current as..."
-                className="flex-1 px-2 py-1 text-xs border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                className="flex-1 px-2 py-1 text-xs border dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
               />
               <button
                 onClick={handleSavePreset}
@@ -962,7 +962,7 @@ export function RulePanel() {
                     value={rule.strategy}
                     onChange={(e) => setCustomRuleStrategy(rule.id, e.target.value as ReplacementStrategy)}
                     disabled={!rule.enabled}
-                    className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 dark:bg-gray-700 dark:text-gray-300"
+                    className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
                   >
                     {STRATEGY_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -1023,7 +1023,7 @@ export function RulePanel() {
                     value={pattern.strategy}
                     onChange={(e) => setPlainTextPatternStrategy(pattern.id, e.target.value as ReplacementStrategy)}
                     disabled={!pattern.enabled}
-                    className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 dark:bg-gray-700 dark:text-gray-300"
+                    className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
                   >
                     {STRATEGY_OPTIONS.filter(opt => opt.value !== 'fake' && opt.value !== 'template').map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -1204,7 +1204,7 @@ export function RulePanel() {
                 onChange={(e) => setTestText(e.target.value)}
                 placeholder="Paste sample text here to test the pattern..."
                 rows={4}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white placeholder-gray-400"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white placeholder-gray-400"
               />
             </div>
 
@@ -1291,7 +1291,7 @@ export function RulePanel() {
                 type="text"
                 value={editingCustomRule.label}
                 onChange={(e) => setEditingCustomRule({ ...editingCustomRule, label: e.target.value })}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white"
               />
             </div>
             <div>
@@ -1302,7 +1302,7 @@ export function RulePanel() {
                 value={editingCustomRule.pattern}
                 onChange={(e) => setEditingCustomRule({ ...editingCustomRule, pattern: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white"
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -1335,7 +1335,7 @@ export function RulePanel() {
                 value={newCustomRule.label}
                 onChange={(e) => setNewCustomRule({ ...newCustomRule, label: e.target.value })}
                 placeholder="e.g. Company IDs"
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white"
               />
             </div>
             <div>
@@ -1347,7 +1347,7 @@ export function RulePanel() {
                 onChange={(e) => setNewCustomRule({ ...newCustomRule, pattern: e.target.value })}
                 placeholder="e.g. \bCOMP-[0-9]{6}\b"
                 rows={3}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Use JavaScript regex syntax. The pattern will be applied with global and case-insensitive flags.
@@ -1384,7 +1384,7 @@ export function RulePanel() {
                 value={newPlainText.label}
                 onChange={(e) => setNewPlainText({ ...newPlainText, label: e.target.value })}
                 placeholder="e.g. Internal Hostname"
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white"
               />
             </div>
             <div>
@@ -1396,7 +1396,7 @@ export function RulePanel() {
                 value={newPlainText.text}
                 onChange={(e) => setNewPlainText({ ...newPlainText, text: e.target.value })}
                 placeholder="e.g. server.internal.example.com"
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Exact text to find and replace. Case-insensitive matching.
@@ -1432,7 +1432,7 @@ export function RulePanel() {
                 type="text"
                 value={editingPlainText.label}
                 onChange={(e) => setEditingPlainText({ ...editingPlainText, label: e.target.value })}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white"
               />
             </div>
             <div>
@@ -1443,7 +1443,7 @@ export function RulePanel() {
                 type="text"
                 value={editingPlainText.text}
                 onChange={(e) => setEditingPlainText({ ...editingPlainText, text: e.target.value })}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white"
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -1474,7 +1474,7 @@ export function RulePanel() {
                   type="text"
                   value={labelFormat.prefix}
                   onChange={(e) => setLabelFormat({ ...labelFormat, prefix: e.target.value })}
-                  className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white"
                   placeholder="["
                 />
               </div>
@@ -1484,7 +1484,7 @@ export function RulePanel() {
                   type="text"
                   value={labelFormat.suffix}
                   onChange={(e) => setLabelFormat({ ...labelFormat, suffix: e.target.value })}
-                  className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white"
                   placeholder="]"
                 />
               </div>
@@ -1549,7 +1549,7 @@ export function RulePanel() {
                 type="text"
                 value={editingTemplate.template}
                 onChange={(e) => setEditingTemplate({ ...editingTemplate, template: e.target.value })}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white"
                 placeholder="[{TYPE}-{n}]"
               />
             </div>
@@ -1599,7 +1599,7 @@ export function RulePanel() {
                 type="text"
                 value={editingGlobalTemplate}
                 onChange={(e) => setEditingGlobalTemplate(e.target.value)}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white"
                 placeholder="[{TYPE}-{n}]"
               />
             </div>

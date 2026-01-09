@@ -1214,9 +1214,40 @@ export function RulePanel() {
             })}
           </SortableContext>
           <DragOverlay>
-            {activeCategory && (
-              <div className="bg-white dark:bg-gray-800 shadow-lg rounded p-2 border dark:border-gray-600">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{activeCategory}</span>
+            {activeCategory && filteredCategories[activeCategory] && (
+              <div className="bg-white dark:bg-gray-800 shadow-lg rounded p-3 border dark:border-gray-600 opacity-90">
+                <div className="flex items-center gap-1 mb-2">
+                  <span className="text-gray-400 px-0.5">⋮⋮</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    ▶ {activeCategory}
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                      ({filteredCategories[activeCategory].filter(id => rules[id]?.enabled).length}/{filteredCategories[activeCategory].length})
+                    </span>
+                  </span>
+                </div>
+                <div className="space-y-1 ml-4 max-h-48 overflow-hidden">
+                  {filteredCategories[activeCategory].slice(0, 5).map(id => {
+                    const rule = rules[id]
+                    if (!rule) return null
+                    return (
+                      <div key={id} className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-300 dark:text-gray-600 text-xs">⋮</span>
+                        <input
+                          type="checkbox"
+                          checked={rule.enabled}
+                          readOnly
+                          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:bg-gray-700 pointer-events-none"
+                        />
+                        <span className="text-gray-700 dark:text-gray-300 truncate">{rule.label}</span>
+                      </div>
+                    )
+                  })}
+                  {filteredCategories[activeCategory].length > 5 && (
+                    <div className="text-xs text-gray-400 dark:text-gray-500 ml-5">
+                      +{filteredCategories[activeCategory].length - 5} more...
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </DragOverlay>

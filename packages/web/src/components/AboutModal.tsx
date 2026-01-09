@@ -210,7 +210,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
                 type="checkbox"
                 checked={terminalStyle}
                 onChange={(e) => setTerminalStyle(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
               />
               <div>
                 <span className="text-sm font-medium text-gray-900 dark:text-white">Terminal Style</span>

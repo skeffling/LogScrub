@@ -177,7 +177,7 @@ const RuleRow = memo(function RuleRow({
           type="checkbox"
           checked={enabled}
           onChange={onToggle}
-          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
         />
         <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{label}</span>
         {matchCount !== undefined && matchCount > 0 && (
@@ -932,7 +932,7 @@ export function RulePanel() {
                       type="checkbox"
                       checked={rule.enabled}
                       onChange={() => toggleCustomRule(rule.id)}
-                      className="rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500 dark:bg-gray-700"
+                      className="rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500 bg-white dark:bg-gray-700"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{rule.label}</span>
                     {displayStats[rule.id] > 0 && (
@@ -991,7 +991,7 @@ export function RulePanel() {
                       type="checkbox"
                       checked={pattern.enabled}
                       onChange={() => togglePlainTextPattern(pattern.id)}
-                      className="rounded border-gray-300 dark:border-gray-600 text-orange-600 focus:ring-orange-500 dark:bg-gray-700"
+                      className="rounded border-gray-300 dark:border-gray-600 text-orange-600 focus:ring-orange-500 bg-white dark:bg-gray-700"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate" title={pattern.text}>
                       {pattern.label}
@@ -1141,7 +1141,7 @@ export function RulePanel() {
                           type="checkbox"
                           checked={rule.enabled}
                           readOnly
-                          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:bg-gray-700 pointer-events-none"
+                          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 bg-white dark:bg-gray-700 pointer-events-none"
                         />
                         <span className="text-gray-700 dark:text-gray-300 truncate">{rule.label}</span>
                       </div>
@@ -1174,7 +1174,7 @@ export function RulePanel() {
             type="checkbox"
             checked={consistencyMode}
             onChange={(e) => setConsistencyMode(e.target.checked)}
-            className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+            className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
           />
           <span className="text-sm text-gray-700 dark:text-gray-300">Consistency Mode</span>
         </label>

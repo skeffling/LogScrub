@@ -831,7 +831,7 @@ function App() {
                                 type="checkbox"
                                 checked={timeShift.enabled}
                                 onChange={(e) => setTimeShift({ enabled: e.target.checked })}
-                                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
                               />
                               <span className="text-xs text-gray-500 dark:text-gray-400">Enable</span>
                             </label>

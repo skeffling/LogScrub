@@ -1063,19 +1063,27 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             {renderNonVirtualLines(filteredInputLines, 'input', replacements, changedLines, filteredLineNumbers)}
           </div>
         )}
+        {/* Resize handle on right edge of Original panel */}
+        <div
+          className="hidden md:block absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors"
+          onMouseDown={(e) => {
+            e.preventDefault()
+            setIsResizingSplit(true)
+          }}
+          title="Drag to resize"
+        />
       </div>
 
-      {/* Resize handle between Original and Scrubbed */}
-      <div
-        className="hidden md:block w-2 flex-shrink-0 cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors"
-        onMouseDown={(e) => {
-          e.preventDefault()
-          setIsResizingSplit(true)
-        }}
-        title="Drag to resize"
-      />
-
       <div className="flex flex-col min-h-0 relative flex-1">
+        {/* Resize handle on left edge of Scrubbed panel */}
+        <div
+          className="hidden md:block absolute top-0 left-0 w-2 h-full cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors z-10"
+          onMouseDown={(e) => {
+            e.preventDefault()
+            setIsResizingSplit(true)
+          }}
+          title="Drag to resize"
+        />
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
           <label className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'} ${output ? outputPaneBg : placeholderBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
             Scrubbed

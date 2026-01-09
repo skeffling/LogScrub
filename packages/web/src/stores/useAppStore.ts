@@ -128,6 +128,7 @@ interface AppState {
 
 const DEFAULT_RULES: Record<string, Rule> = {
   email: { label: 'Emails', enabled: true, strategy: 'label' },
+  email_message_id: { label: 'Email Message-ID', enabled: false, strategy: 'label' },
   ipv4: { label: 'IPv4 Addresses', enabled: true, strategy: 'label' },
   ipv6: { label: 'IPv6 Addresses', enabled: true, strategy: 'label' },
   mac_address: { label: 'MAC Addresses', enabled: true, strategy: 'label' },

@@ -19,6 +19,10 @@ struct PatternDef {
 static EMAIL_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b").unwrap());
 
+// RFC 2822 Message-ID format: <unique-id@domain>
+static EMAIL_MESSAGE_ID_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"<[A-Za-z0-9!#$%&'*+/=?^_`.{|}~-]+@[A-Za-z0-9.-]+>").unwrap());
+
 static IPV4_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
         r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?::\d{1,5})?\b",
@@ -249,6 +253,11 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "email",
             regex: &EMAIL_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "email_message_id",
+            regex: &EMAIL_MESSAGE_ID_REGEX,
             validator: None,
         },
         PatternDef {

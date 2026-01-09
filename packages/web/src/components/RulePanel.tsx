@@ -56,7 +56,7 @@ const STRATEGY_OPTIONS: { value: ReplacementStrategy; label: string }[] = [
 ]
 
 const CATEGORIES: Record<string, string[]> = {
-  'Contact': ['email', 'phone_us', 'phone_uk', 'phone_intl'],
+  'Contact': ['email', 'email_message_id', 'phone_us', 'phone_uk', 'phone_intl'],
   'Network': ['ipv4', 'ipv6', 'mac_address', 'hostname', 'url'],
   'Identity (US)': ['ssn', 'us_itin', 'passport', 'drivers_license'],
   'Identity (UK)': ['uk_nhs', 'uk_nino'],

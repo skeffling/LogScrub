@@ -209,6 +209,7 @@ fn generate_replacement(
 fn generate_fake(pii_type: &str, _original: &str, count: usize) -> String {
     match pii_type {
         "email" => format!("user{}@example.com", count),
+        "email_message_id" => format!("<msg{}@mail.example.com>", count),
         "ipv4" => format!("192.0.2.{}", count.min(255)),
         "ipv6" => format!("2001:db8::{}", count),
         "mac_address" => format!("00:00:00:00:00:{:02X}", count.min(255)),

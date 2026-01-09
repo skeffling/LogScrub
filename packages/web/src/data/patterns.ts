@@ -60,4 +60,9 @@ export const BUILTIN_PATTERNS: Record<string, string> = {
   sql_tables: String.raw`(?i)(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+(` + "`[^`]+`" + String.raw`|\[[^\]]+\]|"[^"]+"|[a-zA-Z_][a-zA-Z0-9_]*)`,
   sql_strings: String.raw`'(?:[^'\\]|\\.)*'`,
   sql_identifiers: String.raw`(?i)(?:SELECT|WHERE|AND|OR|ON|SET|ORDER\s+BY|GROUP\s+BY|HAVING|AS|,)\s*(` + "`[^`]+`" + String.raw`|\[[^\]]+\])|(` + "`[^`]+`" + String.raw`|\[[^\]]+\])\s*\.\s*(` + "`[^`]+`" + String.raw`|\[[^\]]+\])`,
+  exim_subject: String.raw`T="(?:[^"\\]|\\.)*"`,
+  exim_sender: String.raw`F=<[^>]+>`,
+  exim_auth: String.raw`(?i)A=[a-z_]+(?::[^\s]+)?`,
+  exim_user: String.raw`U=[^\s]+`,
+  exim_dn: String.raw`DN=[^\s]+`,
 }

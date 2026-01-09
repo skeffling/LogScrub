@@ -248,6 +248,22 @@ static SQL_IDENTIFIERS_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"(?i)(?:SELECT|WHERE|AND|OR|ON|SET|ORDER[ \t]+BY|GROUP[ \t]+BY|HAVING|AS|,)[ \t]*(`[^`]+`|\[[^\]]+\])|(`[^`]+`|\[[^\]]+\])[ \t]*\.[ \t]*(`[^`]+`|\[[^\]]+\])"#).unwrap()
 });
 
+// Exim log format patterns
+static EXIM_SUBJECT_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"T="(?:[^"\\]|\\.)*""#).unwrap());
+
+static EXIM_SENDER_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"F=<[^>]+>").unwrap());
+
+static EXIM_AUTH_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)A=[a-z_]+(?::[^\s]+)?").unwrap());
+
+static EXIM_USER_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"U=[^\s]+").unwrap());
+
+static EXIM_DN_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"DN=[^\s]+").unwrap());
+
 static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
     vec![
         PatternDef {
@@ -553,6 +569,31 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "sql_identifiers",
             regex: &SQL_IDENTIFIERS_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "exim_subject",
+            regex: &EXIM_SUBJECT_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "exim_sender",
+            regex: &EXIM_SENDER_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "exim_auth",
+            regex: &EXIM_AUTH_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "exim_user",
+            regex: &EXIM_USER_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "exim_dn",
+            regex: &EXIM_DN_REGEX,
             validator: None,
         },
     ]

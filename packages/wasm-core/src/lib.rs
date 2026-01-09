@@ -270,6 +270,11 @@ fn generate_fake(pii_type: &str, _original: &str, count: usize) -> String {
         "time" => format!("{:02}:00:00", count % 24),
         "datetime_iso" => format!("2000-01-{:02}T00:00:00Z", (count % 28) + 1),
         "timestamp_unix" => format!("{}", 946684800 + count * 86400),
+        "exim_subject" => format!("T=\"[Subject {}]\"", count),
+        "exim_sender" => format!("F=<user{}@example.com>", count),
+        "exim_auth" => format!("A=login:user{}", count),
+        "exim_user" => format!("U=user{}", count),
+        "exim_dn" => format!("DN=CN=User{},O=Example", count),
         _ => format!("[REDACTED-{}]", count),
     }
 }

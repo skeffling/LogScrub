@@ -190,6 +190,11 @@ const DEFAULT_RULES: Record<string, Rule> = {
   sql_tables: { label: 'SQL Tables', enabled: false, strategy: 'label' },
   sql_strings: { label: 'SQL Strings', enabled: false, strategy: 'label' },
   sql_identifiers: { label: 'SQL Identifiers', enabled: false, strategy: 'label' },
+  exim_subject: { label: 'Exim Subject', enabled: false, strategy: 'label' },
+  exim_sender: { label: 'Exim Sender', enabled: false, strategy: 'label' },
+  exim_auth: { label: 'Exim Auth', enabled: false, strategy: 'label' },
+  exim_user: { label: 'Exim User', enabled: false, strategy: 'label' },
+  exim_dn: { label: 'Exim DN', enabled: false, strategy: 'label' },
 }
 
 const PRESETS_STORAGE_KEY = 'logscrub_presets'

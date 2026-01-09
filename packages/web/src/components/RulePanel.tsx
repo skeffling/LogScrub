@@ -67,6 +67,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Location': ['gps_coordinates', 'postcode_uk', 'postcode_us'],
   'Date & Time': ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'timestamp_unix'],
   'SQL': ['sql_tables', 'sql_strings', 'sql_identifiers'],
+  'Exim': ['exim_subject', 'exim_sender', 'exim_auth', 'exim_user', 'exim_dn'],
   'Other': ['uuid', 'email_message_id', 'file_path_unix', 'file_path_windows'],
 }
 

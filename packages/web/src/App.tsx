@@ -434,21 +434,22 @@ function App() {
                   setFullscreenGoToLine(false)
                   setFullscreenGoToLineValue('')
                 }}
-                className="flex items-center gap-1"
+                className="flex items-center text-sm text-gray-500 dark:text-gray-400"
               >
+                <span>Line</span>
                 <input
                   type="number"
                   min="1"
                   max={fullscreenLines.length}
                   value={fullscreenGoToLineValue}
                   onChange={(e) => setFullscreenGoToLineValue(e.target.value)}
-                  placeholder="Line #"
+                  placeholder="#"
                   autoFocus
-                  className="w-20 px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                  className="w-12 px-1 mx-1 text-sm bg-transparent border-b border-gray-400 dark:border-gray-500 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-700 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   onBlur={() => { if (!fullscreenGoToLineValue) setFullscreenGoToLine(false) }}
                   onKeyDown={(e) => { if (e.key === 'Escape') { setFullscreenGoToLine(false); setFullscreenGoToLineValue('') } }}
                 />
-                <button type="submit" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800">Go</button>
+                <button type="submit" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">↵</button>
               </form>
             ) : (
               <button
@@ -588,16 +589,17 @@ function App() {
                       setShowGoToLine(false)
                       setGoToLineValue('')
                     }}
-                    className="flex items-center gap-1"
+                    className="flex items-center text-sm text-gray-500 dark:text-gray-400"
                   >
+                    <span>Line</span>
                     <input
                       type="number"
                       min="1"
                       value={goToLineValue}
                       onChange={(e) => setGoToLineValue(e.target.value)}
-                      placeholder="Line #"
+                      placeholder="#"
                       autoFocus
-                      className="w-20 px-2 py-1 text-sm border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                      className="w-12 px-1 mx-1 text-sm bg-transparent border-b border-gray-400 dark:border-gray-500 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-700 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       onBlur={() => {
                         if (!goToLineValue) setShowGoToLine(false)
                       }}
@@ -608,8 +610,8 @@ function App() {
                         }
                       }}
                     />
-                    <button type="submit" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800">
-                      Go
+                    <button type="submit" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                      ↵
                     </button>
                   </form>
                 ) : (

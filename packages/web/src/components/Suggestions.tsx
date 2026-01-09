@@ -12,14 +12,15 @@ export function Suggestions() {
     dismissSuggestions,
     enableSuggestedRule,
     enableAllSuggested,
-    disableUnmatchedRules
+    disableUnmatchedRules,
+    toggleRule
   } = useAppStore()
 
   const [activeTab, setActiveTab] = useState<Tab>('suggestions')
 
   if (!showSuggestions || (suggestions.length === 0 && activeMatches.length === 0)) return null
 
-  const renderMatchList = (items: typeof activeMatches, showEnableButton: boolean) => (
+  const renderMatchList = (items: typeof activeMatches, showEnableButton: boolean, showDisableLink: boolean = false) => (
     <div className="space-y-2 max-h-48 overflow-y-auto">
       {items.map(item => (
         <div
@@ -34,6 +35,14 @@ export function Suggestions() {
               <span className="text-xs px-1.5 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded">
                 {item.count} found
               </span>
+              {showDisableLink && (
+                <button
+                  onClick={() => toggleRule(item.id)}
+                  className="text-xs text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 underline"
+                >
+                  disable
+                </button>
+              )}
             </div>
             {item.samples.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
@@ -117,7 +126,7 @@ export function Suggestions() {
                   <p className="text-xs text-green-600 dark:text-green-400 mb-2">
                     Enabled rules that found matches:
                   </p>
-                  {renderMatchList(activeMatches, false)}
+                  {renderMatchList(activeMatches, false, true)}
                 </>
               ) : (
                 <p className="text-sm text-green-600 dark:text-green-400">

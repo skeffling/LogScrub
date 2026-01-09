@@ -20,7 +20,7 @@ export function Suggestions() {
 
   if (!showSuggestions || (suggestions.length === 0 && activeMatches.length === 0)) return null
 
-  const renderMatchList = (items: typeof activeMatches, showEnableButton: boolean, showDisableLink: boolean = false) => (
+  const renderMatchList = (items: typeof activeMatches, showEnableButton: boolean, showDisableButton: boolean = false) => (
     <div className="space-y-2 max-h-48 overflow-y-auto">
       {items.map(item => (
         <div
@@ -35,14 +35,6 @@ export function Suggestions() {
               <span className="text-xs px-1.5 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded">
                 {item.count} found
               </span>
-              {showDisableLink && (
-                <button
-                  onClick={() => toggleRule(item.id)}
-                  className="text-xs text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 underline"
-                >
-                  disable
-                </button>
-              )}
             </div>
             {item.samples.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
@@ -64,6 +56,14 @@ export function Suggestions() {
               className="flex-shrink-0 text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
             >
               Enable
+            </button>
+          )}
+          {showDisableButton && (
+            <button
+              onClick={() => toggleRule(item.id)}
+              className="flex-shrink-0 text-xs px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Disable
             </button>
           )}
         </div>

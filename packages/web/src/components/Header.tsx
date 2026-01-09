@@ -36,6 +36,7 @@ export function Header({ onAboutClick }: HeaderProps) {
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden sm:inline"
+            title="Buy us a coffee!"
           >
             ☕ Ko-fi
           </a>

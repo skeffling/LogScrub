@@ -3,6 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import init, { decompress_gzip, decompress_zip, compress_zip, compress_gzip } from '../wasm-core/wasm_core'
 import { useAppStore, type ReplacementInfo } from '../stores/useAppStore'
 import { tokenizeWithPositions } from '../utils/syntaxHighlight'
+import { Modal } from './Modal'
 
 let wasmReady: Promise<unknown> | null = null
 async function ensureWasm(): Promise<void> {
@@ -572,8 +573,9 @@ function dismissDonationForever() {
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, onLeftResize, showLeftHandle = false }, ref) {
-  const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight } = useAppStore()
+  const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
+  const [showAIExplain, setShowAIExplain] = useState(false)
   const [splitRatio, setSplitRatio] = useState(() => loadEditorPreference('splitRatio', 50))
   const [isResizingSplit, setIsResizingSplit] = useState(false)
   const editorContainerRef = useRef<HTMLDivElement>(null)
@@ -739,6 +741,114 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     if (!output) return
     await navigator.clipboard.writeText(output)
     triggerDonationModal()
+  }
+
+  const generateAIExplanation = useCallback(() => {
+    const prefix = labelFormat.prefix || '['
+    const suffix = labelFormat.suffix || ']'
+
+    // Get detected types with counts
+    const detectedTypes = Object.entries(stats)
+      .filter(([, count]) => count > 0)
+      .map(([type, count]) => {
+        const rule = rules[type]
+        const label = rule?.label || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+        return { type, label, count }
+      })
+      .sort((a, b) => b.count - a.count)
+
+    // Determine replacement strategies used
+    const strategies = new Set<string>()
+    Object.values(rules).forEach(rule => {
+      if (rule.enabled) {
+        strategies.add(rule.strategy)
+      }
+    })
+
+    let explanation = `## Log Redaction Context
+
+This log has been sanitized using LogScrub to remove personally identifiable information (PII) and sensitive data. Please analyze this log with the following context in mind:
+
+### Replacement Format
+`
+
+    if (strategies.has('label') || strategies.size === 0) {
+      explanation += `- **Label tokens**: Sensitive values are replaced with tokens in the format \`${prefix}TYPE-N${suffix}\` where TYPE indicates the data category and N is a sequential number.
+`
+      if (consistencyMode) {
+        explanation += `- **Consistency mode is ON**: The same original value always maps to the same replacement token. For example, if you see \`${prefix}EMAIL-1${suffix}\` multiple times, it refers to the same email address throughout the log.
+`
+      } else {
+        explanation += `- **Consistency mode is OFF**: Each occurrence gets a new number, so \`${prefix}EMAIL-1${suffix}\` and \`${prefix}EMAIL-2${suffix}\` might be the same or different addresses.
+`
+      }
+    }
+
+    if (strategies.has('fake')) {
+      explanation += `- **Fake data**: Some values are replaced with realistic but fake data (e.g., \`user1@redacted.net\`, \`192.0.2.x\` IP addresses).
+`
+    }
+
+    if (strategies.has('redact')) {
+      explanation += `- **Redacted blocks**: Some values are replaced with block characters (████) matching the original length.
+`
+    }
+
+    if (detectedTypes.length > 0) {
+      explanation += `
+### Detected & Replaced Data Types
+
+| Token | Type | Count |
+|-------|------|-------|
+`
+      detectedTypes.forEach(({ type, label, count }) => {
+        const exampleToken = `${prefix}${type.toUpperCase()}-1${suffix}`
+        explanation += `| \`${exampleToken}\` | ${label} | ${count} |\n`
+      })
+    }
+
+    explanation += `
+### Interpretation Guidelines
+
+1. **Token references**: When referring to specific values, use the token (e.g., "the request from ${prefix}IPV4-1${suffix}") rather than describing it generically.
+
+2. **Correlations**: ${consistencyMode ? 'You CAN correlate tokens - same token = same original value.' : 'Do NOT assume same-numbered tokens refer to the same value.'}
+
+3. **Data types**: The token prefix tells you what type of data was there:
+`
+
+    // Add common type explanations
+    const typeExplanations: Record<string, string> = {
+      email: 'Email addresses',
+      ipv4: 'IPv4 addresses',
+      ipv6: 'IPv6 addresses',
+      hostname: 'Hostnames/domains',
+      url: 'Full URLs',
+      ssn: 'Social Security Numbers',
+      credit_card: 'Credit card numbers',
+      phone_us: 'US phone numbers',
+      jwt: 'JSON Web Tokens',
+      uuid: 'UUIDs/GUIDs',
+      generic_secret: 'Passwords/secrets',
+      aws_access_key: 'AWS access keys',
+    }
+
+    detectedTypes.slice(0, 8).forEach(({ type, label }) => {
+      const desc = typeExplanations[type] || label
+      explanation += `   - \`${type.toUpperCase()}\`: ${desc}\n`
+    })
+
+    explanation += `
+### Note
+The log structure, timestamps, error messages, and non-sensitive data remain intact. Focus your analysis on patterns, errors, and flow rather than the specific redacted values.
+`
+
+    return explanation
+  }, [stats, rules, labelFormat, consistencyMode])
+
+  const handleCopyAIExplanation = async () => {
+    const explanation = generateAIExplanation()
+    await navigator.clipboard.writeText(explanation)
   }
 
   const processCompressedFile = async (file: File): Promise<{ content: string; name: string }> => {
@@ -1169,6 +1279,17 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 </svg>
                 gz
               </button>
+              <span className="text-gray-300 dark:text-gray-600">|</span>
+              <button
+                onClick={() => setShowAIExplain(true)}
+                className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 flex items-center gap-1"
+                title="Generate explanation prompt for AI assistants"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                AI Explain
+              </button>
             </>
           )}
           </div>
@@ -1249,6 +1370,68 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
             </div>
           </div>
         </div>
+      )}
+
+      {showAIExplain && (
+        <Modal onClose={() => setShowAIExplain(false)} title="AI Explanation Prompt" maxWidth="max-w-3xl">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Copy this explanation and paste it into your AI assistant (ChatGPT, Claude, etc.) before pasting your scrubbed log. This helps the AI understand how your log was sanitized.
+            </p>
+
+            <div className="relative">
+              <pre className="p-4 bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 overflow-auto max-h-80 whitespace-pre-wrap font-mono">
+                {generateAIExplanation()}
+              </pre>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {consistencyMode ? (
+                  <span className="flex items-center gap-1">
+                    <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Consistency mode enabled - same values have same tokens
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-500">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Consistency mode off - same values may have different tokens
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAIExplain(false)}
+                  className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={async () => {
+                    await handleCopyAIExplanation()
+                    setShowAIExplain(false)
+                  }}
+                  className="px-4 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Copy & Close
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                <strong>Tip:</strong> Paste this explanation first, then paste your scrubbed log. The AI will be able to reference tokens like {labelFormat.prefix}EMAIL-1{labelFormat.suffix} when discussing specific values in your log.
+              </p>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )

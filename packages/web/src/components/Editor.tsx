@@ -1112,7 +1112,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
                 Enjoying LogScrub?
               </h3>
               <p className="text-gray-600 dark:text-gray-300 mb-4">
-                We want to keep this tool free for everyone. If you find it useful, please consider supporting us with a coffee!
+                We want to keep this tool free and ad-free for everyone. If you find it useful, please consider supporting us with a coffee!
               </p>
               <a
                 href="https://ko-fi.com/logscrub"

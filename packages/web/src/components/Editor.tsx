@@ -921,7 +921,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               <div className={`absolute inset-0 p-4 pointer-events-none ${terminalStyle ? 'text-[#858585]' : 'text-gray-400 dark:text-gray-500'}`}>
                 <div className="font-mono text-sm space-y-2">
                   <p className="font-semibold">Getting Started:</p>
-                  <p>1. Paste logs here, or use Upload/drag & drop</p>
+                  <p>1. Paste logs here, or use <span className="text-blue-500 dark:text-blue-400">Upload</span>/drag & drop</p>
                   <p>2. Click <span className="text-purple-500 dark:text-purple-400">Analyze</span> to detect PII and get rule suggestions</p>
                   <p>3. Enable/disable rules in Detection Rules panel</p>
                   <p>4. Click <span className="text-blue-500 dark:text-blue-400">Scrub</span> to apply replacements</p>

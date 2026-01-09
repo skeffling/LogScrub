@@ -1052,6 +1052,8 @@ function App() {
                 lineFilter={lineFilter}
                 onLineFilterChange={setLineFilter}
                 onClearAll={handleClear}
+                onLeftResize={() => setIsResizing(true)}
+                showLeftHandle={showRules}
               />
             </div>
           </div>

@@ -420,20 +420,6 @@ export function RulePanel() {
           {showPresets ? '▼ Presets' : '▶ Presets'}
         </button>
         <button
-          onClick={handleExport}
-          className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-          title="Export current rule configuration as JSON file"
-        >
-          Export
-        </button>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-          title="Import rule configuration from JSON file"
-        >
-          Import
-        </button>
-        <button
           onClick={() => setShowAddCustom(true)}
           className="text-xs px-2 py-1 rounded bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800"
           title="Add a custom regex pattern for detecting PII"
@@ -496,7 +482,7 @@ export function RulePanel() {
                 Save
               </button>
             </div>
-            
+
             {savedPresets.length > 0 ? (
               <div className="space-y-1 max-h-24 overflow-y-auto">
                 {savedPresets.map((preset) => (
@@ -520,15 +506,31 @@ export function RulePanel() {
             ) : (
               <p className="text-xs text-gray-400 dark:text-gray-500">No saved presets yet</p>
             )}
+
+            <div className="flex gap-1 mt-2 pt-2 border-t dark:border-gray-700">
+              <button
+                onClick={handleExport}
+                className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                title="Export current rule configuration as JSON file"
+              >
+                Export
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                title="Import rule configuration from JSON file"
+              >
+                Import
+              </button>
+              <button
+                onClick={resetToDefaults}
+                className="text-xs px-2 py-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                title="Reset all rules to their default enabled/disabled state and strategies"
+              >
+                Reset
+              </button>
+            </div>
           </div>
-          
-          <button
-            onClick={resetToDefaults}
-            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-            title="Reset all rules to their default enabled/disabled state and strategies"
-          >
-            Reset to defaults
-          </button>
         </div>
       )}
       

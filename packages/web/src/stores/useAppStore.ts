@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 export type ReplacementStrategy = 'label' | 'fake' | 'redact' | 'template'
+export type ThemeMode = 'light' | 'dark' | 'auto'
 
 export interface Rule {
   label: string
@@ -87,6 +88,7 @@ interface AppState {
   analysisLogs: string[]
   terminalStyle: boolean
   syntaxHighlight: boolean
+  themeMode: ThemeMode
   labelFormat: LabelFormat
   globalTemplate: string
 
@@ -128,6 +130,7 @@ interface AppState {
   setTimeShift: (config: Partial<TimeShiftConfig>) => void
   setTerminalStyle: (enabled: boolean) => void
   setSyntaxHighlight: (enabled: boolean) => void
+  setThemeMode: (mode: ThemeMode) => void
   setLabelFormat: (format: LabelFormat) => void
   setGlobalTemplate: (template: string) => void
 }
@@ -261,6 +264,7 @@ function saveCustomRulesToStorage(rules: CustomRule[]) {
 const PLAIN_TEXT_STORAGE_KEY = 'logscrub_plain_text'
 const TERMINAL_STYLE_STORAGE_KEY = 'logscrub_terminal_style'
 const SYNTAX_HIGHLIGHT_STORAGE_KEY = 'logscrub_syntax_highlight'
+const THEME_MODE_STORAGE_KEY = 'logscrub_theme_mode'
 
 function loadPlainTextPatternsFromStorage(): PlainTextPattern[] {
   try {
@@ -299,6 +303,25 @@ function loadSyntaxHighlightFromStorage(): boolean {
 
 function saveSyntaxHighlightToStorage(enabled: boolean) {
   localStorage.setItem(SYNTAX_HIGHLIGHT_STORAGE_KEY, String(enabled))
+}
+
+function loadThemeModeFromStorage(): ThemeMode {
+  try {
+    const stored = localStorage.getItem(THEME_MODE_STORAGE_KEY)
+    if (stored === 'light' || stored === 'dark' || stored === 'auto') {
+      return stored
+    }
+  } catch {}
+  return 'auto'
+}
+
+function saveThemeModeToStorage(mode: ThemeMode) {
+  localStorage.setItem(THEME_MODE_STORAGE_KEY, mode)
+}
+
+function applyTheme(mode: ThemeMode) {
+  const isDark = mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  document.documentElement.classList.toggle('dark', isDark)
 }
 
 const LABEL_FORMAT_STORAGE_KEY = 'logscrub_label_format'
@@ -388,6 +411,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   analysisLogs: [],
   terminalStyle: loadTerminalStyleFromStorage(),
   syntaxHighlight: loadSyntaxHighlightFromStorage(),
+  themeMode: loadThemeModeFromStorage(),
   labelFormat: loadLabelFormatFromStorage(),
   globalTemplate: loadGlobalTemplateFromStorage(),
 
@@ -529,6 +553,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSyntaxHighlight: (enabled) => {
     saveSyntaxHighlightToStorage(enabled)
     set({ syntaxHighlight: enabled })
+  },
+
+  setThemeMode: (mode) => {
+    saveThemeModeToStorage(mode)
+    applyTheme(mode)
+    set({ themeMode: mode })
   },
 
   setLabelFormat: (format) => {

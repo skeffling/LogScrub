@@ -836,44 +836,6 @@ export function RulePanel() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                 </svg>
               </button>
-              {showGlobalTemplateConfig && (
-                <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowGlobalTemplateConfig(false)} />
-                <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg shadow-lg z-50 min-w-[300px]">
-                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Global Template</div>
-                  <input
-                    type="text"
-                    value={editingGlobalTemplate}
-                    onChange={(e) => setEditingGlobalTemplate(e.target.value)}
-                    className="w-full text-xs border dark:border-gray-600 rounded px-2 py-1.5 dark:bg-gray-700 dark:text-white font-mono mb-2"
-                    placeholder="[{TYPE}-{n}]"
-                  />
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">
-                    Preview: {editingGlobalTemplate.replace('{n}', '1').replace('{type}', 'email').replace('{TYPE}', 'EMAIL').replace('{len}', '15').replace('{original}', 'user@example.com')}
-                  </div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-3">
-                    Variables: {'{n}'} {'{type}'} {'{TYPE}'} {'{len}'} {'{original}'}
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => setShowGlobalTemplateConfig(false)}
-                      className="text-xs px-2 py-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => {
-                        setGlobalTemplate(editingGlobalTemplate)
-                        setShowGlobalTemplateConfig(false)
-                      }}
-                      className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
-                </>
-              )}
             </div>
           ) : (
             <button
@@ -1574,7 +1536,7 @@ export function RulePanel() {
                 placeholder="[{TYPE}-{n}]"
               />
             </div>
-            
+
             <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg text-xs space-y-2">
               <p className="font-medium text-gray-700 dark:text-gray-300">Available variables:</p>
               <div className="grid grid-cols-2 gap-2 text-gray-600 dark:text-gray-400">
@@ -1599,6 +1561,60 @@ export function RulePanel() {
                 onClick={() => {
                   setRuleTemplate(editingTemplate.id, editingTemplate.template)
                   setEditingTemplate(null)
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Save Template
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {showGlobalTemplateConfig && (
+        <Modal onClose={() => setShowGlobalTemplateConfig(false)} title="Global Template Format">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Template Format
+              </label>
+              <input
+                type="text"
+                value={editingGlobalTemplate}
+                onChange={(e) => setEditingGlobalTemplate(e.target.value)}
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm dark:bg-gray-700 dark:text-white"
+                placeholder="[{TYPE}-{n}]"
+              />
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg text-sm">
+              <p className="text-gray-600 dark:text-gray-400">
+                Preview: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{editingGlobalTemplate.replace('{n}', '1').replace('{type}', 'email').replace('{TYPE}', 'EMAIL').replace('{len}', '15').replace('{original}', 'user@example.com')}</code>
+              </p>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg text-xs space-y-2">
+              <p className="font-medium text-gray-700 dark:text-gray-300">Available variables:</p>
+              <div className="grid grid-cols-2 gap-2 text-gray-600 dark:text-gray-400">
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{n}'}</code> - Counter (1, 2, 3...)</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{type}'}</code> - Type name</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{TYPE}'}</code> - TYPE (uppercase)</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{len}'}</code> - Original length</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{original}'}</code> - Original value</div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowGlobalTemplateConfig(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setGlobalTemplate(editingGlobalTemplate)
+                  setShowGlobalTemplateConfig(false)
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >

@@ -128,6 +128,7 @@ function App() {
   const [fullscreenGoToLine, setFullscreenGoToLine] = useState(false)
   const [fullscreenGoToLineValue, setFullscreenGoToLineValue] = useState('')
   const [fullscreenChangedOnly, setFullscreenChangedOnly] = useState(false)
+  const [showChangedOnly, setShowChangedOnly] = useState(false)
   const editorRef = useRef<{ scrollToLine: (line: number) => void } | null>(null)
   const fullscreenScrollRef = useRef<HTMLDivElement | null>(null)
 
@@ -157,6 +158,10 @@ function App() {
     
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [input, output])
+
+  useEffect(() => {
+    setShowChangedOnly(false)
   }, [input, output])
 
   useEffect(() => {
@@ -622,17 +627,17 @@ function App() {
                 )}
                 <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
                 <button
-                  onClick={() => input.trim() && setSyncScroll(!syncScroll)}
+                  onClick={() => input.trim() && !showChangedOnly && setSyncScroll(!syncScroll)}
                   className={`text-sm hidden md:flex items-center gap-1 ${
-                    !input.trim()
+                    !input.trim() || showChangedOnly
                       ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                       : syncScroll
                         ? 'text-blue-600 dark:text-blue-400'
                         : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
-                  title={!input.trim() ? 'Load a log file first' : 'Sync scrolling between original and sanitized panes'}
+                  title={!input.trim() ? 'Load a log file first' : showChangedOnly ? 'Disabled while "Changed only" is active' : 'Sync scrolling between original and sanitized panes'}
                 >
-                  <span className={`w-2 h-2 rounded-full ${!input.trim() ? 'bg-gray-300 dark:bg-gray-600' : syncScroll ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                  <span className={`w-2 h-2 rounded-full ${!input.trim() || showChangedOnly ? 'bg-gray-300 dark:bg-gray-600' : syncScroll ? 'bg-blue-500' : 'bg-gray-400'}`} />
                   Sync Scroll
                 </button>
                 <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
@@ -756,6 +761,8 @@ function App() {
                 onView={openFullscreen}
                 showDiff={showDiffHighlight}
                 syncScroll={syncScroll}
+                showChangedOnly={showChangedOnly}
+                onShowChangedOnlyChange={setShowChangedOnly}
               />
             </div>
           </div>

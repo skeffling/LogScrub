@@ -18,6 +18,8 @@ interface EditorProps {
   onView?: () => void
   showDiff?: boolean
   syncScroll?: boolean
+  showChangedOnly?: boolean
+  onShowChangedOnlyChange?: (value: boolean) => void
 }
 
 export interface EditorHandle {
@@ -290,13 +292,14 @@ function VirtualizedList({
   )
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true }, ref) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, showChangedOnly: showChangedOnlyProp = false, onShowChangedOnlyChange }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements } = useAppStore()
   const inputContainerRef = useRef<HTMLDivElement | null>(null)
   const outputContainerRef = useRef<HTMLDivElement | null>(null)
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
   const [showDiff, setShowDiff] = useState(showDiffProp)
-  const [showChangedOnly, setShowChangedOnly] = useState(false)
+  const showChangedOnly = showChangedOnlyProp
+  const setShowChangedOnly = onShowChangedOnlyChange || (() => {})
   const scrollingRef = useRef<'input' | 'output' | null>(null)
 
   useEffect(() => {
@@ -308,10 +311,6 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
       setShowDiff(true)
     }
   }, [output, replacements.length])
-
-  useEffect(() => {
-    setShowChangedOnly(false)
-  }, [input, output])
 
   useImperativeHandle(ref, () => ({
     scrollToLine: (line: number) => {

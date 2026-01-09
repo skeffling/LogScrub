@@ -111,6 +111,61 @@ pub fn ssn_check(ssn: &str) -> bool {
     true
 }
 
+/// UK NHS Number validation using mod-11 checksum
+pub fn uk_nhs_check(nhs: &str) -> bool {
+    let digits: Vec<u32> = nhs
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .filter_map(|c| c.to_digit(10))
+        .collect();
+
+    if digits.len() != 10 {
+        return false;
+    }
+
+    // NHS checksum: sum of (digit * (11 - position)) must be divisible by 11
+    // Weights: 10, 9, 8, 7, 6, 5, 4, 3, 2 for first 9 digits
+    let weights = [10, 9, 8, 7, 6, 5, 4, 3, 2];
+    let sum: u32 = digits[..9]
+        .iter()
+        .zip(weights.iter())
+        .map(|(d, w)| d * w)
+        .sum();
+
+    let remainder = sum % 11;
+    let check_digit = if remainder == 0 { 0 } else { 11 - remainder };
+
+    // Check digit of 10 is invalid
+    if check_digit == 10 {
+        return false;
+    }
+
+    digits[9] == check_digit
+}
+
+/// Australian Tax File Number validation using weighted checksum
+pub fn au_tfn_check(tfn: &str) -> bool {
+    let digits: Vec<u32> = tfn
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .filter_map(|c| c.to_digit(10))
+        .collect();
+
+    if digits.len() != 9 {
+        return false;
+    }
+
+    // TFN weights: 1, 4, 3, 7, 5, 8, 6, 9, 10
+    let weights = [1, 4, 3, 7, 5, 8, 6, 9, 10];
+    let sum: u32 = digits
+        .iter()
+        .zip(weights.iter())
+        .map(|(d, w)| d * w)
+        .sum();
+
+    sum % 11 == 0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -58,7 +58,9 @@ const STRATEGY_OPTIONS: { value: ReplacementStrategy; label: string }[] = [
 const CATEGORIES: Record<string, string[]> = {
   'Contact': ['email', 'phone_us', 'phone_uk', 'phone_intl'],
   'Network': ['ipv4', 'ipv6', 'mac_address', 'hostname', 'url'],
-  'Identity': ['ssn', 'passport', 'drivers_license'],
+  'Identity (US)': ['ssn', 'us_itin', 'passport', 'drivers_license'],
+  'Identity (UK)': ['uk_nhs', 'uk_nino'],
+  'Identity (Intl)': ['au_tfn', 'in_pan', 'sg_nric'],
   'Financial': ['credit_card', 'iban', 'btc_address', 'eth_address'],
   'Tokens & Keys': ['jwt', 'bearer_token', 'aws_access_key', 'aws_secret_key', 'stripe_key', 'gcp_api_key', 'github_token', 'slack_token', 'openai_key', 'anthropic_key', 'xai_key', 'cerebras_key'],
   'Secrets': ['generic_secret', 'private_key', 'basic_auth', 'url_credentials', 'session_id'],
@@ -168,7 +170,9 @@ export function RulePanel() {
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'Contact': true,
     'Network': true,
-    'Identity': true,
+    'Identity (US)': true,
+    'Identity (UK)': true,
+    'Identity (Intl)': true,
     'Financial': true,
     'Tokens & Keys': true,
     'Secrets': true,

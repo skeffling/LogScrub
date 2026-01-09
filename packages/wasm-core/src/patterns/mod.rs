@@ -172,6 +172,31 @@ static XAI_KEY_REGEX: Lazy<Regex> =
 static CEREBRAS_KEY_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\bcsk-[a-zA-Z0-9]{40,50}\b").unwrap());
 
+// UK Patterns
+static UK_NHS_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b([0-9]{3})[- ]?([0-9]{3})[- ]?([0-9]{4})\b").unwrap());
+
+static UK_NINO_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)\b(?!BG|GB|NK|KN|NT|TN|ZZ)[A-CEGHJ-PR-TW-Z]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[A-D]\b").unwrap()
+});
+
+// US Additional Patterns
+static US_ITIN_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b9[0-9]{2}[- ]?(5[0-9]|6[0-5]|7[0-9]|8[0-8]|9[0-24-9])[- ]?[0-9]{4}\b").unwrap()
+});
+
+// Australia Patterns
+static AU_TFN_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}\b").unwrap());
+
+// India Patterns
+static IN_PAN_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[A-Z]{3}[ABCFGHLJPT][A-Z][0-9]{4}[A-Z]\b").unwrap());
+
+// Singapore Patterns
+static SG_NRIC_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b[STFGM][0-9]{7}[A-Z]\b").unwrap());
+
 static DATE_MDY_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12][0-9]|3[01])[/-](?:19|20)?[0-9]{2}\b")
         .unwrap()
@@ -412,6 +437,36 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "cerebras_key",
             regex: &CEREBRAS_KEY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "uk_nhs",
+            regex: &UK_NHS_REGEX,
+            validator: Some(validators::uk_nhs_check),
+        },
+        PatternDef {
+            id: "uk_nino",
+            regex: &UK_NINO_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "us_itin",
+            regex: &US_ITIN_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "au_tfn",
+            regex: &AU_TFN_REGEX,
+            validator: Some(validators::au_tfn_check),
+        },
+        PatternDef {
+            id: "in_pan",
+            regex: &IN_PAN_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sg_nric",
+            regex: &SG_NRIC_REGEX,
             validator: None,
         },
         PatternDef {

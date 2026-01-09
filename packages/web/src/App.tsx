@@ -738,7 +738,7 @@ function App() {
                     {isAnalyzing ? 'Analyzing...' : 'Analyze'}
                   </button>
                 )}
-                {hasTimestamps && !output && (
+                {hasTimestamps && (
                   <div className="relative">
                     <button
                       onClick={() => setShowTimeShift(!showTimeShift)}

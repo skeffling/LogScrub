@@ -79,6 +79,8 @@ interface AppState {
   analysisMatches: DetectionMatches
   analysisCompleted: boolean
   suggestions: RuleSuggestion[]
+  activeMatches: RuleSuggestion[]
+  unmatchedRules: Array<{ id: string; label: string }>
   showSuggestions: boolean
   analysisLogs: string[]
 
@@ -100,6 +102,7 @@ interface AppState {
   dismissSuggestions: () => void
   enableSuggestedRule: (id: string) => void
   enableAllSuggested: () => void
+  disableUnmatchedRules: () => void
   savePreset: (name: string) => void
   loadPreset: (preset: RulePreset) => void
   deletePreset: (name: string) => void
@@ -270,6 +273,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   analysisMatches: {},
   analysisCompleted: false,
   suggestions: [],
+  activeMatches: [],
+  unmatchedRules: [],
   showSuggestions: false,
   analysisLogs: [],
 
@@ -591,14 +596,51 @@ export const useAppStore = create<AppState>((set, get) => ({
         })
         
         suggestions.sort((a, b) => b.count - a.count)
-        
+
+        // Compute active matches (enabled rules that found matches)
+        const activeMatches: RuleSuggestion[] = []
+        Object.entries(stats).forEach(([id, count]) => {
+          if (count > 0) {
+            const rule = rules[id]
+            const customRule = customRules.find(r => r.id === id)
+            const plainText = plainTextPatterns.find(p => p.id === id)
+
+            const isEnabled = (rule?.enabled) || (customRule?.enabled) || (plainText?.enabled)
+
+            if (isEnabled) {
+              const label = rule?.label || customRule?.label || plainText?.label || id
+              const samples = extractSamplesWithContext(id, 3)
+              activeMatches.push({ id, label, count, samples })
+            }
+          }
+        })
+        activeMatches.sort((a, b) => b.count - a.count)
+
+        // Compute unmatched rules (enabled rules with no matches)
+        const unmatchedRules: Array<{ id: string; label: string }> = []
+        Object.entries(rules).forEach(([id, rule]) => {
+          if (rule.enabled && (!stats[id] || stats[id] === 0)) {
+            unmatchedRules.push({ id, label: rule.label })
+          }
+        })
+        customRules.forEach(rule => {
+          if (rule.enabled && (!stats[rule.id] || stats[rule.id] === 0)) {
+            unmatchedRules.push({ id: rule.id, label: rule.label })
+          }
+        })
+        plainTextPatterns.forEach(p => {
+          if (p.enabled && (!stats[p.id] || stats[p.id] === 0)) {
+            unmatchedRules.push({ id: p.id, label: p.label })
+          }
+        })
+
         const enabledReplacements = result.replacements?.filter(r => {
           const rule = rules[r.pii_type]
           const customRule = customRules.find(cr => cr.id === r.pii_type)
           const plainText = plainTextPatterns.find(p => p.id === r.pii_type)
           return (rule?.enabled) || (customRule?.enabled) || (plainText?.enabled)
         }) || []
-        
+
         const enabledStats: DetectionStats = {}
         const enabledMatches: DetectionMatches = {}
         Object.entries(stats).forEach(([id, count]) => {
@@ -612,14 +654,16 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
           }
         })
-        
-        set({ 
-          analysisReplacements: enabledReplacements, 
+
+        set({
+          analysisReplacements: enabledReplacements,
           analysisStats: enabledStats,
           analysisMatches: enabledMatches,
           analysisCompleted: true,
           suggestions,
-          showSuggestions: suggestions.length > 0
+          activeMatches,
+          unmatchedRules,
+          showSuggestions: suggestions.length > 0 || activeMatches.length > 0
         })
       }
     } catch {
@@ -628,7 +672,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  clearAnalysis: () => set({ analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, suggestions: [], showSuggestions: false }),
+  clearAnalysis: () => set({ analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, suggestions: [], activeMatches: [], unmatchedRules: [], showSuggestions: false }),
 
   dismissSuggestions: () => set({ showSuggestions: false }),
 
@@ -686,12 +730,41 @@ export const useAppStore = create<AppState>((set, get) => ({
     )
     savePlainTextPatternsToStorage(newPlainText)
     
-    set({ 
-      rules: newRules, 
-      customRules: newCustomRules, 
+    set({
+      rules: newRules,
+      customRules: newCustomRules,
       plainTextPatterns: newPlainText,
       suggestions: [],
       showSuggestions: false
+    })
+  },
+
+  disableUnmatchedRules: () => {
+    const { rules, customRules, plainTextPatterns, unmatchedRules } = get()
+    const unmatchedIds = new Set(unmatchedRules.map(r => r.id))
+
+    const newRules = { ...rules }
+    unmatchedIds.forEach(id => {
+      if (newRules[id]) {
+        newRules[id] = { ...newRules[id], enabled: false }
+      }
+    })
+
+    const newCustomRules = customRules.map(r =>
+      unmatchedIds.has(r.id) ? { ...r, enabled: false } : r
+    )
+    saveCustomRulesToStorage(newCustomRules)
+
+    const newPlainText = plainTextPatterns.map(p =>
+      unmatchedIds.has(p.id) ? { ...p, enabled: false } : p
+    )
+    savePlainTextPatternsToStorage(newPlainText)
+
+    set({
+      rules: newRules,
+      customRules: newCustomRules,
+      plainTextPatterns: newPlainText,
+      unmatchedRules: []
     })
   }
 }))

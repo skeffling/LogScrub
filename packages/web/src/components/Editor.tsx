@@ -1015,7 +1015,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
 
       <div className="flex flex-col min-h-0 relative">
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
-          <label className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'} ${titleBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
+          <label className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'} ${output ? outputPaneBg : placeholderBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
             Scrubbed
             {useVirtualScrolling && outputLines.length > VIRTUAL_THRESHOLD && output && (
               <span className="ml-2 text-xs text-gray-400">

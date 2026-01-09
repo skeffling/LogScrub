@@ -300,20 +300,59 @@ function App() {
     return { filteredFullscreenLines: lines, filteredLineNumbers: lineNums }
   }, [fullscreenLines, changedLinesSet, fullscreenChangedOnly])
   
+  const fullscreenReplacementLookup = useMemo(() => {
+    const lineOffsets: number[] = []
+    let offset = 0
+    const lines = input.split('\n')
+    for (const l of lines) {
+      lineOffsets.push(offset)
+      offset += l.length + 1
+    }
+
+    const findLineNumber = (position: number): number => {
+      for (let i = 0; i < lineOffsets.length; i++) {
+        const lineStart = lineOffsets[i]
+        const lineEnd = i < lineOffsets.length - 1 ? lineOffsets[i + 1] - 1 : Infinity
+        if (position >= lineStart && position <= lineEnd) {
+          return i + 1
+        }
+      }
+      return -1
+    }
+
+    const lookup = new Map<string, { original: string; type: string; lines: number[] }>()
+    for (const rep of replacements) {
+      const existing = lookup.get(rep.replacement)
+      const lineNum = rep.start >= 0 ? findLineNumber(rep.start) : -1
+      if (existing) {
+        if (lineNum > 0 && !existing.lines.includes(lineNum)) {
+          existing.lines.push(lineNum)
+        }
+      } else {
+        lookup.set(rep.replacement, {
+          original: rep.original,
+          type: rep.pii_type,
+          lines: lineNum > 0 ? [lineNum] : []
+        })
+      }
+    }
+    return lookup
+  }, [replacements, input])
+
   const highlightFullscreenLine = useCallback((line: string): React.ReactNode => {
     if (!fullscreenHighlight || replacements.length === 0) return line || ' '
-    
+
     const parts: React.ReactNode[] = []
     let remaining = line
     let keyIndex = 0
     const patterns = replacements.map(r => ({ pattern: r.replacement, type: r.pii_type }))
 
     while (remaining.length > 0) {
-      let earliestMatch: { index: number; length: number; type: string } | null = null
+      let earliestMatch: { index: number; length: number; type: string; pattern: string } | null = null
       for (const p of patterns) {
         const idx = remaining.indexOf(p.pattern)
         if (idx !== -1 && (earliestMatch === null || idx < earliestMatch.index)) {
-          earliestMatch = { index: idx, length: p.pattern.length, type: p.type }
+          earliestMatch = { index: idx, length: p.pattern.length, type: p.type, pattern: p.pattern }
         }
       }
       if (earliestMatch === null) {
@@ -323,15 +362,28 @@ function App() {
       if (earliestMatch.index > 0) {
         parts.push(<span key={`text-${keyIndex++}`}>{remaining.slice(0, earliestMatch.index)}</span>)
       }
+
+      const info = fullscreenReplacementLookup.get(earliestMatch.pattern)
+      const tooltipLines = [`Type: ${earliestMatch.type}`]
+      if (info) {
+        tooltipLines.unshift(`Original: ${info.original}`)
+        if (info.lines.length > 0) {
+          const lineStr = info.lines.length > 5
+            ? `${info.lines.slice(0, 5).join(', ')}... (${info.lines.length} total)`
+            : info.lines.join(', ')
+          tooltipLines.push(`Lines: ${lineStr}`)
+        }
+      }
+
       parts.push(
-        <span key={`hl-${keyIndex++}`} className="bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded px-0.5" title={earliestMatch.type}>
+        <span key={`hl-${keyIndex++}`} className="bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded px-0.5 cursor-help" title={tooltipLines.join('\n')}>
           {remaining.slice(earliestMatch.index, earliestMatch.index + earliestMatch.length)}
         </span>
       )
       remaining = remaining.slice(earliestMatch.index + earliestMatch.length)
     }
     return parts.length > 0 ? parts : (line || ' ')
-  }, [fullscreenHighlight, replacements])
+  }, [fullscreenHighlight, replacements, fullscreenReplacementLookup])
 
   if (fullscreenView) {
     return (

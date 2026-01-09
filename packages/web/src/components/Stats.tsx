@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useAppStore } from '../stores/useAppStore'
+import { useState, useMemo } from 'react'
+import { useAppStore, type ReplacementInfo } from '../stores/useAppStore'
 import { Modal } from './Modal'
 
 const TYPE_LABELS: Record<string, string> = {
@@ -85,17 +85,140 @@ function MatchesModal({ type, matches, onClose }: MatchesModalProps) {
   )
 }
 
+interface MappingEntry {
+  replacement: string
+  original: string
+  pii_type: string
+  count: number
+  lines: number[]
+}
+
+function buildMappingTable(replacements: ReplacementInfo[], inputText: string): MappingEntry[] {
+  const lineOffsets: number[] = []
+  let offset = 0
+  const lines = inputText.split('\n')
+  for (const line of lines) {
+    lineOffsets.push(offset)
+    offset += line.length + 1
+  }
+
+  const findLineNumber = (position: number): number => {
+    for (let i = 0; i < lineOffsets.length; i++) {
+      const lineStart = lineOffsets[i]
+      const lineEnd = i < lineOffsets.length - 1 ? lineOffsets[i + 1] - 1 : Infinity
+      if (position >= lineStart && position <= lineEnd) {
+        return i + 1
+      }
+    }
+    return -1
+  }
+
+  const map = new Map<string, MappingEntry>()
+
+  for (const rep of replacements) {
+    const key = rep.replacement
+    const existing = map.get(key)
+    const lineNum = rep.start >= 0 ? findLineNumber(rep.start) : -1
+
+    if (existing) {
+      existing.count++
+      if (lineNum > 0 && !existing.lines.includes(lineNum)) {
+        existing.lines.push(lineNum)
+      }
+    } else {
+      map.set(key, {
+        replacement: rep.replacement,
+        original: rep.original,
+        pii_type: rep.pii_type,
+        count: 1,
+        lines: lineNum > 0 ? [lineNum] : []
+      })
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => {
+    const typeCompare = a.pii_type.localeCompare(b.pii_type)
+    if (typeCompare !== 0) return typeCompare
+    return a.replacement.localeCompare(b.replacement)
+  })
+}
+
 export function Stats() {
-  const { stats, matches, fileName, analysisStats, analysisMatches } = useAppStore()
+  const { stats, matches, fileName, analysisStats, analysisMatches, replacements, analysisReplacements, input } = useAppStore()
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [showAuditReport, setShowAuditReport] = useState(false)
-  
+  const [activeTab, setActiveTab] = useState<'stats' | 'mapping'>('stats')
+  const [mappingSearch, setMappingSearch] = useState('')
+  const [showMappingExport, setShowMappingExport] = useState(false)
+
   const displayStats = Object.keys(stats).length > 0 ? stats : analysisStats
   const displayMatches = Object.keys(matches).length > 0 ? matches : analysisMatches
+  const displayReplacements = replacements.length > 0 ? replacements : analysisReplacements
   const isPreview = Object.keys(stats).length === 0 && Object.keys(analysisStats).length > 0
-  
+
   const total = Object.values(displayStats).reduce((sum, count) => sum + count, 0)
   const entries = Object.entries(displayStats).filter(([, count]) => count > 0)
+
+  const mappingTable = useMemo(() => buildMappingTable(displayReplacements, input), [displayReplacements, input])
+
+  const filteredMappingTable = useMemo(() => {
+    if (!mappingSearch.trim()) return mappingTable
+    const search = mappingSearch.toLowerCase()
+    return mappingTable.filter(entry =>
+      entry.replacement.toLowerCase().includes(search) ||
+      entry.original.toLowerCase().includes(search) ||
+      entry.pii_type.toLowerCase().includes(search)
+    )
+  }, [mappingTable, mappingSearch])
+
+  const generateMappingExport = (format: 'json' | 'csv') => {
+    if (format === 'json') {
+      const data: Record<string, { original: string; type: string; count: number; lines: number[] }> = {}
+      for (const entry of mappingTable) {
+        data[entry.replacement] = {
+          original: entry.original,
+          type: entry.pii_type,
+          count: entry.count,
+          lines: entry.lines
+        }
+      }
+      const content = JSON.stringify(data, null, 2)
+      const blob = new Blob([content], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mapping-${Date.now()}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } else {
+      const rows = [['Replacement', 'Original', 'Type', 'Count', 'Lines']]
+      for (const entry of mappingTable) {
+        rows.push([
+          `"${entry.replacement}"`,
+          `"${entry.original.replace(/"/g, '""')}"`,
+          entry.pii_type,
+          String(entry.count),
+          `"${entry.lines.join(', ')}"`
+        ])
+      }
+      const content = rows.map(r => r.join(',')).join('\n')
+      const blob = new Blob([content], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mapping-${Date.now()}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  const copyMappingToClipboard = async () => {
+    const data: Record<string, string> = {}
+    for (const entry of mappingTable) {
+      data[entry.replacement] = entry.original
+    }
+    await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+  }
 
   const generateAuditReport = (format: 'json' | 'txt' | 'html') => {
     const timestamp = new Date().toISOString()
@@ -196,46 +319,149 @@ ${entries.map(([type]) => {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            {isPreview && (
-              <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded">
-                Preview Mode
-              </span>
-            )}
-          </div>
-          {!isPreview && (
-            <button
-              onClick={() => setShowAuditReport(true)}
-              className="text-xs px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/50"
-              title="Download a detailed audit report"
-            >
-              Download Audit Report
-            </button>
+        <div className="flex items-center gap-1 mb-4 border-b dark:border-gray-700">
+          <button
+            onClick={() => setActiveTab('stats')}
+            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === 'stats'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            Statistics
+          </button>
+          <button
+            onClick={() => setActiveTab('mapping')}
+            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === 'mapping'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            Mapping ({mappingTable.length})
+          </button>
+          <div className="flex-1" />
+          {isPreview && (
+            <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded">
+              Preview
+            </span>
           )}
         </div>
-        
-        <div className="space-y-1 max-h-64 overflow-y-auto">
-          {entries.map(([type, count]) => (
-            <button
-              key={type}
-              onClick={() => setSelectedType(type)}
-              className="w-full flex items-center justify-between text-sm hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded transition-colors"
-            >
-              <span className="text-blue-600 dark:text-blue-400 hover:underline truncate">
-                {TYPE_LABELS[type] || type}
-              </span>
-              <span className="font-medium text-gray-900 dark:text-white ml-2">{count}</span>
-            </button>
-          ))}
-        </div>
 
-        <hr className="my-3 dark:border-gray-700" />
+        {activeTab === 'stats' ? (
+          <>
+            <div className="flex items-center justify-end mb-2">
+              {!isPreview && (
+                <button
+                  onClick={() => setShowAuditReport(true)}
+                  className="text-xs px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/50"
+                  title="Download a detailed audit report"
+                >
+                  Download Audit Report
+                </button>
+              )}
+            </div>
 
-        <div className="flex items-center justify-between text-sm font-semibold">
-          <span className="text-gray-900 dark:text-white">Total Detections</span>
-          <span className="text-blue-600 dark:text-blue-400">{total}</span>
-        </div>
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {entries.map(([type, count]) => (
+                <button
+                  key={type}
+                  onClick={() => setSelectedType(type)}
+                  className="w-full flex items-center justify-between text-sm hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                >
+                  <span className="text-blue-600 dark:text-blue-400 hover:underline truncate">
+                    {TYPE_LABELS[type] || type}
+                  </span>
+                  <span className="font-medium text-gray-900 dark:text-white ml-2">{count}</span>
+                </button>
+              ))}
+            </div>
+
+            <hr className="my-3 dark:border-gray-700" />
+
+            <div className="flex items-center justify-between text-sm font-semibold">
+              <span className="text-gray-900 dark:text-white">Total Detections</span>
+              <span className="text-blue-600 dark:text-blue-400">{total}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                type="text"
+                value={mappingSearch}
+                onChange={(e) => setMappingSearch(e.target.value)}
+                placeholder="Search mappings..."
+                className="flex-1 px-2 py-1 text-sm border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
+              />
+              <button
+                onClick={() => setShowMappingExport(true)}
+                className="text-xs px-2 py-1 rounded bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/50"
+                title="Export mapping dictionary"
+              >
+                Export
+              </button>
+              <button
+                onClick={copyMappingToClipboard}
+                className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                title="Copy mapping to clipboard"
+              >
+                Copy
+              </button>
+            </div>
+
+            <div className="max-h-72 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800">
+                  <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
+                    <th className="pb-2 pr-2">Replacement</th>
+                    <th className="pb-2 pr-2">Original</th>
+                    <th className="pb-2 pr-2 text-center">#</th>
+                    <th className="pb-2">Lines</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y dark:divide-gray-700">
+                  {filteredMappingTable.map((entry, i) => (
+                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="py-1.5 pr-2">
+                        <code className="text-xs px-1 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded">
+                          {entry.replacement}
+                        </code>
+                      </td>
+                      <td className="py-1.5 pr-2">
+                        <code className="text-xs text-gray-700 dark:text-gray-300 break-all" title={entry.original}>
+                          {entry.original.length > 25 ? entry.original.slice(0, 25) + '...' : entry.original}
+                        </code>
+                      </td>
+                      <td className="py-1.5 pr-2 text-center text-gray-500 dark:text-gray-400">
+                        {entry.count}
+                      </td>
+                      <td className="py-1.5 text-xs text-gray-400 dark:text-gray-500">
+                        {entry.lines.length > 0 ? (
+                          entry.lines.length > 3
+                            ? `${entry.lines.slice(0, 3).join(', ')}...`
+                            : entry.lines.join(', ')
+                        ) : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredMappingTable.length === 0 && (
+                <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                  {mappingSearch ? 'No matches found' : 'No mappings available'}
+                </div>
+              )}
+            </div>
+
+            <hr className="my-3 dark:border-gray-700" />
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600 dark:text-gray-400">Unique replacements</span>
+              <span className="font-medium text-gray-900 dark:text-white">{mappingTable.length}</span>
+            </div>
+          </>
+        )}
       </div>
       
       {selectedType && displayMatches[selectedType] && (
@@ -282,6 +508,39 @@ ${entries.map(([type]) => {
             
             <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-2 rounded">
               Report includes: {total} detections across {entries.length} types
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {showMappingExport && (
+        <Modal onClose={() => setShowMappingExport(false)} title="Export Mapping Dictionary">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Download the replacement mapping to reverse-lookup original values from scrubbed output.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { generateMappingExport('json'); setShowMappingExport(false) }}
+                className="p-4 border dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-center"
+              >
+                <div className="text-2xl mb-1">📋</div>
+                <div className="text-sm font-medium text-gray-900 dark:text-white">JSON</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">For programmatic use</div>
+              </button>
+              <button
+                onClick={() => { generateMappingExport('csv'); setShowMappingExport(false) }}
+                className="p-4 border dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-center"
+              >
+                <div className="text-2xl mb-1">📊</div>
+                <div className="text-sm font-medium text-gray-900 dark:text-white">CSV</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">For spreadsheets</div>
+              </button>
+            </div>
+
+            <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-2 rounded">
+              Includes {mappingTable.length} unique replacements with original values and line numbers
             </div>
           </div>
         </Modal>

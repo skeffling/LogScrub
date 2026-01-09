@@ -73,7 +73,52 @@ function highlightLine(line: string, lineStart: number, replacements: Replacemen
   return parts.length > 0 ? parts : (line || ' ')
 }
 
-function highlightOutputLine(line: string, replacements: ReplacementInfo[]): React.ReactNode {
+interface ReplacementLookup {
+  original: string
+  type: string
+  lines: number[]
+}
+
+function buildReplacementLookup(replacements: ReplacementInfo[], inputText: string): Map<string, ReplacementLookup> {
+  const lineOffsets: number[] = []
+  let offset = 0
+  const lines = inputText.split('\n')
+  for (const l of lines) {
+    lineOffsets.push(offset)
+    offset += l.length + 1
+  }
+
+  const findLineNumber = (position: number): number => {
+    for (let i = 0; i < lineOffsets.length; i++) {
+      const lineStart = lineOffsets[i]
+      const lineEnd = i < lineOffsets.length - 1 ? lineOffsets[i + 1] - 1 : Infinity
+      if (position >= lineStart && position <= lineEnd) {
+        return i + 1
+      }
+    }
+    return -1
+  }
+
+  const lookup = new Map<string, ReplacementLookup>()
+  for (const rep of replacements) {
+    const existing = lookup.get(rep.replacement)
+    const lineNum = rep.start >= 0 ? findLineNumber(rep.start) : -1
+    if (existing) {
+      if (lineNum > 0 && !existing.lines.includes(lineNum)) {
+        existing.lines.push(lineNum)
+      }
+    } else {
+      lookup.set(rep.replacement, {
+        original: rep.original,
+        type: rep.pii_type,
+        lines: lineNum > 0 ? [lineNum] : []
+      })
+    }
+  }
+  return lookup
+}
+
+function highlightOutputLine(line: string, replacements: ReplacementInfo[], lookup?: Map<string, ReplacementLookup>): React.ReactNode {
   const patterns = replacements.map(r => ({
     pattern: r.replacement,
     type: r.pii_type
@@ -86,12 +131,12 @@ function highlightOutputLine(line: string, replacements: ReplacementInfo[]): Rea
   let keyIndex = 0
 
   while (remaining.length > 0) {
-    let earliestMatch: { index: number; length: number; type: string } | null = null
+    let earliestMatch: { index: number; length: number; type: string; pattern: string } | null = null
 
     for (const p of patterns) {
       const idx = remaining.indexOf(p.pattern)
       if (idx !== -1 && (earliestMatch === null || idx < earliestMatch.index)) {
-        earliestMatch = { index: idx, length: p.pattern.length, type: p.type }
+        earliestMatch = { index: idx, length: p.pattern.length, type: p.type, pattern: p.pattern }
       }
     }
 
@@ -104,11 +149,23 @@ function highlightOutputLine(line: string, replacements: ReplacementInfo[]): Rea
       parts.push(<span key={`text-${keyIndex++}`}>{remaining.slice(0, earliestMatch.index)}</span>)
     }
 
+    const info = lookup?.get(earliestMatch.pattern)
+    const tooltipLines = [`Type: ${earliestMatch.type}`]
+    if (info) {
+      tooltipLines.unshift(`Original: ${info.original}`)
+      if (info.lines.length > 0) {
+        const lineStr = info.lines.length > 5
+          ? `${info.lines.slice(0, 5).join(', ')}... (${info.lines.length} total)`
+          : info.lines.join(', ')
+        tooltipLines.push(`Lines: ${lineStr}`)
+      }
+    }
+
     parts.push(
-      <span 
+      <span
         key={`hl-${keyIndex++}`}
-        className="bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded px-0.5"
-        title={`${earliestMatch.type}: replacement`}
+        className="bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded px-0.5 cursor-help"
+        title={tooltipLines.join('\n')}
       >
         {remaining.slice(earliestMatch.index, earliestMatch.index + earliestMatch.length)}
       </span>
@@ -133,12 +190,13 @@ interface VirtualizedListProps {
   className?: string
   changedLines?: Set<number>
   originalLineNumbers?: number[]
+  replacementLookup?: Map<string, ReplacementLookup>
 }
 
-function VirtualizedList({ 
-  lines, lineOffsets, replacements, selectedLine, onLineClick, 
+function VirtualizedList({
+  lines, lineOffsets, replacements, selectedLine, onLineClick,
   showDiff, type, scrollRef, onScroll, className, changedLines,
-  originalLineNumbers
+  originalLineNumbers, replacementLookup
 }: VirtualizedListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -208,7 +266,7 @@ function VirtualizedList({
               if (type === 'analysis') {
                 content = highlightLine(line, lineOffsets[lineNum] ?? 0, replacements, 'original')
               } else if (type === 'output') {
-                content = showDiff && replacements.length > 0 ? highlightOutputLine(line, replacements) : (line || ' ')
+                content = showDiff && replacements.length > 0 ? highlightOutputLine(line, replacements, replacementLookup) : (line || ' ')
               } else {
                 content = showDiff && replacements.length > 0 ? highlightLine(line, lineOffsets[lineNum] ?? 0, replacements, 'original') : (line || ' ')
               }
@@ -299,6 +357,11 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     }
     return lines
   }, [replacements, analysisReplacements, lineOffsets, output])
+
+  const replacementLookup = useMemo(() => {
+    const reps = output ? replacements : analysisReplacements
+    return buildReplacementLookup(reps, input)
+  }, [replacements, analysisReplacements, input, output])
 
   const { filteredInputLines, filteredOutputLines, filteredLineNumbers } = useMemo(() => {
     if (!showChangedOnly || changedLines.size === 0) {
@@ -491,10 +554,10 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               }`}
               onClick={() => handleLineClick(lineNum)}
             >
-              {type === 'analysis' 
+              {type === 'analysis'
                 ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original')
                 : type === 'output'
-                  ? (showDiff && reps.length > 0 ? highlightOutputLine(line, reps) : (line || ' '))
+                  ? (showDiff && reps.length > 0 ? highlightOutputLine(line, reps, replacementLookup) : (line || ' '))
                   : (showDiff && reps.length > 0 ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original') : (line || ' '))
               }
             </div>
@@ -704,6 +767,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
               onScroll={() => handleScroll('output')}
               changedLines={changedLines}
               originalLineNumbers={filteredLineNumbers}
+              replacementLookup={replacementLookup}
             />
           </div>
         ) : (

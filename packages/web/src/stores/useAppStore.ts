@@ -155,6 +155,7 @@ const DEFAULT_RULES: Record<string, Rule> = {
   cerebras_key: { label: 'Cerebras API Keys', enabled: true, strategy: 'redact' },
   db_connection: { label: 'Database URLs', enabled: true, strategy: 'redact' },
   generic_secret: { label: 'Generic Secrets', enabled: true, strategy: 'redact' },
+  high_entropy_secret: { label: 'High Entropy Secrets', enabled: false, strategy: 'redact' },
   private_key: { label: 'Private Keys', enabled: true, strategy: 'redact' },
   basic_auth: { label: 'Basic Auth', enabled: true, strategy: 'redact' },
   url_credentials: { label: 'URL Credentials', enabled: true, strategy: 'redact' },

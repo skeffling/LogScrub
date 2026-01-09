@@ -63,7 +63,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Identity (Intl)': ['au_tfn', 'in_pan', 'sg_nric'],
   'Financial': ['credit_card', 'iban', 'btc_address', 'eth_address'],
   'Tokens & Keys': ['jwt', 'bearer_token', 'aws_access_key', 'aws_secret_key', 'stripe_key', 'gcp_api_key', 'github_token', 'slack_token', 'openai_key', 'anthropic_key', 'xai_key', 'cerebras_key'],
-  'Secrets': ['generic_secret', 'private_key', 'basic_auth', 'url_credentials', 'session_id'],
+  'Secrets': ['generic_secret', 'high_entropy_secret', 'private_key', 'basic_auth', 'url_credentials', 'session_id'],
   'Location': ['gps_coordinates', 'postcode_uk', 'postcode_us'],
   'Date & Time': ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'timestamp_unix'],
   'SQL': ['sql_tables', 'sql_strings', 'sql_identifiers'],

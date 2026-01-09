@@ -166,6 +166,63 @@ pub fn au_tfn_check(tfn: &str) -> bool {
     sum % 11 == 0
 }
 
+/// Calculate Shannon entropy of a string
+pub fn calculate_entropy(s: &str) -> f64 {
+    if s.is_empty() {
+        return 0.0;
+    }
+
+    let mut freq = [0u32; 256];
+    let len = s.len() as f64;
+
+    for byte in s.bytes() {
+        freq[byte as usize] += 1;
+    }
+
+    let mut entropy = 0.0f64;
+    for &count in freq.iter() {
+        if count > 0 {
+            let p = (count as f64) / len;
+            entropy -= p * p.log2();
+        }
+    }
+
+    entropy
+}
+
+/// Check if a string has high entropy (likely a secret/password)
+/// Threshold: 3.5 bits per character (higher than ScrubDuck's 3.2 to reduce false positives)
+pub fn high_entropy_check(s: &str) -> bool {
+    // Must be at least 8 characters
+    if s.len() < 8 {
+        return false;
+    }
+
+    // Skip if it's all letters (likely a word, not a secret)
+    if s.chars().all(|c| c.is_ascii_alphabetic()) {
+        return false;
+    }
+
+    // Skip if it looks like a common pattern (version numbers, etc.)
+    if s.starts_with("v") && s[1..].chars().all(|c| c.is_ascii_digit() || c == '.') {
+        return false;
+    }
+
+    // Must have mixed character types (letters + digits or special chars)
+    let has_letter = s.chars().any(|c| c.is_ascii_alphabetic());
+    let has_digit = s.chars().any(|c| c.is_ascii_digit());
+    let has_special = s.chars().any(|c| !c.is_ascii_alphanumeric());
+
+    // Require at least 2 of 3 character types
+    let type_count = [has_letter, has_digit, has_special].iter().filter(|&&x| x).count();
+    if type_count < 2 {
+        return false;
+    }
+
+    let entropy = calculate_entropy(s);
+    entropy > 3.5
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -225,5 +282,40 @@ mod tests {
         assert!(!ssn_check("999-45-6789"));
         assert!(!ssn_check("123-00-6789"));
         assert!(!ssn_check("123-45-0000"));
+    }
+
+    #[test]
+    fn test_entropy_calculation() {
+        // Low entropy - repetitive
+        let low_entropy = calculate_entropy("aaaaaaaa");
+        assert!(low_entropy < 1.0);
+
+        // Higher entropy - mixed characters
+        let high_entropy = calculate_entropy("aB3$xY9!");
+        assert!(high_entropy > 2.5);
+
+        // Very high entropy - random-looking
+        let very_high = calculate_entropy("xK9#mP2$vL7@nQ4!");
+        assert!(very_high > 3.5);
+    }
+
+    #[test]
+    fn test_high_entropy_check() {
+        // Should detect random-looking passwords
+        assert!(high_entropy_check("xK9#mP2$vL7@nQ4!"));
+        assert!(high_entropy_check("Abc123!@#XyzDef"));
+
+        // Should NOT detect simple words
+        assert!(!high_entropy_check("password"));
+        assert!(!high_entropy_check("secretkey"));
+
+        // Should NOT detect short strings
+        assert!(!high_entropy_check("abc123"));
+
+        // Should NOT detect all-letter strings (likely words)
+        assert!(!high_entropy_check("verylongpasswordword"));
+
+        // Should NOT detect version numbers
+        assert!(!high_entropy_check("v1.2.3.4.5.6"));
     }
 }

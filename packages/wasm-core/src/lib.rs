@@ -248,6 +248,7 @@ fn generate_fake(pii_type: &str, _original: &str, count: usize) -> String {
         "au_tfn" => format!("{:03} {:03} {:03}", count % 1000, count % 1000, count % 1000),
         "in_pan" => format!("XXXPX{:04}X", count % 10000),
         "sg_nric" => format!("S{:07}X", count % 10000000),
+        "high_entropy_secret" => format!("[HIGH-ENTROPY-SECRET-{}]", count),
         "basic_auth" => format!("Basic XXXX{}", count),
         "url_credentials" => format!("https://user{}:****@example.com", count),
         "date_mdy" => format!("01/{:02}/2000", (count % 28) + 1),

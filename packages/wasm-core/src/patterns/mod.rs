@@ -197,6 +197,12 @@ static IN_PAN_REGEX: Lazy<Regex> =
 static SG_NRIC_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\b[STFGM][0-9]{7}[A-Z]\b").unwrap());
 
+// High entropy secret detection - matches potential tokens/passwords
+// Looks for quoted strings or unquoted tokens that could be secrets
+static HIGH_ENTROPY_SECRET_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"['"][A-Za-z0-9!@#$%^&*()_+\-=\[\]{};:,.<>?/\\|`~]{8,64}['"]|(?<=[=:\s])[A-Za-z0-9!@#$%^&*_+\-]{12,64}(?=[\s,;}\])]|$)"#).unwrap()
+});
+
 static DATE_MDY_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12][0-9]|3[01])[/-](?:19|20)?[0-9]{2}\b")
         .unwrap()
@@ -468,6 +474,11 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
             id: "sg_nric",
             regex: &SG_NRIC_REGEX,
             validator: None,
+        },
+        PatternDef {
+            id: "high_entropy_secret",
+            regex: &HIGH_ENTROPY_SECRET_REGEX,
+            validator: Some(validators::high_entropy_check),
         },
         PatternDef {
             id: "db_connection",

@@ -917,6 +917,21 @@ User [EMAIL-3] logged in</div>
           </div>
 
           <div class="category-section">
+            <h3>Exim (Mail Server)</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>Exim Subject</strong></td><td>T="Meeting reminder"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Exim Sender</strong></td><td>F=&lt;user@example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Exim Auth</strong></td><td>A=login:user</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Exim User</strong></td><td>U=mailuser</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Exim DN</strong></td><td>DN=cn=user,dc=example,dc=com</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+            <p>Rules for <a href="https://www.exim.org/exim-html-current/doc/html/spec_html/ch-log_files.html" target="_blank" rel="noopener noreferrer">Exim mail server logs</a>. These follow Exim's well-documented log format with field prefixes (T=, F=, A=, U=, DN=).</p>
+          </div>
+
+          <div class="category-section">
             <h3>Other</h3>
             <div class="table-wrapper">
               <table>

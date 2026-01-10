@@ -747,45 +747,80 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     const prefix = labelFormat.prefix || '['
     const suffix = labelFormat.suffix || ']'
 
-    // Get detected types with counts
+    // Get detected types with counts and their strategies
     const detectedTypes = Object.entries(stats)
       .filter(([, count]) => count > 0)
       .map(([type, count]) => {
         const rule = rules[type]
         const label = rule?.label || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-        return { type, label, count }
+        const strategy = rule?.strategy || 'label'
+        const template = rule?.template || globalTemplate
+        return { type, label, count, strategy, template }
       })
       .sort((a, b) => b.count - a.count)
 
     // Determine replacement strategies used
     const strategies = new Set<string>()
-    Object.values(rules).forEach(rule => {
-      if (rule.enabled) {
-        strategies.add(rule.strategy)
-      }
+    detectedTypes.forEach(({ strategy }) => {
+      strategies.add(strategy)
     })
+
+    // Helper to generate example replacement based on strategy
+    const getExampleReplacement = (type: string, strategy: string, template?: string) => {
+      const upperType = type.toUpperCase()
+      switch (strategy) {
+        case 'label':
+          return `${prefix}${upperType}-1${suffix}`
+        case 'fake':
+          // Show representative fake examples
+          if (type === 'email') return 'user1@example.com'
+          if (type === 'ipv4') return '192.0.2.1'
+          if (type === 'ipv6') return '2001:db8::1'
+          if (type === 'phone_us' || type === 'phone_uk' || type === 'phone_intl') return '(555) 123-0001'
+          if (type === 'hostname') return 'host1.example.com'
+          if (type === 'uuid') return '00000000-0000-0000-0000-000000000001'
+          return `[fake ${type}]`
+        case 'redact':
+          return '████████'
+        case 'template':
+          if (template) {
+            return template.replace('{T}', upperType).replace('{N}', '1')
+          }
+          return `<${upperType}-1>`
+        default:
+          return `${prefix}${upperType}-1${suffix}`
+      }
+    }
+
+    const strategyDescription = (strategy: string) => {
+      switch (strategy) {
+        case 'label': return 'Label'
+        case 'fake': return 'Fake'
+        case 'redact': return 'Redact'
+        case 'template': return 'Template'
+        default: return strategy
+      }
+    }
 
     let explanation = `## Log Redaction Context
 
 This log has been sanitized using LogScrub to remove personally identifiable information (PII) and sensitive data. Please analyze this log with the following context in mind:
 
-### Replacement Format
+### Replacement Strategies Used
 `
 
-    if (strategies.has('label') || strategies.size === 0) {
+    if (strategies.has('label')) {
       explanation += `- **Label tokens**: Sensitive values are replaced with tokens in the format \`${prefix}TYPE-N${suffix}\` where TYPE indicates the data category and N is a sequential number.
 `
-      if (consistencyMode) {
-        explanation += `- **Consistency mode is ON**: The same original value always maps to the same replacement token. For example, if you see \`${prefix}EMAIL-1${suffix}\` multiple times, it refers to the same email address throughout the log.
+    }
+
+    if (strategies.has('template')) {
+      explanation += `- **Template tokens**: Sensitive values are replaced using a custom template format.
 `
-      } else {
-        explanation += `- **Consistency mode is OFF**: Each occurrence gets a new number, so \`${prefix}EMAIL-1${suffix}\` and \`${prefix}EMAIL-2${suffix}\` might be the same or different addresses.
-`
-      }
     }
 
     if (strategies.has('fake')) {
-      explanation += `- **Fake data**: Some values are replaced with realistic but fake data (e.g., \`user1@redacted.net\`, \`192.0.2.x\` IP addresses).
+      explanation += `- **Fake data**: Some values are replaced with realistic but fake data (e.g., \`user1@example.com\`, \`192.0.2.x\` IP addresses).
 `
     }
 
@@ -794,57 +829,41 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
 `
     }
 
+    if (consistencyMode && (strategies.has('label') || strategies.has('template') || strategies.has('fake'))) {
+      explanation += `
+**Consistency mode is ON**: The same original value always maps to the same replacement. For example, if you see the same token or fake value multiple times, it refers to the same original data throughout the log.
+`
+    } else if (!consistencyMode && (strategies.has('label') || strategies.has('template'))) {
+      explanation += `
+**Consistency mode is OFF**: Each occurrence gets a new number, so tokens with different numbers might refer to the same or different original values.
+`
+    }
+
     if (detectedTypes.length > 0) {
       explanation += `
 ### Detected & Replaced Data Types
 
-| Token | Type | Count |
-|-------|------|-------|
+| Type | Strategy | Example Replacement | Count |
+|------|----------|---------------------|-------|
 `
-      detectedTypes.forEach(({ type, label, count }) => {
-        const exampleToken = `${prefix}${type.toUpperCase()}-1${suffix}`
-        explanation += `| \`${exampleToken}\` | ${label} | ${count} |\n`
+      detectedTypes.forEach(({ type, label, count, strategy, template }) => {
+        const example = getExampleReplacement(type, strategy, template)
+        explanation += `| ${label} | ${strategyDescription(strategy)} | \`${example}\` | ${count} |\n`
       })
     }
 
     explanation += `
 ### Interpretation Guidelines
 
-1. **Token references**: When referring to specific values, use the token (e.g., "the request from ${prefix}IPV4-1${suffix}") rather than describing it generically.
+1. **References**: When referring to specific replaced values, use the replacement shown in the table above rather than describing generically.
 
-2. **Correlations**: ${consistencyMode ? 'You CAN correlate tokens - same token = same original value.' : 'Do NOT assume same-numbered tokens refer to the same value.'}
+2. **Correlations**: ${consistencyMode ? 'You CAN correlate replacements - same replacement = same original value.' : 'Each occurrence is replaced independently, so similar replacements might refer to different original values.'}
 
-3. **Data types**: The token prefix tells you what type of data was there:
-`
-
-    // Add common type explanations
-    const typeExplanations: Record<string, string> = {
-      email: 'Email addresses',
-      ipv4: 'IPv4 addresses',
-      ipv6: 'IPv6 addresses',
-      hostname: 'Hostnames/domains',
-      url: 'Full URLs',
-      ssn: 'Social Security Numbers',
-      credit_card: 'Credit card numbers',
-      phone_us: 'US phone numbers',
-      jwt: 'JSON Web Tokens',
-      uuid: 'UUIDs/GUIDs',
-      generic_secret: 'Passwords/secrets',
-      aws_access_key: 'AWS access keys',
-    }
-
-    detectedTypes.slice(0, 8).forEach(({ type, label }) => {
-      const desc = typeExplanations[type] || label
-      explanation += `   - \`${type.toUpperCase()}\`: ${desc}\n`
-    })
-
-    explanation += `
-### Note
-The log structure, timestamps, error messages, and non-sensitive data remain intact. Focus your analysis on patterns, errors, and flow rather than the specific redacted values.
+3. **Focus**: The log structure, timestamps, error messages, and non-sensitive data remain intact. Focus your analysis on patterns, errors, and flow rather than the specific redacted values.
 `
 
     return explanation
-  }, [stats, rules, labelFormat, consistencyMode])
+  }, [stats, rules, labelFormat, consistencyMode, globalTemplate])
 
   const handleCopyAIExplanation = async () => {
     const explanation = generateAIExplanation()

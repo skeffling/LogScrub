@@ -783,7 +783,7 @@ function App() {
                     Clear Preview
                   </button>
                 )}
-                {!output && analysisReplacements.length === 0 && (
+                {analysisReplacements.length === 0 && (
                   <button
                     onClick={() => { analyzeText(input); window.umami?.track('analyze') }}
                     disabled={isAnalyzing || !input.trim()}

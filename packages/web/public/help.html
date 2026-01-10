@@ -630,6 +630,7 @@
           <a href="#analyze-mode">Analyze Mode</a>
           <a href="#audit-reports">Audit Reports</a>
           <a href="#reverse-lookup">Reverse Lookup</a>
+          <a href="#ai-explain">AI Explain</a>
         </div>
 
         <div class="nav-section">
@@ -1181,6 +1182,48 @@ User [EMAIL-3] logged in</div>
           <div class="tip">
             <div class="callout-title">Tip</div>
             <p>Enable <strong>Consistency Mode</strong> before scrubbing to ensure the same original value always gets the same replacement label.</p>
+          </div>
+        </section>
+
+        <section id="ai-explain">
+          <h2>AI Explain</h2>
+          <p>When sharing scrubbed logs with AI assistants like ChatGPT, Claude, or Copilot, they need context to understand the redaction format. The AI Explain feature generates a ready-to-use explanation.</p>
+
+          <h3>How to Use</h3>
+          <ol>
+            <li>Scrub your log as usual</li>
+            <li>Click the <strong>"AI Explain"</strong> button in the scrubbed output toolbar</li>
+            <li>Copy the generated explanation</li>
+            <li>Paste it into your AI chat <em>before</em> pasting the scrubbed log</li>
+          </ol>
+
+          <h3>What's Included</h3>
+          <p>The generated explanation includes:</p>
+          <ul>
+            <li><strong>Replacement strategies</strong> — Describes each strategy used (Label, Fake, Redact, Template)</li>
+            <li><strong>Consistency mode status</strong> — Tells the AI whether same tokens mean same values</li>
+            <li><strong>Detected types table</strong> — Lists each PII type found with its replacement strategy and example format</li>
+            <li><strong>Interpretation guidelines</strong> — Instructions for how the AI should reference replacements</li>
+          </ul>
+
+          <div class="card">
+            <h4>Example Output</h4>
+            <pre><code>## Log Redaction Context
+
+This log has been sanitized using LogScrub...
+
+### Detected & Replaced Data Types
+
+| Type | Strategy | Example Replacement | Count |
+|------|----------|---------------------|-------|
+| Email | Label | `[EMAIL-1]` | 5 |
+| IPv4 | Fake | `192.0.2.1` | 12 |
+| Hostname | Template | `&lt;HOSTNAME-1&gt;` | 3 |</code></pre>
+          </div>
+
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>The explanation reflects each rule's individual replacement strategy. If you use different strategies for different types (e.g., Label for emails, Fake for IPs), the AI will know exactly what each replacement format means.</p>
           </div>
         </section>
 

@@ -1237,7 +1237,7 @@ This log has been sanitized using LogScrub...
           <div class="table-wrapper">
             <table>
               <tr><th>Format</th><th>Extension</th><th>Scrubbing</th><th>Preview</th></tr>
-              <tr><td><strong>PDF</strong></td><td>.pdf</td><td>Redact only (black boxes)</td><td>Full page rendering</td></tr>
+              <tr><td><strong>PDF</strong></td><td>.pdf</td><td>True redaction (text removed)</td><td>Full page rendering</td></tr>
               <tr><td><strong>Word Document</strong></td><td>.docx</td><td>Full text replacement</td><td>Formatted preview</td></tr>
               <tr><td><strong>Excel Spreadsheet</strong></td><td>.xlsx</td><td>Full text replacement</td><td>Table view</td></tr>
               <tr><td><strong>OpenDocument Text</strong></td><td>.odt</td><td>Full text replacement</td><td>Basic text preview</td></tr>
@@ -1249,6 +1249,10 @@ This log has been sanitized using LogScrub...
 
           <h4>PDF Files</h4>
           <p>PDFs are rendered using MuPDF (WebAssembly). Due to the complexity of PDF format, scrubbing uses <strong>redaction only</strong> — detected PII is covered with black boxes rather than replaced with labels or fake data. This ensures the document structure remains intact.</p>
+          <div class="tip">
+            <div class="callout-title">True Redaction</div>
+            <p>The underlying text is permanently removed from the PDF, not just visually covered. The redacted text cannot be recovered by selecting, copying, or using PDF extraction tools.</p>
+          </div>
           <div class="tip">
             <div class="callout-title">Tip</div>
             <p>The PDF preview shows page-by-page rendering with match counts per page, helping you verify all sensitive data was found.</p>

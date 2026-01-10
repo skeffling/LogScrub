@@ -1313,7 +1313,8 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     if (!output) return
     await ensureWasm()
     const baseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'sanitized_output'
-    const zipData = compress_zip(output, `${baseName}.txt`)
+    const ext = fileName?.match(/\.[^/.]+$/)?.[0] || '.txt'
+    const zipData = compress_zip(output, `${baseName}${ext}`)
     const blob = new Blob([zipData], { type: 'application/zip' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -1330,12 +1331,13 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     if (!output) return
     await ensureWasm()
     const baseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'sanitized_output'
+    const ext = fileName?.match(/\.[^/.]+$/)?.[0] || '.txt'
     const gzipData = compress_gzip(output)
     const blob = new Blob([gzipData], { type: 'application/gzip' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${baseName}.txt.gz`
+    a.download = `${baseName}${ext}.gz`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)

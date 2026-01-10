@@ -1446,7 +1446,33 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
 
             <div className="pt-3 border-t dark:border-gray-700">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                <strong>Tip:</strong> Paste this explanation first, then paste your scrubbed log. The AI will be able to reference tokens like {labelFormat.prefix}EMAIL-1{labelFormat.suffix} when discussing specific values in your log.
+                <strong>Tip:</strong> Paste this explanation first, then paste your scrubbed log. The AI will be able to reference replacements like{' '}
+                {(() => {
+                  // Get the first detected type and show its actual replacement format
+                  const firstDetected = Object.entries(stats).find(([, count]) => count > 0)
+                  if (!firstDetected) return <code>{labelFormat.prefix}EMAIL-1{labelFormat.suffix}</code>
+                  const [type] = firstDetected
+                  const rule = rules[type]
+                  const strategy = rule?.strategy || 'label'
+                  const template = rule?.template || globalTemplate
+                  const upperType = type.toUpperCase()
+                  let example: string
+                  switch (strategy) {
+                    case 'fake':
+                      example = type === 'email' ? 'user1@example.com' : type === 'ipv4' ? '192.0.2.1' : `[fake ${type}]`
+                      break
+                    case 'redact':
+                      example = '████████'
+                      break
+                    case 'template':
+                      example = template ? template.replace('{T}', upperType).replace('{N}', '1') : `<${upperType}-1>`
+                      break
+                    default:
+                      example = `${labelFormat.prefix || '['}${upperType}-1${labelFormat.suffix || ']'}`
+                  }
+                  return <code>{example}</code>
+                })()}{' '}
+                when discussing specific values in your log.
               </p>
             </div>
           </div>

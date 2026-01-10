@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import init, { decompress_gzip, decompress_zip, compress_zip, compress_gzip } from '../wasm-core/wasm_core'
+import init, { decompress_gzip, decompress_zip, decompress_zip_file, compress_zip, compress_gzip } from '../wasm-core/wasm_core'
 import { useAppStore, type ReplacementInfo } from '../stores/useAppStore'
 import { tokenizeWithPositions } from '../utils/syntaxHighlight'
 import { Modal } from './Modal'
@@ -870,25 +870,117 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
     await navigator.clipboard.writeText(explanation)
   }
 
+  const extractTextFromDocxXml = (xml: string): string => {
+    // Parse DOCX XML (word/document.xml) and extract text content
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(xml, 'application/xml')
+
+    // Extract text content from paragraphs
+    const paragraphs: string[] = []
+    let currentParagraph = ''
+
+    // Track paragraph boundaries (w:p elements)
+    const allNodes = doc.getElementsByTagName('*')
+    for (let i = 0; i < allNodes.length; i++) {
+      const node = allNodes[i]
+      if (node.tagName === 'w:p') {
+        if (currentParagraph) {
+          paragraphs.push(currentParagraph)
+          currentParagraph = ''
+        }
+      } else if (node.tagName === 'w:t' && node.textContent) {
+        currentParagraph += node.textContent
+      } else if (node.tagName === 'w:tab') {
+        currentParagraph += '\t'
+      } else if (node.tagName === 'w:br') {
+        currentParagraph += '\n'
+      }
+    }
+
+    if (currentParagraph) {
+      paragraphs.push(currentParagraph)
+    }
+
+    return paragraphs.join('\n')
+  }
+
   const processCompressedFile = async (file: File): Promise<{ content: string; name: string }> => {
     const ext = file.name.toLowerCase()
-    
+
+    // Handle DOCX files (ZIP archive containing XML)
+    if (ext.endsWith('.docx')) {
+      await ensureWasm()
+      const buffer = await file.arrayBuffer()
+      const data = new Uint8Array(buffer)
+
+      const xml = decompress_zip_file(data, 'word/document.xml')
+      const content = extractTextFromDocxXml(xml)
+      const baseName = file.name.replace(/\.docx$/i, '.txt')
+      return { content, name: baseName }
+    }
+
+    // Handle Excel files (XLSX/XLS) via excelize-wasm
+    if (ext.endsWith('.xlsx') || ext.endsWith('.xls')) {
+      const { init } = await import('excelize-wasm')
+      const excelize = await init('/excelize.wasm.gz')
+      const buffer = new Uint8Array(await file.arrayBuffer())
+      const f = excelize.OpenReader(buffer)
+
+      if (f.error) {
+        throw new Error(f.error)
+      }
+
+      let content = ''
+      const sheets = f.GetSheetList().list
+      for (const sheet of sheets) {
+        const { result, error } = f.GetRows(sheet)
+        if (error) continue
+        content += `=== ${sheet} ===\n`
+        content += result.map((row: string[]) => row.join('\t')).join('\n')
+        content += '\n\n'
+      }
+
+      const baseName = file.name.replace(/\.xlsx?$/i, '.txt')
+      return { content: content.trim(), name: baseName }
+    }
+
+    // Handle PDF files via @hyzyla/pdfium
+    if (ext.endsWith('.pdf')) {
+      const { PDFiumLibrary } = await import('@hyzyla/pdfium')
+      const library = await PDFiumLibrary.init()
+
+      const buffer = new Uint8Array(await file.arrayBuffer())
+      const document = await library.loadDocument(buffer)
+
+      let content = ''
+      for (const page of document.pages()) {
+        content += page.getText()
+        content += '\n'
+      }
+
+      document.destroy()
+      library.destroy()
+
+      const baseName = file.name.replace(/\.pdf$/i, '.txt')
+      return { content: content.trim(), name: baseName }
+    }
+
     if (ext.endsWith('.zip') || ext.endsWith('.gz') || ext.endsWith('.gzip')) {
       await ensureWasm()
       const buffer = await file.arrayBuffer()
       const data = new Uint8Array(buffer)
-      
+
       if (ext.endsWith('.zip')) {
         const content = decompress_zip(data)
         const baseName = file.name.replace(/\.zip$/i, '')
         return { content, name: baseName }
       }
-      
+
       const content = decompress_gzip(data)
       const baseName = file.name.replace(/\.(gz|gzip)$/i, '')
       return { content, name: baseName }
     }
-    
+
     return new Promise((resolve) => {
       const reader = new FileReader()
       reader.onload = (ev) => resolve({ content: ev.target?.result as string, name: file.name })
@@ -1106,7 +1198,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
               <input
                 type="file"
                 onChange={handleFileUpload}
-                accept=".log,.txt,.json,.xml,.csv,.zip,.gz,.gzip"
+                accept=".log,.txt,.json,.xml,.csv,.zip,.gz,.gzip,.pdf,.xlsx,.xls,.docx"
                 className="hidden"
               />
             </label>

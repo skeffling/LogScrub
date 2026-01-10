@@ -330,6 +330,29 @@ pub fn decompress_zip(data: &[u8]) -> Result<String, JsValue> {
 }
 
 #[wasm_bindgen]
+pub fn decompress_zip_file(data: &[u8], target_filename: &str) -> Result<String, JsValue> {
+    let cursor = Cursor::new(data);
+    let mut archive = ZipArchive::new(cursor)
+        .map_err(|e| JsValue::from_str(&format!("Failed to read zip: {}", e)))?;
+
+    for i in 0..archive.len() {
+        let mut file = archive
+            .by_index(i)
+            .map_err(|e| JsValue::from_str(&format!("Failed to read zip entry: {}", e)))?;
+
+        let name = file.name().to_string();
+        if name == target_filename {
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)
+                .map_err(|e| JsValue::from_str(&format!("Failed to read file contents: {}", e)))?;
+            return Ok(contents);
+        }
+    }
+
+    Err(JsValue::from_str(&format!("File '{}' not found in zip", target_filename)))
+}
+
+#[wasm_bindgen]
 pub fn compress_zip(text: &str, filename: &str) -> Result<Vec<u8>, JsValue> {
     let mut buffer = Cursor::new(Vec::new());
     {

@@ -298,6 +298,39 @@ static EXIM_USER_REGEX: Lazy<Regex> =
 static EXIM_DN_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"DN=[^\s]+").unwrap());
 
+// Postfix mail server log patterns
+static POSTFIX_FROM_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"from=<[^>]*>").unwrap());
+
+static POSTFIX_TO_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"to=<[^>]+>").unwrap());
+
+static POSTFIX_RELAY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"relay=[^\s,]+(?:\[[^\]]+\])?").unwrap());
+
+static POSTFIX_SASL_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"sasl_username=[^\s,]+").unwrap());
+
+// Dovecot IMAP/POP3 log patterns
+static DOVECOT_USER_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"user=<[^>]+>").unwrap());
+
+static DOVECOT_RIP_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"rip=[0-9a-fA-F.:]+").unwrap());
+
+static DOVECOT_LIP_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"lip=[0-9a-fA-F.:]+").unwrap());
+
+// Sendmail log patterns
+static SENDMAIL_FROM_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"from=<[^>]*>,").unwrap());
+
+static SENDMAIL_RELAY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"relay=[^\s,\[\]]+(?:\[[^\]]+\])?").unwrap());
+
+static SENDMAIL_MSGID_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"msgid=<[^>]+>").unwrap());
+
 // Hash patterns
 static MD5_HASH_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\b[a-f0-9]{32}\b").unwrap());
@@ -662,6 +695,59 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "exim_dn",
             regex: &EXIM_DN_REGEX,
+            validator: None,
+        },
+        // Postfix
+        PatternDef {
+            id: "postfix_from",
+            regex: &POSTFIX_FROM_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "postfix_to",
+            regex: &POSTFIX_TO_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "postfix_relay",
+            regex: &POSTFIX_RELAY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "postfix_sasl",
+            regex: &POSTFIX_SASL_REGEX,
+            validator: None,
+        },
+        // Dovecot
+        PatternDef {
+            id: "dovecot_user",
+            regex: &DOVECOT_USER_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "dovecot_rip",
+            regex: &DOVECOT_RIP_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "dovecot_lip",
+            regex: &DOVECOT_LIP_REGEX,
+            validator: None,
+        },
+        // Sendmail
+        PatternDef {
+            id: "sendmail_from",
+            regex: &SENDMAIL_FROM_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sendmail_relay",
+            regex: &SENDMAIL_RELAY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sendmail_msgid",
+            regex: &SENDMAIL_MSGID_REGEX,
             validator: None,
         },
         PatternDef {

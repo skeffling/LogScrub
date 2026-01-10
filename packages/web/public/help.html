@@ -932,6 +932,46 @@ User [EMAIL-3] logged in</div>
           </div>
 
           <div class="category-section">
+            <h3>Postfix (Mail Server)</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>Postfix From</strong></td><td>from=&lt;user@example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Postfix To</strong></td><td>to=&lt;recipient@example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Postfix Relay</strong></td><td>relay=mail.example.com[192.168.1.1]</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Postfix SASL User</strong></td><td>sasl_username=admin</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+            <p>Rules for <a href="http://www.postfix.org/DEBUG_README.html" target="_blank" rel="noopener noreferrer">Postfix mail server logs</a>. Postfix is one of the most widely used MTAs on Linux systems.</p>
+          </div>
+
+          <div class="category-section">
+            <h3>Dovecot (IMAP/POP3)</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>Dovecot User</strong></td><td>user=&lt;mailuser&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Dovecot Remote IP</strong></td><td>rip=192.168.1.100</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Dovecot Local IP</strong></td><td>lip=10.0.0.1</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+            <p>Rules for <a href="https://doc.dovecot.org/2.3/admin_manual/logging/" target="_blank" rel="noopener noreferrer">Dovecot IMAP/POP3 server logs</a>. Captures login events with username and IP addresses.</p>
+          </div>
+
+          <div class="category-section">
+            <h3>Sendmail (Mail Server)</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>Sendmail From</strong></td><td>from=&lt;user@domain.com&gt;,</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Sendmail Relay</strong></td><td>relay=mail.example.com</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Sendmail MsgID</strong></td><td>msgid=&lt;abc123@host&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+            <p>Rules for <a href="https://softpanorama.org/Mail/Sendmail/sendmail_logs_format.shtml" target="_blank" rel="noopener noreferrer">Sendmail mail server logs</a>. One of the oldest Unix MTAs with a well-established log format.</p>
+          </div>
+
+          <div class="category-section">
             <h3>Other</h3>
             <div class="table-wrapper">
               <table>

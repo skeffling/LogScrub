@@ -206,6 +206,19 @@ const DEFAULT_RULES: Record<string, Rule> = {
   exim_auth: { label: 'Exim Auth', enabled: false, strategy: 'label' },
   exim_user: { label: 'Exim User', enabled: false, strategy: 'label' },
   exim_dn: { label: 'Exim DN', enabled: false, strategy: 'label' },
+  // Postfix
+  postfix_from: { label: 'Postfix From', enabled: false, strategy: 'label' },
+  postfix_to: { label: 'Postfix To', enabled: false, strategy: 'label' },
+  postfix_relay: { label: 'Postfix Relay', enabled: false, strategy: 'label' },
+  postfix_sasl: { label: 'Postfix SASL User', enabled: false, strategy: 'label' },
+  // Dovecot
+  dovecot_user: { label: 'Dovecot User', enabled: false, strategy: 'label' },
+  dovecot_rip: { label: 'Dovecot Remote IP', enabled: false, strategy: 'label' },
+  dovecot_lip: { label: 'Dovecot Local IP', enabled: false, strategy: 'label' },
+  // Sendmail
+  sendmail_from: { label: 'Sendmail From', enabled: false, strategy: 'label' },
+  sendmail_relay: { label: 'Sendmail Relay', enabled: false, strategy: 'label' },
+  sendmail_msgid: { label: 'Sendmail MsgID', enabled: false, strategy: 'label' },
   md5_hash: { label: 'MD5 Hash', enabled: false, strategy: 'label' },
   sha1_hash: { label: 'SHA1 Hash', enabled: false, strategy: 'label' },
   sha256_hash: { label: 'SHA256 Hash', enabled: false, strategy: 'label' },

@@ -39,6 +39,17 @@ const TYPE_LABELS: Record<string, string> = {
   passport: 'Passport',
   drivers_license: 'DL',
   session_id: 'Session',
+  // Mail servers
+  postfix_from: 'Postfix From',
+  postfix_to: 'Postfix To',
+  postfix_relay: 'Postfix Relay',
+  postfix_sasl: 'Postfix SASL',
+  dovecot_user: 'Dovecot User',
+  dovecot_rip: 'Dovecot RIP',
+  dovecot_lip: 'Dovecot LIP',
+  sendmail_from: 'Sendmail From',
+  sendmail_relay: 'Sendmail Relay',
+  sendmail_msgid: 'Sendmail MsgID',
 }
 
 // Color palette for the chart - grouped by category
@@ -87,6 +98,17 @@ const TYPE_COLORS: Record<string, string> = {
   file_path_windows: '#94a3b8',
   postcode_uk: '#5eead4',
   postcode_us: '#99f6e4',
+  // Mail servers - Purple shades
+  postfix_from: '#8b5cf6',
+  postfix_to: '#a78bfa',
+  postfix_relay: '#c4b5fd',
+  postfix_sasl: '#7c3aed',
+  dovecot_user: '#6d28d9',
+  dovecot_rip: '#5b21b6',
+  dovecot_lip: '#4c1d95',
+  sendmail_from: '#9333ea',
+  sendmail_relay: '#a855f7',
+  sendmail_msgid: '#d8b4fe',
 }
 
 const getTypeColor = (type: string): string => {
@@ -107,6 +129,9 @@ const CATEGORIES: Record<string, string[]> = {
   'Date & Time': ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'timestamp_unix'],
   'SQL': ['sql_tables', 'sql_strings', 'sql_identifiers'],
   'Exim': ['exim_subject', 'exim_sender', 'exim_auth', 'exim_user', 'exim_dn'],
+  'Postfix': ['postfix_from', 'postfix_to', 'postfix_relay', 'postfix_sasl'],
+  'Dovecot': ['dovecot_user', 'dovecot_rip', 'dovecot_lip'],
+  'Sendmail': ['sendmail_from', 'sendmail_relay', 'sendmail_msgid'],
   'Hashes': ['md5_hash', 'sha1_hash', 'sha256_hash', 'docker_container_id'],
   'Other': ['uuid', 'email_message_id', 'file_path_unix', 'file_path_windows'],
 }
@@ -125,6 +150,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Date & Time': '#6366f1',
   'SQL': '#ec4899',
   'Exim': '#8b5cf6',
+  'Postfix': '#7c3aed',
+  'Dovecot': '#a78bfa',
+  'Sendmail': '#c4b5fd',
   'Hashes': '#64748b',
   'Other': '#6b7280',
 }

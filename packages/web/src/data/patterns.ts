@@ -67,6 +67,19 @@ export const BUILTIN_PATTERNS: Record<string, string> = {
   exim_auth: String.raw`(?i)A=[a-z_]+(?::[^\s]+)?`,
   exim_user: String.raw`U=[^\s]+`,
   exim_dn: String.raw`DN=[^\s]+`,
+  // Postfix mail server patterns
+  postfix_from: String.raw`from=<[^>]*>`,
+  postfix_to: String.raw`to=<[^>]+>`,
+  postfix_relay: String.raw`relay=[^\s,]+(?:\[[^\]]+\])?`,
+  postfix_sasl: String.raw`sasl_username=[^\s,]+`,
+  // Dovecot IMAP/POP3 patterns
+  dovecot_user: String.raw`user=<[^>]+>`,
+  dovecot_rip: String.raw`rip=[0-9a-fA-F.:]+`,
+  dovecot_lip: String.raw`lip=[0-9a-fA-F.:]+`,
+  // Sendmail patterns
+  sendmail_from: String.raw`from=<[^>]*>,`,
+  sendmail_relay: String.raw`relay=[^\s,\[\]]+(?:\[[^\]]+\])?`,
+  sendmail_msgid: String.raw`msgid=<[^>]+>`,
   // Hashes and identifiers (from Prism patterns)
   md5_hash: String.raw`(?i)\b[a-f0-9]{32}\b`,
   sha1_hash: String.raw`(?i)\b[a-f0-9]{40}\b`,

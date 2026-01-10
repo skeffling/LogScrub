@@ -128,7 +128,7 @@ export async function extractPdfMetadata(file: File): Promise<DocumentMetadata> 
   try {
     // Configure mupdf WASM location before importing
     ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
-      locateFile: (path: string) => `/${path}`
+      locateFile: (path: string) => `/assets/${path}`
     }
     const mupdf = await import('mupdf')
 

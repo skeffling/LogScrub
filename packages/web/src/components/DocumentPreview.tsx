@@ -99,7 +99,7 @@ export function DocumentPreview({ file, fileType, page, onPageChange, scrollTop,
   const loadPdfPreview = async (file: File) => {
     // Configure mupdf WASM location before importing
     ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
-      locateFile: (path: string) => `/${path}`
+      locateFile: (path: string) => `/assets/${path}`
     }
     const mupdf = await import('mupdf')
 
@@ -149,7 +149,7 @@ export function DocumentPreview({ file, fileType, page, onPageChange, scrollTop,
 
   const loadExcelPreview = async (file: File) => {
     const { init } = await import('excelize-wasm')
-    const excelize = await init('/excelize.wasm.gz')
+    const excelize = await init('/assets/excelize.wasm.gz')
     const buffer = new Uint8Array(await file.arrayBuffer())
     const f = excelize.OpenReader(buffer)
 

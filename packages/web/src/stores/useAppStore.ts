@@ -182,6 +182,7 @@ const DEFAULT_RULES: Record<string, Rule> = {
   url_credentials: { label: 'URL Credentials', enabled: true, strategy: 'redact' },
   btc_address: { label: 'Bitcoin Addresses', enabled: true, strategy: 'label' },
   eth_address: { label: 'Ethereum Addresses', enabled: true, strategy: 'label' },
+  money: { label: 'Money/Currency', enabled: false, strategy: 'label' },
   gps_coordinates: { label: 'GPS Coordinates', enabled: false, strategy: 'label' },
   file_path_unix: { label: 'File Paths (Unix)', enabled: false, strategy: 'label' },
   file_path_windows: { label: 'File Paths (Win)', enabled: false, strategy: 'label' },

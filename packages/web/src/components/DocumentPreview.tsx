@@ -172,41 +172,23 @@ export function DocumentPreview({ file, fileType, page, onPageChange, scrollTop,
   }
 
   const loadDocxPreview = async (file: File) => {
-    // Import our WASM for zip extraction
-    const { decompress_zip_file } = await import('../wasm-core/wasm_core')
-    const buffer = new Uint8Array(await file.arrayBuffer())
+    const { renderAsync } = await import('docx-preview')
+    const arrayBuffer = await file.arrayBuffer()
 
-    const xml = decompress_zip_file(buffer, 'word/document.xml')
+    // Create container for rendered content
+    const container = document.createElement('div')
+    container.className = 'docx-preview-container'
 
-    // Parse DOCX XML to basic HTML
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(xml, 'application/xml')
+    await renderAsync(arrayBuffer, container, undefined, {
+      className: 'docx-preview-content',
+      inWrapper: true,
+      ignoreWidth: true,  // Fit to container width
+      ignoreHeight: true, // Don't enforce page height
+      renderHeaders: true,
+      renderFooters: true
+    })
 
-    let html = '<div class="docx-preview">'
-    const allNodes = doc.getElementsByTagName('*')
-
-    let inParagraph = false
-    for (let i = 0; i < allNodes.length; i++) {
-      const node = allNodes[i]
-
-      if (node.tagName === 'w:p') {
-        if (inParagraph) html += '</p>'
-        html += '<p>'
-        inParagraph = true
-      } else if (node.tagName === 'w:t' && node.textContent) {
-        html += escapeHtml(node.textContent)
-      } else if (node.tagName === 'w:tab') {
-        html += '&emsp;'
-      } else if (node.tagName === 'w:br') {
-        html += '<br/>'
-      } else if (node.tagName === 'w:b' && node.parentElement?.tagName === 'w:rPr') {
-        // Bold formatting - handled via CSS would be complex, skip for now
-      }
-    }
-    if (inParagraph) html += '</p>'
-    html += '</div>'
-
-    setDocxHtml(html)
+    setDocxHtml(container.innerHTML)
   }
 
   const loadOdtPreview = async (file: File) => {
@@ -417,7 +399,7 @@ export function DocumentPreview({ file, fileType, page, onPageChange, scrollTop,
             </div>
           )}
         </div>
-        <div className="flex-1 overflow-auto">
+        <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-auto">
           <table className="w-full text-sm border-collapse">
             <tbody>
               {excelData.sheets[currentPage]?.rows.map((row, rowIdx) => (
@@ -449,6 +431,8 @@ export function DocumentPreview({ file, fileType, page, onPageChange, scrollTop,
           </span>
         </div>
         <div
+          ref={containerRef}
+          onScroll={handleScroll}
           className="flex-1 overflow-auto p-4 prose dark:prose-invert max-w-none text-gray-900 dark:text-gray-100"
           dangerouslySetInnerHTML={{ __html: docxHtml }}
         />

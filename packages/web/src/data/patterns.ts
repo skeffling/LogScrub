@@ -24,6 +24,7 @@ export const BUILTIN_PATTERNS: Record<string, string> = {
   generic_secret: String.raw`(?i)(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|auth[_-]?token|access[_-]?token)\s*[:=]\s*['"]?([^\s'"]{8,})['"]?`,
   btc_address: String.raw`\b(?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}\b`,
   eth_address: String.raw`\b0x[a-fA-F0-9]{40}\b`,
+  money: String.raw`(?:[$£€¥₹₩₽¢฿₪₴₦₡₱₲₵₸₺₼₾][0-9]{1,3}(?:[,.\s][0-9]{2,3})*(?:[.,][0-9]{1,2})?|[0-9]{1,3}(?:[,.\s][0-9]{2,3})*(?:[.,][0-9]{1,2})?\s*(?:USD|EUR|GBP|JPY|CNY|INR|KRW|RUB|CAD|AUD|CHF|HKD|SGD|MXN|BRL|NZD|SEK|NOK|DKK|PLN|CZK|THB|IDR|MYR|PHP|VND|AED|SAR|ZAR))`,
   gps_coordinates: String.raw`-?(?:[1-8]?[0-9](?:\.[0-9]{4,})?|90(?:\.0+)?)\s*,\s*-?(?:1[0-7][0-9]|[1-9]?[0-9])(?:\.[0-9]{4,})?`,
   file_path_unix: String.raw`(?:/(?:home|Users)/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9._-]+)+)`,
   file_path_windows: String.raw`(?i)[a-z]:\\(?:Users|Documents and Settings)\\[^\s\\]+(?:\\[^\s\\]+)*`,

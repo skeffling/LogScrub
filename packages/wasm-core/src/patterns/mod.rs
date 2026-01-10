@@ -311,6 +311,22 @@ static SHA256_HASH_REGEX: Lazy<Regex> =
 static DOCKER_CONTAINER_ID_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\b[a-f0-9]{12}\b").unwrap());
 
+// Money/currency amounts - handles multiple currency symbols and formats
+// Matches: $10.99, £1,000.00, €10,99, ¥100, ₹1,00,000, etc.
+static MONEY_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(concat!(
+        r"(?:",
+        // Currency symbol followed by amount: $10.99, £1,000.00
+        r"[$£€¥₹₩₽¢฿₪₴₦₡₱₲₵₸₺₼₾]",
+        r"[0-9]{1,3}(?:[,.\s][0-9]{2,3})*(?:[.,][0-9]{1,2})?",
+        r"|",
+        // Amount followed by currency code: 10.99 USD, 1000 EUR
+        r"[0-9]{1,3}(?:[,.\s][0-9]{2,3})*(?:[.,][0-9]{1,2})?",
+        r"\s*(?:USD|EUR|GBP|JPY|CNY|INR|KRW|RUB|CAD|AUD|CHF|HKD|SGD|MXN|BRL|NZD|SEK|NOK|DKK|PLN|CZK|THB|IDR|MYR|PHP|VND|AED|SAR|ZAR)",
+        r")"
+    )).unwrap()
+});
+
 static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
     vec![
         PatternDef {
@@ -432,6 +448,11 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
             id: "eth_address",
             regex: &ETH_ADDRESS_REGEX,
             validator: Some(validators::eth_address_check),
+        },
+        PatternDef {
+            id: "money",
+            regex: &MONEY_REGEX,
+            validator: None,
         },
         PatternDef {
             id: "gps_coordinates",

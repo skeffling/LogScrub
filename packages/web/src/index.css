@@ -17,3 +17,41 @@ body {
 html.dark body {
   @apply bg-gray-900 text-gray-100;
 }
+
+/* docx-preview styles - override all wrapper backgrounds */
+.docx-preview-container,
+.docx-preview-container > *,
+.docx-preview-container .docx-wrapper,
+.docx-preview-container .docx-wrapper > * {
+  background: white !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.docx-preview-container {
+  min-height: 100%;
+  font-size: 14px;
+}
+
+.docx-preview-container section.docx {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  padding: 1rem !important;
+  box-shadow: none !important;
+}
+
+.docx-preview-container article {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Dark mode: invert colors for docx preview */
+.dark .docx-preview-container {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Ensure images in docx preview are not double-inverted */
+.dark .docx-preview-container img {
+  filter: invert(1) hue-rotate(180deg);
+}

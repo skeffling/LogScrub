@@ -5,6 +5,8 @@ import { useAppStore, type ReplacementInfo, type DocumentType } from '../stores/
 import { tokenizeWithPositions } from '../utils/syntaxHighlight'
 import { Modal } from './Modal'
 import { DocumentPreview } from './DocumentPreview'
+import { MetadataDialog, DocumentMetadata } from './MetadataDialog'
+import { extractOfficeMetadata, extractOpenDocumentMetadata, extractPdfMetadata, hasMetadata, generateMinimalCoreXml, generateMinimalAppXml, generateMinimalMetaXml } from '../utils/metadataExtractor'
 
 // DocumentType is now imported from store
 
@@ -586,13 +588,16 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   // Document preview state
   const [documentFile, setDocumentFile] = useState<File | null>(null)
   const [showDocumentPreview, setShowDocumentPreview] = useState(true)
-  const [scrubbedPdfFile, setScrubbedPdfFile] = useState<File | null>(null)
+  const [scrubbedDocFile, setScrubbedDocFile] = useState<File | null>(null)
   const [showScrubbedPreview, setShowScrubbedPreview] = useState(true)
   const [previewHeight, setPreviewHeight] = useState(() => loadEditorPreference('previewHeight', 256))
   const [isResizingPreview, setIsResizingPreview] = useState(false)
   const [previewPage, setPreviewPage] = useState(0)
   const [previewScrollTop, setPreviewScrollTop] = useState(0)
   const [previewScrollLeft, setPreviewScrollLeft] = useState(0)
+  const [showMetadataDialog, setShowMetadataDialog] = useState(false)
+  const [documentMetadata, setDocumentMetadata] = useState<DocumentMetadata | null>(null)
+  const [stripMetadataPreference, setStripMetadataPreference] = useState<boolean | null>(null)
   const originalPreviewRef = useRef<HTMLDivElement>(null)
   const scrubbedPreviewRef = useRef<HTMLDivElement>(null)
 
@@ -623,15 +628,17 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     }
   }, [output, replacements.length])
 
-  // Generate scrubbed PDF preview when output is available for PDF documents
+  // Generate scrubbed document preview when output is available
   useEffect(() => {
-    if (!output || !documentFile || documentType !== 'pdf' || replacements.length === 0) {
-      setScrubbedPdfFile(null)
+    console.log('Scrubbed preview effect:', { hasOutput: !!output, hasDocFile: !!documentFile, documentType, replacementsCount: replacements.length })
+    if (!output || !documentFile || !documentType || replacements.length === 0) {
+      setScrubbedDocFile(null)
       return
     }
 
-    const generateScrubbedPdfPreview = async () => {
+    const generateScrubbedDocPreview = async () => {
       try {
+        console.log('Generating scrubbed preview for:', documentType)
         // Build replacement map
         const replacementMap = new Map<string, string>()
         for (const rep of replacements) {
@@ -640,47 +647,74 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
           }
         }
 
-        // Configure mupdf WASM location
-        ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
-          locateFile: (path: string) => `/${path}`
-        }
-        const mupdf = await import('mupdf')
-
         const buffer = new Uint8Array(await documentFile.arrayBuffer())
-        const doc = new mupdf.PDFDocument(buffer)
-        const pageCount = doc.countPages()
+        let blob: Blob
+        let mimeType: string
+        let fileName: string
 
-        // Add redaction annotations for each PII match
-        for (let pageIdx = 0; pageIdx < pageCount; pageIdx++) {
-          const page = doc.loadPage(pageIdx)
-          const stext = page.toStructuredText('preserve-whitespace')
+        if (documentType === 'pdf') {
+          // Configure mupdf WASM location
+          ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
+            locateFile: (path: string) => `/${path}`
+          }
+          const mupdf = await import('mupdf')
 
-          for (const [original] of replacementMap) {
-            const searchResults = stext.search(original)
-            for (const quads of searchResults) {
-              const annot = page.createAnnotation('Redact')
-              annot.setQuadPoints(quads)
-              annot.setColor([0, 0, 0])
+          const doc = new mupdf.PDFDocument(buffer)
+          const pageCount = doc.countPages()
+
+          // Add redaction annotations for each PII match
+          for (let pageIdx = 0; pageIdx < pageCount; pageIdx++) {
+            const page = doc.loadPage(pageIdx)
+            const stext = page.toStructuredText('preserve-whitespace')
+
+            for (const [original] of replacementMap) {
+              const searchResults = stext.search(original)
+              for (const quads of searchResults) {
+                const annot = page.createAnnotation('Redact')
+                annot.setQuadPoints(quads)
+                annot.setColor([0, 0, 0])
+              }
             }
+
+            page.applyRedactions(true, mupdf.PDFPage.REDACT_IMAGE_PIXELS, mupdf.PDFPage.REDACT_LINE_ART_NONE, mupdf.PDFPage.REDACT_TEXT_REMOVE)
           }
 
-          page.applyRedactions(true, mupdf.PDFPage.REDACT_IMAGE_PIXELS, mupdf.PDFPage.REDACT_LINE_ART_NONE, mupdf.PDFPage.REDACT_TEXT_REMOVE)
+          const outputBuffer = doc.saveToBuffer()
+          doc.destroy()
+
+          blob = new Blob([outputBuffer.asUint8Array()], { type: 'application/pdf' })
+          mimeType = 'application/pdf'
+          fileName = 'scrubbed_preview.pdf'
+        } else if (documentType === 'xlsx') {
+          blob = await generateScrubbedExcel(buffer, replacementMap)
+          mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          fileName = 'scrubbed_preview.xlsx'
+        } else if (documentType === 'ods') {
+          blob = await generateScrubbedOds(buffer, replacementMap)
+          mimeType = 'application/vnd.oasis.opendocument.spreadsheet'
+          fileName = 'scrubbed_preview.ods'
+        } else if (documentType === 'docx') {
+          blob = await generateScrubbedDocx(buffer, replacementMap)
+          mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          fileName = 'scrubbed_preview.docx'
+        } else if (documentType === 'odt') {
+          blob = await generateScrubbedOdt(buffer, replacementMap)
+          mimeType = 'application/vnd.oasis.opendocument.text'
+          fileName = 'scrubbed_preview.odt'
+        } else {
+          return
         }
 
-        const outputBuffer = doc.saveToBuffer()
-        doc.destroy()
-
-        // Create a File object from the buffer for DocumentPreview
-        const blob = new Blob([outputBuffer.asUint8Array()], { type: 'application/pdf' })
-        const file = new File([blob], 'scrubbed_preview.pdf', { type: 'application/pdf' })
-        setScrubbedPdfFile(file)
+        const file = new File([blob], fileName, { type: mimeType })
+        console.log('Scrubbed preview generated successfully:', fileName)
+        setScrubbedDocFile(file)
       } catch (err) {
-        console.error('Failed to generate scrubbed PDF preview:', err)
-        setScrubbedPdfFile(null)
+        console.error('Failed to generate scrubbed document preview:', err, documentType)
+        setScrubbedDocFile(null)
       }
     }
 
-    generateScrubbedPdfPreview()
+    generateScrubbedDocPreview()
   }, [output, documentFile, documentType, replacements])
 
   // Save split ratio preference
@@ -1167,8 +1201,13 @@ Here are examples of actual replacements made in this ${docTypeShort}:
       return { content, name: baseName, docType: 'ods' }
     }
 
-    // Handle Excel files (XLSX/XLS) via excelize-wasm
-    if (ext.endsWith('.xlsx') || ext.endsWith('.xls')) {
+    // Handle legacy XLS files - not supported
+    if (ext.endsWith('.xls') && !ext.endsWith('.xlsx')) {
+      throw new Error('Legacy XLS format is not supported. Please save the file as XLSX (Excel 2007+) format.')
+    }
+
+    // Handle Excel files (XLSX) via excelize-wasm
+    if (ext.endsWith('.xlsx')) {
       const { init } = await import('excelize-wasm')
       const excelize = await init('/excelize.wasm.gz')
       const buffer = new Uint8Array(await file.arrayBuffer())
@@ -1251,6 +1290,18 @@ Here are examples of actual replacements made in this ${docTypeShort}:
         setDocumentFile(docType ? file : null)
         setDocumentType(docType)
         setPreviewPage(0)
+        // Reset metadata preference for new file
+        setStripMetadataPreference(null)
+        setDocumentMetadata(null)
+
+        // Check for metadata in document files
+        if (docType && file) {
+          const metadata = await extractMetadataFromFile(file, docType)
+          if (metadata && hasMetadata(metadata)) {
+            setDocumentMetadata(metadata)
+            setShowMetadataDialog(true)
+          }
+        }
       } catch (err) {
         console.error('File load error:', err)
         alert('Failed to read file. Make sure it\'s a valid file.')
@@ -1292,8 +1343,52 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     triggerDonationModal()
   }
 
+  // Extract metadata from a file (used during upload)
+  const extractMetadataFromFile = async (file: File, docType: DocumentType): Promise<DocumentMetadata | null> => {
+    await ensureWasm()
+
+    try {
+      if (docType === 'docx' || docType === 'xlsx') {
+        return await extractOfficeMetadata(file, decompress_zip_file)
+      } else if (docType === 'odt' || docType === 'ods') {
+        return await extractOpenDocumentMetadata(file, decompress_zip_file)
+      } else if (docType === 'pdf') {
+        return await extractPdfMetadata(file)
+      }
+    } catch (err) {
+      console.error('Failed to extract metadata:', err)
+    }
+    return null
+  }
+
   // Download in original format with PII replaced/redacted
   const handleDownloadOriginalFormat = async () => {
+    if (!output || !documentFile || !documentType) return
+
+    // Use stored preference (true = strip, false = keep, null = no metadata)
+    const shouldStrip = stripMetadataPreference === true
+    await performDownload(shouldStrip)
+  }
+
+  // Handle metadata dialog choices (shown on file upload)
+  const handleMetadataKeep = () => {
+    setShowMetadataDialog(false)
+    setStripMetadataPreference(false)
+  }
+
+  const handleMetadataRemove = () => {
+    setShowMetadataDialog(false)
+    setStripMetadataPreference(true)
+  }
+
+  const handleMetadataCancel = () => {
+    setShowMetadataDialog(false)
+    // Cancel = keep metadata by default
+    setStripMetadataPreference(false)
+  }
+
+  // Actually perform the download
+  const performDownload = async (stripMetadata: boolean) => {
     if (!output || !documentFile || !documentType) return
 
     try {
@@ -1309,21 +1404,24 @@ Here are examples of actual replacements made in this ${docTypeShort}:
       let resultBlob: Blob
       let downloadName: string
 
+      // Get base name without extension for proper renaming
+      const baseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'sanitized_output'
+
       if (documentType === 'xlsx') {
-        resultBlob = await generateScrubbedExcel(buffer, replacementMap)
-        downloadName = fileName ? `sanitized_${fileName}` : 'sanitized_output.xlsx'
+        resultBlob = await generateScrubbedExcel(buffer, replacementMap, stripMetadata)
+        downloadName = `sanitized_${baseName}.xlsx`
       } else if (documentType === 'ods') {
-        resultBlob = await generateScrubbedOds(buffer, replacementMap)
-        downloadName = fileName ? `sanitized_${fileName}` : 'sanitized_output.ods'
+        resultBlob = await generateScrubbedOds(buffer, replacementMap, stripMetadata)
+        downloadName = `sanitized_${baseName}.ods`
       } else if (documentType === 'docx') {
-        resultBlob = await generateScrubbedDocx(buffer, replacementMap)
-        downloadName = fileName ? `sanitized_${fileName}` : 'sanitized_output.docx'
+        resultBlob = await generateScrubbedDocx(buffer, replacementMap, stripMetadata)
+        downloadName = `sanitized_${baseName}.docx`
       } else if (documentType === 'odt') {
-        resultBlob = await generateScrubbedOdt(buffer, replacementMap)
-        downloadName = fileName ? `sanitized_${fileName}` : 'sanitized_output.odt'
+        resultBlob = await generateScrubbedOdt(buffer, replacementMap, stripMetadata)
+        downloadName = `sanitized_${baseName}.odt`
       } else if (documentType === 'pdf') {
-        resultBlob = await generateScrubbedPdf(buffer, replacementMap)
-        downloadName = fileName ? `sanitized_${fileName}` : 'sanitized_output.pdf'
+        resultBlob = await generateScrubbedPdf(buffer, replacementMap, stripMetadata)
+        downloadName = `sanitized_${baseName}.pdf`
       } else {
         return
       }
@@ -1345,7 +1443,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
   }
 
   // Generate scrubbed Excel file with PII replaced in cells
-  const generateScrubbedExcel = async (buffer: Uint8Array, replacementMap: Map<string, string>): Promise<Blob> => {
+  const generateScrubbedExcel = async (buffer: Uint8Array, replacementMap: Map<string, string>, stripMetadata: boolean = false): Promise<Blob> => {
     const { init } = await import('excelize-wasm')
     const excelize = await init('/excelize.wasm.gz')
     const f = excelize.OpenReader(buffer)
@@ -1390,11 +1488,31 @@ Here are examples of actual replacements made in this ${docTypeShort}:
       throw new Error(writeError)
     }
 
+    // Strip metadata if requested
+    if (stripMetadata) {
+      await ensureWasm()
+      const { compress_zip_replace } = await import('../wasm-core/wasm_core')
+      // Convert to Uint8Array (outputBuffer is ArrayBuffer-like)
+      let result = outputBuffer instanceof Uint8Array ? outputBuffer : new Uint8Array(outputBuffer as ArrayBuffer)
+
+      // Replace core.xml with minimal version
+      try {
+        result = compress_zip_replace(result, 'docProps/core.xml', generateMinimalCoreXml())
+      } catch { /* file might not exist */ }
+
+      // Replace app.xml with minimal version
+      try {
+        result = compress_zip_replace(result, 'docProps/app.xml', generateMinimalAppXml())
+      } catch { /* file might not exist */ }
+
+      return new Blob([result], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    }
+
     return new Blob([outputBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   }
 
   // Generate scrubbed DOCX file with PII replaced in XML
-  const generateScrubbedDocx = async (buffer: Uint8Array, replacementMap: Map<string, string>): Promise<Blob> => {
+  const generateScrubbedDocx = async (buffer: Uint8Array, replacementMap: Map<string, string>, stripMetadata: boolean = false): Promise<Blob> => {
     await ensureWasm()
     const { decompress_zip_file, compress_zip_replace } = await import('../wasm-core/wasm_core')
 
@@ -1421,13 +1539,26 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     }
 
     // Repackage the DOCX with modified XML
-    const outputBuffer = compress_zip_replace(buffer, 'word/document.xml', documentXml)
+    let outputBuffer = compress_zip_replace(buffer, 'word/document.xml', documentXml)
+
+    // Strip metadata if requested
+    if (stripMetadata) {
+      // Replace core.xml with minimal version
+      try {
+        outputBuffer = compress_zip_replace(outputBuffer, 'docProps/core.xml', generateMinimalCoreXml())
+      } catch { /* file might not exist */ }
+
+      // Replace app.xml with minimal version
+      try {
+        outputBuffer = compress_zip_replace(outputBuffer, 'docProps/app.xml', generateMinimalAppXml())
+      } catch { /* file might not exist */ }
+    }
 
     return new Blob([outputBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
   }
 
   // Generate scrubbed ODT file with PII replaced in XML
-  const generateScrubbedOdt = async (buffer: Uint8Array, replacementMap: Map<string, string>): Promise<Blob> => {
+  const generateScrubbedOdt = async (buffer: Uint8Array, replacementMap: Map<string, string>, stripMetadata: boolean = false): Promise<Blob> => {
     await ensureWasm()
     const { decompress_zip_file, compress_zip_replace } = await import('../wasm-core/wasm_core')
 
@@ -1454,13 +1585,20 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     }
 
     // Repackage the ODT with modified XML
-    const outputBuffer = compress_zip_replace(buffer, 'content.xml', contentXml)
+    let outputBuffer = compress_zip_replace(buffer, 'content.xml', contentXml)
+
+    // Strip metadata if requested
+    if (stripMetadata) {
+      try {
+        outputBuffer = compress_zip_replace(outputBuffer, 'meta.xml', generateMinimalMetaXml())
+      } catch { /* file might not exist */ }
+    }
 
     return new Blob([outputBuffer], { type: 'application/vnd.oasis.opendocument.text' })
   }
 
   // Generate scrubbed ODS file with PII replaced in XML
-  const generateScrubbedOds = async (buffer: Uint8Array, replacementMap: Map<string, string>): Promise<Blob> => {
+  const generateScrubbedOds = async (buffer: Uint8Array, replacementMap: Map<string, string>, stripMetadata: boolean = false): Promise<Blob> => {
     await ensureWasm()
     const { decompress_zip_file, compress_zip_replace } = await import('../wasm-core/wasm_core')
 
@@ -1487,13 +1625,20 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     }
 
     // Repackage the ODS with modified XML
-    const outputBuffer = compress_zip_replace(buffer, 'content.xml', contentXml)
+    let outputBuffer = compress_zip_replace(buffer, 'content.xml', contentXml)
+
+    // Strip metadata if requested
+    if (stripMetadata) {
+      try {
+        outputBuffer = compress_zip_replace(outputBuffer, 'meta.xml', generateMinimalMetaXml())
+      } catch { /* file might not exist */ }
+    }
 
     return new Blob([outputBuffer], { type: 'application/vnd.oasis.opendocument.spreadsheet' })
   }
 
   // Generate scrubbed PDF with redaction boxes over PII
-  const generateScrubbedPdf = async (buffer: Uint8Array, replacementMap: Map<string, string>): Promise<Blob> => {
+  const generateScrubbedPdf = async (buffer: Uint8Array, replacementMap: Map<string, string>, stripMetadata: boolean = false): Promise<Blob> => {
     // Configure mupdf WASM location before importing
     ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
       locateFile: (path: string) => `/${path}`
@@ -1523,6 +1668,20 @@ Here are examples of actual replacements made in this ${docTypeShort}:
 
       // Apply redactions on this page (with black boxes)
       page.applyRedactions(true, mupdf.PDFPage.REDACT_IMAGE_PIXELS, mupdf.PDFPage.REDACT_LINE_ART_NONE, mupdf.PDFPage.REDACT_TEXT_REMOVE)
+    }
+
+    // Strip metadata if requested
+    if (stripMetadata) {
+      try {
+        const trailer = doc.getTrailer()
+        if (trailer) {
+          // Create an empty Info dictionary
+          const emptyInfo = doc.newDictionary()
+          trailer.put('Info', emptyInfo)
+        }
+      } catch (err) {
+        console.error('Failed to strip PDF metadata:', err)
+      }
     }
 
     // Save the modified PDF
@@ -1575,6 +1734,18 @@ Here are examples of actual replacements made in this ${docTypeShort}:
         setDocumentFile(docType ? file : null)
         setDocumentType(docType)
         setPreviewPage(0)
+        // Reset metadata preference for new file
+        setStripMetadataPreference(null)
+        setDocumentMetadata(null)
+
+        // Check for metadata in document files
+        if (docType && file) {
+          const metadata = await extractMetadataFromFile(file, docType)
+          if (metadata && hasMetadata(metadata)) {
+            setDocumentMetadata(metadata)
+            setShowMetadataDialog(true)
+          }
+        }
       } catch {
         alert('Failed to read file. Make sure it\'s a valid text, zip, or gzip file.')
       }
@@ -1685,7 +1856,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
               <input
                 type="file"
                 onChange={handleFileUpload}
-                accept=".log,.txt,.json,.xml,.csv,.zip,.gz,.gzip,.pdf,.xlsx,.xls,.docx,.odt,.ods"
+                accept=".log,.txt,.json,.xml,.csv,.zip,.gz,.gzip,.pdf,.xlsx,.docx,.odt,.ods"
                 className="hidden"
               />
             </label>
@@ -1706,7 +1877,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                   setSelectedLine(null)
                   setDocumentFile(null)
                   setDocumentType(null)
-                  setScrubbedPdfFile(null)
+                  setScrubbedDocFile(null)
                 }}
                 className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 title="Clear the input text"
@@ -1734,13 +1905,15 @@ Here are examples of actual replacements made in this ${docTypeShort}:
               replacements={replacements.length > 0 ? replacements : analysisReplacements}
             />
             <div
-              className="absolute bottom-0 left-0 right-0 h-2 cursor-row-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors"
+              className="absolute bottom-0 left-0 right-0 h-3 cursor-row-resize bg-gray-300/50 dark:bg-gray-600/50 hover:bg-blue-500/40 active:bg-blue-500/50 transition-colors flex items-center justify-center"
               onMouseDown={(e) => {
                 e.preventDefault()
                 setIsResizingPreview(true)
               }}
               title="Drag to resize preview"
-            />
+            >
+              <div className="w-12 h-1 bg-gray-400 dark:bg-gray-500 rounded-full" />
+            </div>
           </div>
         )}
 
@@ -1759,6 +1932,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                 <div className="font-mono text-sm space-y-2">
                   <p className="font-semibold">Getting Started:</p>
                   <p>1. Paste logs here, or use <span className="text-blue-600 dark:text-blue-400">Upload</span>/drag & drop</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 ml-3">Supports: txt, log, json, csv, pdf, docx, xlsx, odt, ods, zip, gz</p>
                   <p>2. Click <span className="text-purple-600 dark:text-purple-400">Analyze</span> to detect PII and get rule suggestions</p>
                   <p>3. Enable/disable rules in Detection Rules panel</p>
                   <p>4. Click <span className="text-blue-600 dark:text-blue-400">Scrub</span> to apply replacements</p>
@@ -1865,11 +2039,11 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                 Clear All
               </button>
             )}
-            {scrubbedPdfFile && (
+            {scrubbedDocFile && (
               <button
                 onClick={() => setShowScrubbedPreview(!showScrubbedPreview)}
                 className={`text-xs ${showScrubbedPreview ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'} hover:text-blue-700 dark:hover:text-blue-300`}
-                title={showScrubbedPreview ? 'Hide redacted PDF preview' : 'Show redacted PDF preview'}
+                title={showScrubbedPreview ? 'Hide redacted preview' : 'Show redacted preview'}
               >
                 {showScrubbedPreview ? 'Hide Preview' : 'Show Preview'}
               </button>
@@ -1958,15 +2132,15 @@ Here are examples of actual replacements made in this ${docTypeShort}:
           </div>
         </div>
 
-        {showScrubbedPreview && scrubbedPdfFile && (
+        {showScrubbedPreview && scrubbedDocFile && documentType && (
           <div
             ref={scrubbedPreviewRef}
             className="flex-shrink-0 border dark:border-gray-600 rounded-lg overflow-hidden mb-2 relative"
             style={{ height: previewHeight }}
           >
             <DocumentPreview
-              file={scrubbedPdfFile}
-              fileType="pdf"
+              file={scrubbedDocFile}
+              fileType={documentType}
               page={syncScrollProp ? previewPage : undefined}
               onPageChange={syncScrollProp ? setPreviewPage : undefined}
               scrollTop={syncScrollProp ? previewScrollTop : undefined}
@@ -1974,13 +2148,15 @@ Here are examples of actual replacements made in this ${docTypeShort}:
               onScroll={syncScrollProp ? (top, left) => { setPreviewScrollTop(top); setPreviewScrollLeft(left) } : undefined}
             />
             <div
-              className="absolute bottom-0 left-0 right-0 h-2 cursor-row-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors"
+              className="absolute bottom-0 left-0 right-0 h-3 cursor-row-resize bg-gray-300/50 dark:bg-gray-600/50 hover:bg-blue-500/40 active:bg-blue-500/50 transition-colors flex items-center justify-center"
               onMouseDown={(e) => {
                 e.preventDefault()
                 setIsResizingPreview(true)
               }}
               title="Drag to resize preview"
-            />
+            >
+              <div className="w-12 h-1 bg-gray-400 dark:bg-gray-500 rounded-full" />
+            </div>
           </div>
         )}
 
@@ -2153,6 +2329,16 @@ Here are examples of actual replacements made in this ${docTypeShort}:
             </div>
           </div>
         </Modal>
+      )}
+
+      {showMetadataDialog && documentMetadata && documentType && (
+        <MetadataDialog
+          metadata={documentMetadata}
+          documentType={documentType}
+          onKeep={handleMetadataKeep}
+          onRemove={handleMetadataRemove}
+          onCancel={handleMetadataCancel}
+        />
       )}
     </div>
   )

@@ -635,6 +635,7 @@
 
         <div class="nav-section">
           <div class="nav-section-title">Reference</div>
+          <a href="#documents">Documents & Spreadsheets</a>
           <a href="#keyboard-shortcuts">Keyboard Shortcuts</a>
           <a href="#network-captures">Network Captures</a>
           <a href="#file-size">Performance</a>
@@ -852,6 +853,7 @@ User [EMAIL-3] logged in</div>
                 <tr><td><strong>IBAN</strong></td><td>GB82WEST12345698765432</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
                 <tr><td><strong>Bitcoin Address</strong></td><td>1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
                 <tr><td><strong>Ethereum Address</strong></td><td>0x742d35Cc6634C0532925a3b844Bc...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Money/Currency</strong></td><td>$10.99, £1,000.00, 100 EUR</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
               </table>
             </div>
           </div>
@@ -1225,6 +1227,74 @@ This log has been sanitized using LogScrub...
             <div class="callout-title">Tip</div>
             <p>The explanation reflects each rule's individual replacement strategy. If you use different strategies for different types (e.g., Label for emails, Fake for IPs), the AI will know exactly what each replacement format means.</p>
           </div>
+        </section>
+
+        <section id="documents">
+          <h2>Documents & Spreadsheets</h2>
+          <p>LogScrub can scrub PII from document and spreadsheet files, not just plain text. All processing happens client-side in your browser using WebAssembly.</p>
+
+          <h3>Supported Formats</h3>
+          <div class="table-wrapper">
+            <table>
+              <tr><th>Format</th><th>Extension</th><th>Scrubbing</th><th>Preview</th></tr>
+              <tr><td><strong>PDF</strong></td><td>.pdf</td><td>Redact only (black boxes)</td><td>Full page rendering</td></tr>
+              <tr><td><strong>Word Document</strong></td><td>.docx</td><td>Full text replacement</td><td>Formatted preview</td></tr>
+              <tr><td><strong>Excel Spreadsheet</strong></td><td>.xlsx</td><td>Full text replacement</td><td>Table view</td></tr>
+              <tr><td><strong>OpenDocument Text</strong></td><td>.odt</td><td>Full text replacement</td><td>Basic text preview</td></tr>
+              <tr><td><strong>OpenDocument Spreadsheet</strong></td><td>.ods</td><td>Full text replacement</td><td>Table view</td></tr>
+            </table>
+          </div>
+
+          <h3>How Document Processing Works</h3>
+
+          <h4>PDF Files</h4>
+          <p>PDFs are rendered using MuPDF (WebAssembly). Due to the complexity of PDF format, scrubbing uses <strong>redaction only</strong> — detected PII is covered with black boxes rather than replaced with labels or fake data. This ensures the document structure remains intact.</p>
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>The PDF preview shows page-by-page rendering with match counts per page, helping you verify all sensitive data was found.</p>
+          </div>
+
+          <h4>Word Documents (.docx)</h4>
+          <p>DOCX files are ZIP archives containing XML. LogScrub extracts the document content, applies your scrubbing rules, and repackages the file. The preview uses the docx-preview library to show formatted content including bold, italic, tables, and images.</p>
+
+          <h4>Excel Spreadsheets (.xlsx)</h4>
+          <p>XLSX files are processed using excelize-wasm. Cell contents are scrubbed while preserving the spreadsheet structure, formulas references, and formatting. The preview shows a table view of each sheet.</p>
+          <div class="warning">
+            <div class="callout-title">Note</div>
+            <p>Legacy <code>.xls</code> format (Excel 97-2003) is not supported. Please save as <code>.xlsx</code> format first.</p>
+          </div>
+
+          <h4>OpenDocument Files (.odt, .ods)</h4>
+          <p>LibreOffice/OpenOffice formats are ZIP archives with XML content, similar to Microsoft Office formats. LogScrub extracts and scrubs the content XML while preserving document structure.</p>
+
+          <h3>Document Preview Features</h3>
+          <ul>
+            <li><strong>Split view</strong> — See original and scrubbed documents side by side</li>
+            <li><strong>Scroll sync</strong> — Original and scrubbed previews scroll together</li>
+            <li><strong>Resizable panels</strong> — Drag the resize handle to adjust preview height</li>
+            <li><strong>Match highlighting</strong> — PDF preview shows match count per page</li>
+          </ul>
+
+          <h3>Document Metadata</h3>
+          <p>Documents often contain metadata that may include sensitive information:</p>
+          <ul>
+            <li><strong>Author name</strong> and <strong>company</strong></li>
+            <li><strong>Creation and modification dates</strong></li>
+            <li><strong>Application used</strong> to create the document</li>
+            <li><strong>Revision history</strong> and editing time</li>
+          </ul>
+          <p>When you upload a document, LogScrub automatically checks for metadata. If found, you'll see a dialog showing all detected metadata fields and can choose to:</p>
+          <ul>
+            <li><strong>Remove Metadata</strong> — Strip all metadata from the downloaded file</li>
+            <li><strong>Keep Metadata</strong> — Preserve original metadata in the downloaded file</li>
+          </ul>
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>The metadata choice you make at upload time applies when you download. If you upload a new file, you'll be asked again.</p>
+          </div>
+
+          <h3>Downloading Scrubbed Documents</h3>
+          <p>After scrubbing, click <strong>Download</strong> to save the sanitized document. The output file preserves the original format — a scrubbed .docx remains a .docx that can be opened in Word.</p>
         </section>
 
         <section id="keyboard-shortcuts">

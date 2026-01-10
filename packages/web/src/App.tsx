@@ -583,7 +583,7 @@ function App() {
 
   return (
     <div className="min-h-screen lg:h-screen flex flex-col bg-gray-50 dark:bg-gray-900 lg:overflow-hidden">
-      <Header onAboutClick={() => setShowAbout(true)} />
+      <Header onAboutClick={() => setShowAbout(true)} compact={!!input} />
 
       <main className={`flex-1 flex flex-col mx-auto px-4 py-4 w-full min-h-0 overflow-auto lg:overflow-hidden ${constrainWidth ? 'max-w-7xl' : ''}`}>
         <FeatureBanner />

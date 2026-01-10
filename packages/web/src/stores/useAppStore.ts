@@ -2,6 +2,7 @@ import { create } from 'zustand'
 
 export type ReplacementStrategy = 'label' | 'fake' | 'redact' | 'template'
 export type ThemeMode = 'light' | 'dark' | 'auto'
+export type DocumentType = 'pdf' | 'xlsx' | 'docx' | 'odt' | 'ods' | null
 
 export interface Rule {
   label: string
@@ -91,6 +92,7 @@ interface AppState {
   themeMode: ThemeMode
   labelFormat: LabelFormat
   globalTemplate: string
+  documentType: DocumentType
 
   setInput: (input: string) => void
   setOutput: (output: string) => void
@@ -133,6 +135,7 @@ interface AppState {
   setThemeMode: (mode: ThemeMode) => void
   setLabelFormat: (format: LabelFormat) => void
   setGlobalTemplate: (template: string) => void
+  setDocumentType: (type: DocumentType) => void
 }
 
 const DEFAULT_RULES: Record<string, Rule> = {
@@ -418,6 +421,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   themeMode: loadThemeModeFromStorage(),
   labelFormat: loadLabelFormatFromStorage(),
   globalTemplate: loadGlobalTemplateFromStorage(),
+  documentType: null,
 
   setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [] }),
   setOutput: (output) => set({ output }),
@@ -574,6 +578,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     saveGlobalTemplateToStorage(template)
     set({ globalTemplate: template })
   },
+
+  setDocumentType: (type) => set({ documentType: type }),
 
   savePreset: (name) => {
     const { rules, customRules, consistencyMode, savedPresets } = get()

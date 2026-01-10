@@ -165,10 +165,12 @@ interface RuleRowProps {
   onStrategyChange: (strategy: ReplacementStrategy) => void
   onViewPattern: () => void
   onEditTemplate: () => void
+  strategyOptions?: { value: ReplacementStrategy; label: string }[]
 }
 
 const RuleRow = memo(function RuleRow({
-  label, enabled, strategy, matchCount, onToggle, onStrategyChange, onViewPattern, onEditTemplate
+  label, enabled, strategy, matchCount, onToggle, onStrategyChange, onViewPattern, onEditTemplate,
+  strategyOptions = STRATEGY_OPTIONS
 }: RuleRowProps) {
   return (
     <div className="flex items-center justify-between gap-2">
@@ -205,7 +207,7 @@ const RuleRow = memo(function RuleRow({
         aria-label="Replacement strategy"
         className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
       >
-        {STRATEGY_OPTIONS.map((opt) => (
+        {strategyOptions.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>
@@ -235,10 +237,12 @@ interface SortableRuleItemProps {
   onViewPattern: () => void
   onEditTemplate: () => void
   isDragDisabled?: boolean
+  strategyOptions?: { value: ReplacementStrategy; label: string }[]
 }
 
 function SortableRuleItem({
-  id, rule, matchCount, onToggle, onStrategyChange, onViewPattern, onEditTemplate, isDragDisabled
+  id, rule, matchCount, onToggle, onStrategyChange, onViewPattern, onEditTemplate, isDragDisabled,
+  strategyOptions
 }: SortableRuleItemProps) {
   const {
     attributes,
@@ -278,6 +282,7 @@ function SortableRuleItem({
           onStrategyChange={onStrategyChange}
           onViewPattern={onViewPattern}
           onEditTemplate={onEditTemplate}
+          strategyOptions={strategyOptions}
         />
       </div>
     </div>
@@ -378,9 +383,18 @@ export function RulePanel() {
     plainTextPatterns, addPlainTextPattern, updatePlainTextPattern, deletePlainTextPattern, togglePlainTextPattern, setPlainTextPatternStrategy,
     stats, analysisStats,
     labelFormat, setLabelFormat,
-    globalTemplate, setGlobalTemplate
+    globalTemplate, setGlobalTemplate,
+    documentType
   } = useAppStore()
   
+  // Filter strategy options for document types (PDF only supports redact)
+  const filteredStrategyOptions = useMemo(() => {
+    if (documentType === 'pdf') {
+      return STRATEGY_OPTIONS.filter(opt => opt.value === 'redact')
+    }
+    return STRATEGY_OPTIONS
+  }, [documentType])
+
   const [showStats, setShowStats] = useState(false)
   const [categoryOrder, setCategoryOrder] = useState<string[]>(loadCategoryOrder)
   const [ruleOrderMap, setRuleOrderMap] = useState<RuleOrderMap>(loadRuleOrder)
@@ -743,7 +757,7 @@ export function RulePanel() {
       
       <div className="flex gap-1 mb-3">
         <span className="text-xs text-gray-600 dark:text-gray-400 mr-1">Set all:</span>
-        {STRATEGY_OPTIONS.map((opt) => (
+        {filteredStrategyOptions.map((opt) => (
           opt.value === 'label' ? (
             <div key={opt.value} className="relative flex">
               <button
@@ -968,7 +982,7 @@ export function RulePanel() {
                     aria-label="Replacement strategy"
                     className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
                   >
-                    {STRATEGY_OPTIONS.map((opt) => (
+                    {filteredStrategyOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
                       </option>
@@ -1030,7 +1044,7 @@ export function RulePanel() {
                     aria-label="Replacement strategy"
                     className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
                   >
-                    {STRATEGY_OPTIONS.filter(opt => opt.value !== 'fake' && opt.value !== 'template').map((opt) => (
+                    {filteredStrategyOptions.filter(opt => opt.value !== 'fake' && opt.value !== 'template').map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
                       </option>
@@ -1097,6 +1111,7 @@ export function RulePanel() {
                               onViewPattern={() => setViewingPattern({ id, label: rule.label, pattern: BUILTIN_PATTERNS[id] || '' })}
                               onEditTemplate={() => setEditingTemplate({ id, label: rule.label, template: rule.template || `[${id.toUpperCase()}-{n}]` })}
                               isDragDisabled={!!searchQuery}
+                              strategyOptions={filteredStrategyOptions}
                             />
                           )
                         })}
@@ -1114,6 +1129,7 @@ export function RulePanel() {
                             onStrategyChange={() => {}}
                             onViewPattern={() => {}}
                             onEditTemplate={() => {}}
+                            strategyOptions={filteredStrategyOptions}
                           />
                         </div>
                       )}

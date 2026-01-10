@@ -370,3 +370,54 @@ pub fn compress_zip(text: &str, filename: &str) -> Result<Vec<u8>, JsValue> {
     }
     Ok(buffer.into_inner())
 }
+
+/// Repackage a ZIP archive with one file's content replaced
+/// Used for modifying DOCX/XLSX files while preserving other files
+#[wasm_bindgen]
+pub fn compress_zip_replace(original_data: &[u8], target_filename: &str, new_content: &str) -> Result<Vec<u8>, JsValue> {
+    let cursor = Cursor::new(original_data);
+    let mut archive = ZipArchive::new(cursor)
+        .map_err(|e| JsValue::from_str(&format!("Failed to read zip: {}", e)))?;
+
+    let mut output_buffer = Cursor::new(Vec::new());
+    {
+        let mut zip_writer = zip::ZipWriter::new(&mut output_buffer);
+
+        for i in 0..archive.len() {
+            let mut file = archive
+                .by_index(i)
+                .map_err(|e| JsValue::from_str(&format!("Failed to read zip entry: {}", e)))?;
+
+            let name = file.name().to_string();
+            let options = FileOptions::default()
+                .compression_method(file.compression())
+                .unix_permissions(file.unix_mode().unwrap_or(0o644));
+
+            if file.is_dir() {
+                zip_writer.add_directory(&name, options)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to add directory: {}", e)))?;
+            } else {
+                zip_writer.start_file(&name, options)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to start file: {}", e)))?;
+
+                if name == target_filename {
+                    // Write the new content for the target file
+                    zip_writer.write_all(new_content.as_bytes())
+                        .map_err(|e| JsValue::from_str(&format!("Failed to write new content: {}", e)))?;
+                } else {
+                    // Copy original content
+                    let mut contents = Vec::new();
+                    file.read_to_end(&mut contents)
+                        .map_err(|e| JsValue::from_str(&format!("Failed to read file: {}", e)))?;
+                    zip_writer.write_all(&contents)
+                        .map_err(|e| JsValue::from_str(&format!("Failed to write content: {}", e)))?;
+                }
+            }
+        }
+
+        zip_writer.finish()
+            .map_err(|e| JsValue::from_str(&format!("Failed to finish zip: {}", e)))?;
+    }
+
+    Ok(output_buffer.into_inner())
+}

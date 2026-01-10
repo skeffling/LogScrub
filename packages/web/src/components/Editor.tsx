@@ -1,9 +1,12 @@
 import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import init, { decompress_gzip, decompress_zip, decompress_zip_file, compress_zip, compress_gzip } from '../wasm-core/wasm_core'
-import { useAppStore, type ReplacementInfo } from '../stores/useAppStore'
+import { useAppStore, type ReplacementInfo, type DocumentType } from '../stores/useAppStore'
 import { tokenizeWithPositions } from '../utils/syntaxHighlight'
 import { Modal } from './Modal'
+import { DocumentPreview } from './DocumentPreview'
+
+// DocumentType is now imported from store
 
 let wasmReady: Promise<unknown> | null = null
 async function ensureWasm(): Promise<void> {
@@ -573,12 +576,25 @@ function dismissDonationForever() {
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, onLeftResize, showLeftHandle = false }, ref) {
-  const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate } = useAppStore()
+  const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showAIExplain, setShowAIExplain] = useState(false)
   const [splitRatio, setSplitRatio] = useState(() => loadEditorPreference('splitRatio', 50))
   const [isResizingSplit, setIsResizingSplit] = useState(false)
   const editorContainerRef = useRef<HTMLDivElement>(null)
+
+  // Document preview state
+  const [documentFile, setDocumentFile] = useState<File | null>(null)
+  const [showDocumentPreview, setShowDocumentPreview] = useState(true)
+  const [scrubbedPdfFile, setScrubbedPdfFile] = useState<File | null>(null)
+  const [showScrubbedPreview, setShowScrubbedPreview] = useState(true)
+  const [previewHeight, setPreviewHeight] = useState(() => loadEditorPreference('previewHeight', 256))
+  const [isResizingPreview, setIsResizingPreview] = useState(false)
+  const [previewPage, setPreviewPage] = useState(0)
+  const [previewScrollTop, setPreviewScrollTop] = useState(0)
+  const [previewScrollLeft, setPreviewScrollLeft] = useState(0)
+  const originalPreviewRef = useRef<HTMLDivElement>(null)
+  const scrubbedPreviewRef = useRef<HTMLDivElement>(null)
 
   // Terminal style classes
   const paneBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-white dark:bg-gray-800'
@@ -607,10 +623,105 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     }
   }, [output, replacements.length])
 
+  // Generate scrubbed PDF preview when output is available for PDF documents
+  useEffect(() => {
+    if (!output || !documentFile || documentType !== 'pdf' || replacements.length === 0) {
+      setScrubbedPdfFile(null)
+      return
+    }
+
+    const generateScrubbedPdfPreview = async () => {
+      try {
+        // Build replacement map
+        const replacementMap = new Map<string, string>()
+        for (const rep of replacements) {
+          if (!replacementMap.has(rep.original)) {
+            replacementMap.set(rep.original, rep.replacement)
+          }
+        }
+
+        // Configure mupdf WASM location
+        ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
+          locateFile: (path: string) => `/${path}`
+        }
+        const mupdf = await import('mupdf')
+
+        const buffer = new Uint8Array(await documentFile.arrayBuffer())
+        const doc = new mupdf.PDFDocument(buffer)
+        const pageCount = doc.countPages()
+
+        // Add redaction annotations for each PII match
+        for (let pageIdx = 0; pageIdx < pageCount; pageIdx++) {
+          const page = doc.loadPage(pageIdx)
+          const stext = page.toStructuredText('preserve-whitespace')
+
+          for (const [original] of replacementMap) {
+            const searchResults = stext.search(original)
+            for (const quads of searchResults) {
+              const annot = page.createAnnotation('Redact')
+              annot.setQuadPoints(quads)
+              annot.setColor([0, 0, 0])
+            }
+          }
+
+          page.applyRedactions(true, mupdf.PDFPage.REDACT_IMAGE_PIXELS, mupdf.PDFPage.REDACT_LINE_ART_NONE, mupdf.PDFPage.REDACT_TEXT_REMOVE)
+        }
+
+        const outputBuffer = doc.saveToBuffer()
+        doc.destroy()
+
+        // Create a File object from the buffer for DocumentPreview
+        const blob = new Blob([outputBuffer.asUint8Array()], { type: 'application/pdf' })
+        const file = new File([blob], 'scrubbed_preview.pdf', { type: 'application/pdf' })
+        setScrubbedPdfFile(file)
+      } catch (err) {
+        console.error('Failed to generate scrubbed PDF preview:', err)
+        setScrubbedPdfFile(null)
+      }
+    }
+
+    generateScrubbedPdfPreview()
+  }, [output, documentFile, documentType, replacements])
+
   // Save split ratio preference
   useEffect(() => {
     saveEditorPreference('splitRatio', splitRatio)
   }, [splitRatio])
+
+  // Save preview height preference
+  useEffect(() => {
+    saveEditorPreference('previewHeight', previewHeight)
+  }, [previewHeight])
+
+  // Handle preview resize
+  useEffect(() => {
+    if (!isResizingPreview) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!originalPreviewRef.current) return
+      const rect = originalPreviewRef.current.getBoundingClientRect()
+      const newHeight = Math.max(100, Math.min(500, e.clientY - rect.top))
+      setPreviewHeight(newHeight)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizingPreview(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'row-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizingPreview])
 
   // Handle split resize
   useEffect(() => {
@@ -746,6 +857,20 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const generateAIExplanation = useCallback(() => {
     const prefix = labelFormat.prefix || '['
     const suffix = labelFormat.suffix || ']'
+    const activeReplacements = replacements.length > 0 ? replacements : analysisReplacements
+
+    // Determine document type for appropriate terminology
+    const docTypeLabel = documentType === 'pdf' ? 'PDF document'
+      : documentType === 'xlsx' ? 'Excel spreadsheet'
+      : documentType === 'ods' ? 'LibreOffice spreadsheet'
+      : documentType === 'docx' ? 'Word document'
+      : documentType === 'odt' ? 'LibreOffice document'
+      : 'log file'
+
+    const docTypeShort = documentType === 'pdf' ? 'document'
+      : documentType === 'xlsx' || documentType === 'ods' ? 'spreadsheet'
+      : documentType === 'docx' || documentType === 'odt' ? 'document'
+      : 'log'
 
     // Get detected types with counts and their strategies
     const detectedTypes = Object.entries(stats)
@@ -765,33 +890,6 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
       strategies.add(strategy)
     })
 
-    // Helper to generate example replacement based on strategy
-    const getExampleReplacement = (type: string, strategy: string, template?: string) => {
-      const upperType = type.toUpperCase()
-      switch (strategy) {
-        case 'label':
-          return `${prefix}${upperType}-1${suffix}`
-        case 'fake':
-          // Show representative fake examples
-          if (type === 'email') return 'user1@example.com'
-          if (type === 'ipv4') return '192.0.2.1'
-          if (type === 'ipv6') return '2001:db8::1'
-          if (type === 'phone_us' || type === 'phone_uk' || type === 'phone_intl') return '(555) 123-0001'
-          if (type === 'hostname') return 'host1.example.com'
-          if (type === 'uuid') return '00000000-0000-0000-0000-000000000001'
-          return `[fake ${type}]`
-        case 'redact':
-          return '████████'
-        case 'template':
-          if (template) {
-            return template.replace('{T}', upperType).replace('{N}', '1')
-          }
-          return `<${upperType}-1>`
-        default:
-          return `${prefix}${upperType}-1${suffix}`
-      }
-    }
-
     const strategyDescription = (strategy: string) => {
       switch (strategy) {
         case 'label': return 'Label'
@@ -802,9 +900,9 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
       }
     }
 
-    let explanation = `## Log Redaction Context
+    let explanation = `## ${documentType === 'pdf' ? 'PDF' : documentType === 'xlsx' || documentType === 'ods' ? 'Spreadsheet' : documentType === 'docx' || documentType === 'odt' ? 'Document' : 'Log'} Redaction Context
 
-This log has been sanitized using LogScrub to remove personally identifiable information (PII) and sensitive data. Please analyze this log with the following context in mind:
+This ${docTypeLabel} has been sanitized using LogScrub to remove personally identifiable information (PII) and sensitive data. Please analyze this ${docTypeShort} with the following context in mind:
 
 ### Replacement Strategies Used
 `
@@ -831,7 +929,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
 
     if (consistencyMode && (strategies.has('label') || strategies.has('template') || strategies.has('fake'))) {
       explanation += `
-**Consistency mode is ON**: The same original value always maps to the same replacement. For example, if you see the same token or fake value multiple times, it refers to the same original data throughout the log.
+**Consistency mode is ON**: The same original value always maps to the same replacement. For example, if you see the same token or fake value multiple times, it refers to the same original data throughout the ${docTypeShort}.
 `
     } else if (!consistencyMode && (strategies.has('label') || strategies.has('template'))) {
       explanation += `
@@ -843,27 +941,54 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
       explanation += `
 ### Detected & Replaced Data Types
 
-| Type | Strategy | Example Replacement | Count |
-|------|----------|---------------------|-------|
+| Type | Strategy | Count |
+|------|----------|-------|
 `
-      detectedTypes.forEach(({ type, label, count, strategy, template }) => {
-        const example = getExampleReplacement(type, strategy, template)
-        explanation += `| ${label} | ${strategyDescription(strategy)} | \`${example}\` | ${count} |\n`
+      detectedTypes.forEach(({ label, count, strategy }) => {
+        explanation += `| ${label} | ${strategyDescription(strategy)} | ${count} |\n`
+      })
+    }
+
+    // Add real examples from the session
+    if (activeReplacements.length > 0) {
+      explanation += `
+### Actual Replacements from This Session
+
+Here are examples of actual replacements made in this ${docTypeShort}:
+
+| Original Value | Replaced With |
+|----------------|---------------|
+`
+      // Get unique replacements, limit to ~10 examples
+      const uniqueReplacements = new Map<string, string>()
+      for (const rep of activeReplacements) {
+        if (uniqueReplacements.size >= 10) break
+        const key = rep.replacement
+        if (!uniqueReplacements.has(key)) {
+          uniqueReplacements.set(key, rep.original)
+        }
+      }
+
+      uniqueReplacements.forEach((original, replacement) => {
+        // Truncate long values for readability
+        const truncOrig = original.length > 30 ? original.slice(0, 27) + '...' : original
+        const truncRepl = replacement.length > 30 ? replacement.slice(0, 27) + '...' : replacement
+        explanation += `| \`${truncOrig}\` | \`${truncRepl}\` |\n`
       })
     }
 
     explanation += `
 ### Interpretation Guidelines
 
-1. **References**: When referring to specific replaced values, use the replacement shown in the table above rather than describing generically.
+1. **References**: When referring to specific replaced values, use the actual replacements shown above rather than describing generically.
 
 2. **Correlations**: ${consistencyMode ? 'You CAN correlate replacements - same replacement = same original value.' : 'Each occurrence is replaced independently, so similar replacements might refer to different original values.'}
 
-3. **Focus**: The log structure, timestamps, error messages, and non-sensitive data remain intact. Focus your analysis on patterns, errors, and flow rather than the specific redacted values.
+3. **Focus**: The ${docTypeShort} structure${documentType ? '' : ', timestamps, error messages,'} and non-sensitive data remain intact. Focus your analysis on ${documentType === 'pdf' ? 'the document content and context' : documentType === 'xlsx' || documentType === 'ods' ? 'data patterns and relationships' : documentType === 'docx' || documentType === 'odt' ? 'the document content and context' : 'patterns, errors, and flow'} rather than the specific redacted values.
 `
 
     return explanation
-  }, [stats, rules, labelFormat, consistencyMode, globalTemplate])
+  }, [stats, rules, labelFormat, consistencyMode, globalTemplate, documentType, replacements, analysisReplacements])
 
   const handleCopyAIExplanation = async () => {
     const explanation = generateAIExplanation()
@@ -904,7 +1029,106 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
     return paragraphs.join('\n')
   }
 
-  const processCompressedFile = async (file: File): Promise<{ content: string; name: string }> => {
+  const extractTextFromOdtXml = (xml: string): string => {
+    // Parse ODT XML (content.xml) and extract text content
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(xml, 'application/xml')
+
+    const paragraphs: string[] = []
+    let currentParagraph = ''
+
+    const allNodes = doc.getElementsByTagName('*')
+    for (let i = 0; i < allNodes.length; i++) {
+      const node = allNodes[i]
+      const localName = node.localName || node.tagName.split(':').pop()
+
+      if (localName === 'p' || localName === 'h') {
+        if (currentParagraph) {
+          paragraphs.push(currentParagraph)
+          currentParagraph = ''
+        }
+        // Get direct text content
+        const textNodes = node.childNodes
+        for (let j = 0; j < textNodes.length; j++) {
+          const child = textNodes[j]
+          if (child.nodeType === Node.TEXT_NODE && child.textContent) {
+            currentParagraph += child.textContent
+          } else if (child.nodeType === Node.ELEMENT_NODE) {
+            const childLocal = (child as Element).localName || (child as Element).tagName.split(':').pop()
+            if (childLocal === 'span' || childLocal === 's') {
+              currentParagraph += child.textContent || ''
+            } else if (childLocal === 'tab') {
+              currentParagraph += '\t'
+            } else if (childLocal === 'line-break') {
+              currentParagraph += '\n'
+            }
+          }
+        }
+      }
+    }
+
+    if (currentParagraph) {
+      paragraphs.push(currentParagraph)
+    }
+
+    return paragraphs.join('\n')
+  }
+
+  const extractTextFromOdsXml = (xml: string): string => {
+    // Parse ODS XML (content.xml) and extract spreadsheet data
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(xml, 'application/xml')
+
+    const sheets: string[] = []
+
+    // Find all tables (sheets)
+    const tables = doc.getElementsByTagNameNS('urn:oasis:names:tc:opendocument:xmlns:table:1.0', 'table')
+    if (tables.length === 0) {
+      // Fallback: just extract all text content
+      return doc.documentElement?.textContent?.replace(/\s+/g, ' ').trim() || ''
+    }
+
+    for (let t = 0; t < tables.length; t++) {
+      const table = tables[t]
+      const tableName = table.getAttribute('table:name') || `Sheet${t + 1}`
+      const rows: string[] = [`=== ${tableName} ===`]
+
+      const tableRows = table.getElementsByTagNameNS('urn:oasis:names:tc:opendocument:xmlns:table:1.0', 'table-row')
+      for (let r = 0; r < tableRows.length; r++) {
+        const row = tableRows[r]
+        const cells: string[] = []
+
+        const tableCells = row.getElementsByTagNameNS('urn:oasis:names:tc:opendocument:xmlns:table:1.0', 'table-cell')
+        for (let c = 0; c < tableCells.length; c++) {
+          const cell = tableCells[c]
+          // Get repeat count for empty cells
+          const repeat = parseInt(cell.getAttribute('table:number-columns-repeated') || '1', 10)
+          const cellText = cell.textContent?.trim() || ''
+
+          // Only add repeats if there's content or limited repeats
+          if (repeat > 1 && !cellText) {
+            // Skip large empty cell spans
+            if (repeat < 10) {
+              for (let i = 0; i < repeat; i++) cells.push('')
+            }
+          } else {
+            cells.push(cellText)
+          }
+        }
+
+        // Skip completely empty rows
+        if (cells.some(c => c)) {
+          rows.push(cells.join('\t'))
+        }
+      }
+
+      sheets.push(rows.join('\n'))
+    }
+
+    return sheets.join('\n\n')
+  }
+
+  const processCompressedFile = async (file: File): Promise<{ content: string; name: string; docType: DocumentType }> => {
     const ext = file.name.toLowerCase()
 
     // Handle DOCX files (ZIP archive containing XML)
@@ -916,7 +1140,31 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
       const xml = decompress_zip_file(data, 'word/document.xml')
       const content = extractTextFromDocxXml(xml)
       const baseName = file.name.replace(/\.docx$/i, '.txt')
-      return { content, name: baseName }
+      return { content, name: baseName, docType: 'docx' }
+    }
+
+    // Handle ODT files (LibreOffice/OpenDocument Text)
+    if (ext.endsWith('.odt')) {
+      await ensureWasm()
+      const buffer = await file.arrayBuffer()
+      const data = new Uint8Array(buffer)
+
+      const xml = decompress_zip_file(data, 'content.xml')
+      const content = extractTextFromOdtXml(xml)
+      const baseName = file.name.replace(/\.odt$/i, '.txt')
+      return { content, name: baseName, docType: 'odt' }
+    }
+
+    // Handle ODS files (LibreOffice/OpenDocument Spreadsheet)
+    if (ext.endsWith('.ods')) {
+      await ensureWasm()
+      const buffer = await file.arrayBuffer()
+      const data = new Uint8Array(buffer)
+
+      const xml = decompress_zip_file(data, 'content.xml')
+      const content = extractTextFromOdsXml(xml)
+      const baseName = file.name.replace(/\.ods$/i, '.txt')
+      return { content, name: baseName, docType: 'ods' }
     }
 
     // Handle Excel files (XLSX/XLS) via excelize-wasm
@@ -941,28 +1189,33 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
       }
 
       const baseName = file.name.replace(/\.xlsx?$/i, '.txt')
-      return { content: content.trim(), name: baseName }
+      return { content: content.trim(), name: baseName, docType: 'xlsx' }
     }
 
-    // Handle PDF files via @hyzyla/pdfium
+    // Handle PDF files via mupdf
     if (ext.endsWith('.pdf')) {
-      const { PDFiumLibrary } = await import('@hyzyla/pdfium')
-      const library = await PDFiumLibrary.init({ wasmUrl: '/pdfium.wasm' })
+      // Configure mupdf WASM location before importing
+      ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
+        locateFile: (path: string) => `/${path}`
+      }
+      const mupdf = await import('mupdf')
 
       const buffer = new Uint8Array(await file.arrayBuffer())
-      const document = await library.loadDocument(buffer)
+      const doc = mupdf.PDFDocument.openDocument(buffer, 'application/pdf') as InstanceType<typeof mupdf.PDFDocument>
 
       let content = ''
-      for (const page of document.pages()) {
-        content += page.getText()
+      const pageCount = doc.countPages()
+      for (let i = 0; i < pageCount; i++) {
+        const page = doc.loadPage(i)
+        const stext = page.toStructuredText('preserve-whitespace')
+        content += stext.asText()
         content += '\n'
       }
 
-      document.destroy()
-      library.destroy()
+      doc.destroy()
 
       const baseName = file.name.replace(/\.pdf$/i, '.txt')
-      return { content: content.trim(), name: baseName }
+      return { content: content.trim(), name: baseName, docType: 'pdf' }
     }
 
     if (ext.endsWith('.zip') || ext.endsWith('.gz') || ext.endsWith('.gzip')) {
@@ -973,17 +1226,17 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
       if (ext.endsWith('.zip')) {
         const content = decompress_zip(data)
         const baseName = file.name.replace(/\.zip$/i, '')
-        return { content, name: baseName }
+        return { content, name: baseName, docType: null }
       }
 
       const content = decompress_gzip(data)
       const baseName = file.name.replace(/\.(gz|gzip)$/i, '')
-      return { content, name: baseName }
+      return { content, name: baseName, docType: null }
     }
 
     return new Promise((resolve) => {
       const reader = new FileReader()
-      reader.onload = (ev) => resolve({ content: ev.target?.result as string, name: file.name })
+      reader.onload = (ev) => resolve({ content: ev.target?.result as string, name: file.name, docType: null })
       reader.readAsText(file)
     })
   }
@@ -992,11 +1245,15 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
     const file = e.target.files?.[0]
     if (file) {
       try {
-        const { content, name } = await processCompressedFile(file)
+        const { content, name, docType } = await processCompressedFile(file)
         onInputChange(content)
         setFileName(name)
-      } catch {
-        alert('Failed to read file. Make sure it\'s a valid text, zip, or gzip file.')
+        setDocumentFile(docType ? file : null)
+        setDocumentType(docType)
+        setPreviewPage(0)
+      } catch (err) {
+        console.error('File load error:', err)
+        alert('Failed to read file. Make sure it\'s a valid file.')
       }
     }
   }
@@ -1033,6 +1290,246 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
     triggerDonationModal()
+  }
+
+  // Download in original format with PII replaced/redacted
+  const handleDownloadOriginalFormat = async () => {
+    if (!output || !documentFile || !documentType) return
+
+    try {
+      // Build replacement map from the scrubbing results
+      const replacementMap = new Map<string, string>()
+      for (const rep of replacements) {
+        if (!replacementMap.has(rep.original)) {
+          replacementMap.set(rep.original, rep.replacement)
+        }
+      }
+
+      const buffer = new Uint8Array(await documentFile.arrayBuffer())
+      let resultBlob: Blob
+      let downloadName: string
+
+      if (documentType === 'xlsx') {
+        resultBlob = await generateScrubbedExcel(buffer, replacementMap)
+        downloadName = fileName ? `sanitized_${fileName}` : 'sanitized_output.xlsx'
+      } else if (documentType === 'ods') {
+        resultBlob = await generateScrubbedOds(buffer, replacementMap)
+        downloadName = fileName ? `sanitized_${fileName}` : 'sanitized_output.ods'
+      } else if (documentType === 'docx') {
+        resultBlob = await generateScrubbedDocx(buffer, replacementMap)
+        downloadName = fileName ? `sanitized_${fileName}` : 'sanitized_output.docx'
+      } else if (documentType === 'odt') {
+        resultBlob = await generateScrubbedOdt(buffer, replacementMap)
+        downloadName = fileName ? `sanitized_${fileName}` : 'sanitized_output.odt'
+      } else if (documentType === 'pdf') {
+        resultBlob = await generateScrubbedPdf(buffer, replacementMap)
+        downloadName = fileName ? `sanitized_${fileName}` : 'sanitized_output.pdf'
+      } else {
+        return
+      }
+
+      const url = URL.createObjectURL(resultBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = downloadName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      triggerDonationModal()
+    } catch (err) {
+      console.error('Format preservation error:', err)
+      alert('Failed to generate original format. Downloading as plain text instead.')
+      handleDownload()
+    }
+  }
+
+  // Generate scrubbed Excel file with PII replaced in cells
+  const generateScrubbedExcel = async (buffer: Uint8Array, replacementMap: Map<string, string>): Promise<Blob> => {
+    const { init } = await import('excelize-wasm')
+    const excelize = await init('/excelize.wasm.gz')
+    const f = excelize.OpenReader(buffer)
+
+    if (f.error) {
+      throw new Error(f.error)
+    }
+
+    const sheetList = f.GetSheetList().list
+    for (const sheetName of sheetList) {
+      const { result: rows, error } = f.GetRows(sheetName)
+      if (error || !rows) continue
+
+      for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+        const row = rows[rowIdx]
+        for (let colIdx = 0; colIdx < row.length; colIdx++) {
+          let cellValue = row[colIdx]
+          if (!cellValue) continue
+
+          // Apply all replacements to this cell
+          let modified = false
+          for (const [original, replacement] of replacementMap) {
+            if (cellValue.includes(original)) {
+              cellValue = cellValue.split(original).join(replacement)
+              modified = true
+            }
+          }
+
+          if (modified) {
+            // Convert 0-indexed column to Excel column letter
+            const colLetter = String.fromCharCode(65 + colIdx)
+            const cellName = `${colLetter}${rowIdx + 1}`
+            f.SetCellStr(sheetName, cellName, cellValue)
+          }
+        }
+      }
+    }
+
+    // Write to buffer
+    const { buffer: outputBuffer, error: writeError } = f.WriteToBuffer()
+    if (writeError) {
+      throw new Error(writeError)
+    }
+
+    return new Blob([outputBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  }
+
+  // Generate scrubbed DOCX file with PII replaced in XML
+  const generateScrubbedDocx = async (buffer: Uint8Array, replacementMap: Map<string, string>): Promise<Blob> => {
+    await ensureWasm()
+    const { decompress_zip_file, compress_zip_replace } = await import('../wasm-core/wasm_core')
+
+    // Get the document.xml content
+    let documentXml = decompress_zip_file(buffer, 'word/document.xml')
+
+    // Apply replacements to the XML content
+    for (const [original, replacement] of replacementMap) {
+      // Escape special XML characters in the replacement
+      const escapedReplacement = replacement
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+
+      // Also escape in original for matching
+      const escapedOriginal = original
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+
+      documentXml = documentXml.split(escapedOriginal).join(escapedReplacement)
+    }
+
+    // Repackage the DOCX with modified XML
+    const outputBuffer = compress_zip_replace(buffer, 'word/document.xml', documentXml)
+
+    return new Blob([outputBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+  }
+
+  // Generate scrubbed ODT file with PII replaced in XML
+  const generateScrubbedOdt = async (buffer: Uint8Array, replacementMap: Map<string, string>): Promise<Blob> => {
+    await ensureWasm()
+    const { decompress_zip_file, compress_zip_replace } = await import('../wasm-core/wasm_core')
+
+    // Get the content.xml content
+    let contentXml = decompress_zip_file(buffer, 'content.xml')
+
+    // Apply replacements to the XML content
+    for (const [original, replacement] of replacementMap) {
+      // Escape special XML characters in the replacement
+      const escapedReplacement = replacement
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+
+      // Also escape in original for matching
+      const escapedOriginal = original
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+
+      contentXml = contentXml.split(escapedOriginal).join(escapedReplacement)
+    }
+
+    // Repackage the ODT with modified XML
+    const outputBuffer = compress_zip_replace(buffer, 'content.xml', contentXml)
+
+    return new Blob([outputBuffer], { type: 'application/vnd.oasis.opendocument.text' })
+  }
+
+  // Generate scrubbed ODS file with PII replaced in XML
+  const generateScrubbedOds = async (buffer: Uint8Array, replacementMap: Map<string, string>): Promise<Blob> => {
+    await ensureWasm()
+    const { decompress_zip_file, compress_zip_replace } = await import('../wasm-core/wasm_core')
+
+    // Get the content.xml content
+    let contentXml = decompress_zip_file(buffer, 'content.xml')
+
+    // Apply replacements to the XML content
+    for (const [original, replacement] of replacementMap) {
+      // Escape special XML characters in the replacement
+      const escapedReplacement = replacement
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+
+      // Also escape in original for matching
+      const escapedOriginal = original
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+
+      contentXml = contentXml.split(escapedOriginal).join(escapedReplacement)
+    }
+
+    // Repackage the ODS with modified XML
+    const outputBuffer = compress_zip_replace(buffer, 'content.xml', contentXml)
+
+    return new Blob([outputBuffer], { type: 'application/vnd.oasis.opendocument.spreadsheet' })
+  }
+
+  // Generate scrubbed PDF with redaction boxes over PII
+  const generateScrubbedPdf = async (buffer: Uint8Array, replacementMap: Map<string, string>): Promise<Blob> => {
+    // Configure mupdf WASM location before importing
+    ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
+      locateFile: (path: string) => `/${path}`
+    }
+    const mupdf = await import('mupdf')
+
+    const doc = new mupdf.PDFDocument(buffer)
+    const pageCount = doc.countPages()
+
+    // For each page, find PII text and add redaction annotations
+    for (let pageIdx = 0; pageIdx < pageCount; pageIdx++) {
+      const page = doc.loadPage(pageIdx)
+      const stext = page.toStructuredText('preserve-whitespace')
+
+      // Search for each original PII text
+      for (const [original] of replacementMap) {
+        const searchResults = stext.search(original)
+
+        // Add redaction annotation for each match
+        for (const quads of searchResults) {
+          const annot = page.createAnnotation('Redact')
+          annot.setQuadPoints(quads)
+          // Set redaction fill color to black
+          annot.setColor([0, 0, 0])
+        }
+      }
+
+      // Apply redactions on this page (with black boxes)
+      page.applyRedactions(true, mupdf.PDFPage.REDACT_IMAGE_PIXELS, mupdf.PDFPage.REDACT_LINE_ART_NONE, mupdf.PDFPage.REDACT_TEXT_REMOVE)
+    }
+
+    // Save the modified PDF
+    const outputBuffer = doc.saveToBuffer()
+    doc.destroy()
+
+    return new Blob([outputBuffer.asUint8Array()], { type: 'application/pdf' })
   }
 
   const handleScroll = useCallback((source: 'input' | 'output') => {
@@ -1072,9 +1569,12 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
     const file = e.dataTransfer.files[0]
     if (file) {
       try {
-        const { content, name } = await processCompressedFile(file)
+        const { content, name, docType } = await processCompressedFile(file)
         onInputChange(content)
         setFileName(name)
+        setDocumentFile(docType ? file : null)
+        setDocumentType(docType)
+        setPreviewPage(0)
       } catch {
         alert('Failed to read file. Make sure it\'s a valid text, zip, or gzip file.')
       }
@@ -1151,41 +1651,28 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
           />
         )}
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
-          <label className={`text-sm font-medium text-gray-700 dark:text-gray-300 ${titleBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
-            Original {fileName && <span className="text-gray-600 dark:text-gray-400" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
-            {useVirtualScrolling && inputLines.length > VIRTUAL_THRESHOLD && (
-              <span className="ml-2 text-xs text-gray-400">
-                ({(lineFilter !== 'all' ? filteredInputLines.length : inputLines.length).toLocaleString()} lines{lineFilter !== 'all' && ` of ${inputLines.length.toLocaleString()}`})
-              </span>
-            )}
+          <label
+            className={`text-sm font-medium text-gray-700 dark:text-gray-300 ${titleBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3 cursor-help`}
+            title={[
+              fileName ? `File: ${fileName}` : null,
+              `${inputLines.length.toLocaleString()} lines`,
+              lineFilter !== 'all' ? `Showing: ${filteredInputLines.length.toLocaleString()} ${lineFilter}` : null
+            ].filter(Boolean).join('\n')}
+          >
+            Original
           </label>
           <div className="flex gap-2 pr-1">
             {hasChanges && output && (
-              <div className="flex items-center gap-1 text-xs">
-                <button
-                  onClick={() => setLineFilter('all')}
-                  className={lineFilter === 'all' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}
-                  title={`All ${inputLines.length.toLocaleString()} lines (${changedLines.size.toLocaleString()} changed, ${(inputLines.length - changedLines.size).toLocaleString()} unchanged)`}
-                >
-                  All
-                </button>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <button
-                  onClick={() => setLineFilter('changed')}
-                  className={lineFilter === 'changed' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}
-                  title={`${changedLines.size.toLocaleString()} changed lines`}
-                >
-                  Changed
-                </button>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <button
-                  onClick={() => setLineFilter('unchanged')}
-                  className={lineFilter === 'unchanged' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}
-                  title={`${(inputLines.length - changedLines.size).toLocaleString()} unchanged lines`}
-                >
-                  Unchanged
-                </button>
-              </div>
+              <select
+                value={lineFilter}
+                onChange={(e) => setLineFilter(e.target.value as 'all' | 'changed' | 'unchanged')}
+                className="text-[10px] border dark:border-gray-600 rounded px-0.5 py-0 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 leading-tight"
+                title={`All: ${inputLines.length.toLocaleString()} | Changed: ${changedLines.size.toLocaleString()} | Unchanged: ${(inputLines.length - changedLines.size).toLocaleString()}`}
+              >
+                <option value="all">All</option>
+                <option value="changed">Chg ({changedLines.size})</option>
+                <option value="unchanged">Unchg</option>
+              </select>
             )}
             <label
               className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer"
@@ -1198,16 +1685,28 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
               <input
                 type="file"
                 onChange={handleFileUpload}
-                accept=".log,.txt,.json,.xml,.csv,.zip,.gz,.gzip,.pdf,.xlsx,.xls,.docx"
+                accept=".log,.txt,.json,.xml,.csv,.zip,.gz,.gzip,.pdf,.xlsx,.xls,.docx,.odt,.ods"
                 className="hidden"
               />
             </label>
+            {documentType && (
+              <button
+                onClick={() => setShowDocumentPreview(!showDocumentPreview)}
+                className={`text-xs ${showDocumentPreview ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'} hover:text-blue-700 dark:hover:text-blue-300`}
+                title={showDocumentPreview ? 'Hide document preview' : 'Show document preview'}
+              >
+                {showDocumentPreview ? 'Hide Preview' : 'Show Preview'}
+              </button>
+            )}
             {input && (
               <button
                 onClick={() => {
                   onInputChange('')
                   setFileName(null)
                   setSelectedLine(null)
+                  setDocumentFile(null)
+                  setDocumentType(null)
+                  setScrubbedPdfFile(null)
                 }}
                 className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 title="Clear the input text"
@@ -1218,6 +1717,33 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
           </div>
         </div>
         
+        {showDocumentPreview && documentType && documentFile && (
+          <div
+            ref={originalPreviewRef}
+            className="flex-shrink-0 border dark:border-gray-600 rounded-lg overflow-hidden mb-2 relative"
+            style={{ height: previewHeight }}
+          >
+            <DocumentPreview
+              file={documentFile}
+              fileType={documentType}
+              page={syncScrollProp ? previewPage : undefined}
+              onPageChange={syncScrollProp ? setPreviewPage : undefined}
+              scrollTop={syncScrollProp ? previewScrollTop : undefined}
+              scrollLeft={syncScrollProp ? previewScrollLeft : undefined}
+              onScroll={syncScrollProp ? (top, left) => { setPreviewScrollTop(top); setPreviewScrollLeft(left) } : undefined}
+              replacements={replacements.length > 0 ? replacements : analysisReplacements}
+            />
+            <div
+              className="absolute bottom-0 left-0 right-0 h-2 cursor-row-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                setIsResizingPreview(true)
+              }}
+              title="Drag to resize preview"
+            />
+          </div>
+        )}
+
         {!output && analysisReplacements.length === 0 ? (
           <div className="flex-1 min-h-0 relative">
             <textarea
@@ -1320,13 +1846,14 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
           title="Drag to resize"
         />
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
-          <label className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-600 dark:text-gray-400'} ${output ? outputPaneBg : placeholderBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
+          <label
+            className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-600 dark:text-gray-400'} ${output ? outputPaneBg : placeholderBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3 ${output ? 'cursor-help' : ''}`}
+            title={output ? [
+              `${outputLines.length.toLocaleString()} lines`,
+              lineFilter !== 'all' ? `Showing: ${filteredOutputLines.length.toLocaleString()} ${lineFilter}` : null
+            ].filter(Boolean).join('\n') : undefined}
+          >
             Scrubbed
-            {useVirtualScrolling && outputLines.length > VIRTUAL_THRESHOLD && output && (
-              <span className="ml-2 text-xs text-gray-400">
-                ({(lineFilter !== 'all' ? filteredOutputLines.length : outputLines.length).toLocaleString()} lines{lineFilter !== 'all' && ` of ${outputLines.length.toLocaleString()}`})
-              </span>
-            )}
           </label>
           <div className="flex gap-2 pr-1">
             {onClearAll && (input || output) && (
@@ -1338,9 +1865,18 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
                 Clear All
               </button>
             )}
+            {scrubbedPdfFile && (
+              <button
+                onClick={() => setShowScrubbedPreview(!showScrubbedPreview)}
+                className={`text-xs ${showScrubbedPreview ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'} hover:text-blue-700 dark:hover:text-blue-300`}
+                title={showScrubbedPreview ? 'Hide redacted PDF preview' : 'Show redacted PDF preview'}
+              >
+                {showScrubbedPreview ? 'Hide Preview' : 'Show Preview'}
+              </button>
+            )}
           {output && (
             <>
-              {onView && (
+              {onView && !documentType && (
                 <button
                   onClick={onView}
                   className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
@@ -1352,45 +1888,60 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
                   View
                 </button>
               )}
-              <button
-                onClick={handleCopy}
-                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Copy
-              </button>
-              <button
-                onClick={handleDownload}
-                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-                title="Download as plain text"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                txt
-              </button>
-              <button
-                onClick={handleDownloadZip}
-                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-                title="Download as compressed zip"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                zip
-              </button>
-              <button
-                onClick={handleDownloadGzip}
-                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-                title="Download as gzip compressed"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                gz
-              </button>
+              {documentType ? (
+                <button
+                  onClick={handleDownloadOriginalFormat}
+                  className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
+                  title={`Download as ${documentType.toUpperCase()} with PII ${documentType === 'pdf' ? 'redacted' : 'replaced'}`}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download {documentType.toUpperCase()}
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleCopy}
+                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                    title="Download as plain text"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    txt
+                  </button>
+                  <button
+                    onClick={handleDownloadZip}
+                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                    title="Download as compressed zip"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    zip
+                  </button>
+                  <button
+                    onClick={handleDownloadGzip}
+                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                    title="Download as gzip compressed"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    gz
+                  </button>
+                </>
+              )}
               <span className="text-gray-300 dark:text-gray-600">|</span>
               <button
                 onClick={() => setShowAIExplain(true)}
@@ -1406,7 +1957,33 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
           )}
           </div>
         </div>
-        
+
+        {showScrubbedPreview && scrubbedPdfFile && (
+          <div
+            ref={scrubbedPreviewRef}
+            className="flex-shrink-0 border dark:border-gray-600 rounded-lg overflow-hidden mb-2 relative"
+            style={{ height: previewHeight }}
+          >
+            <DocumentPreview
+              file={scrubbedPdfFile}
+              fileType="pdf"
+              page={syncScrollProp ? previewPage : undefined}
+              onPageChange={syncScrollProp ? setPreviewPage : undefined}
+              scrollTop={syncScrollProp ? previewScrollTop : undefined}
+              scrollLeft={syncScrollProp ? previewScrollLeft : undefined}
+              onScroll={syncScrollProp ? (top, left) => { setPreviewScrollTop(top); setPreviewScrollLeft(left) } : undefined}
+            />
+            <div
+              className="absolute bottom-0 left-0 right-0 h-2 cursor-row-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                setIsResizingPreview(true)
+              }}
+              title="Drag to resize preview"
+            />
+          </div>
+        )}
+
         {!output ? (
           <div className={`flex-1 min-h-0 p-4 font-mono text-sm border dark:border-gray-600 rounded-b-lg rounded-tr-lg ${placeholderBg} ${placeholderText} overflow-auto`}>
             Scrubbed output will appear here...
@@ -1488,7 +2065,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
         <Modal onClose={() => setShowAIExplain(false)} title="AI Explanation Prompt" maxWidth="max-w-3xl">
           <div className="space-y-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Copy this explanation and paste it into your AI assistant (ChatGPT, Claude, etc.) before pasting your scrubbed log. This helps the AI understand how your log was sanitized.
+              Copy this explanation and paste it into your AI assistant (ChatGPT, Claude, etc.) before sharing your scrubbed {documentType === 'pdf' ? 'PDF' : documentType === 'xlsx' || documentType === 'ods' ? 'spreadsheet' : documentType === 'docx' || documentType === 'odt' ? 'document' : 'log'}. This helps the AI understand how your {documentType ? 'file' : 'log'} was sanitized.
             </p>
 
             <div className="relative">
@@ -1539,9 +2116,15 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
 
             <div className="pt-3 border-t dark:border-gray-700">
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                <strong>Tip:</strong> Paste this explanation first, then paste your scrubbed log. The AI will be able to reference replacements like{' '}
+                <strong>Tip:</strong> Paste this explanation first, then share your scrubbed {documentType ? 'document' : 'log'}. The AI will be able to reference replacements like{' '}
                 {(() => {
-                  // Get the first detected type and show its actual replacement format
+                  // Try to get a real example from the session first
+                  const activeReps = replacements.length > 0 ? replacements : analysisReplacements
+                  if (activeReps.length > 0) {
+                    const example = activeReps[0].replacement
+                    return <code>{example.length > 25 ? example.slice(0, 22) + '...' : example}</code>
+                  }
+                  // Fallback to synthetic example
                   const firstDetected = Object.entries(stats).find(([, count]) => count > 0)
                   if (!firstDetected) return <code>{labelFormat.prefix}EMAIL-1{labelFormat.suffix}</code>
                   const [type] = firstDetected
@@ -1565,7 +2148,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
                   }
                   return <code>{example}</code>
                 })()}{' '}
-                when discussing specific values in your log.
+                when discussing specific values.
               </p>
             </div>
           </div>

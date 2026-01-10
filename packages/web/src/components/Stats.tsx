@@ -600,7 +600,7 @@ ${entries.map(([type]) => {
                         let cumulativePercent = 0
                         return entries
                           .sort((a, b) => b[1] - a[1])
-                          .map(([type, count], i) => {
+                          .map(([type, count]) => {
                             const percentage = total > 0 ? (count / total) * 100 : 0
                             const startAngle = cumulativePercent * 3.6 // 360 / 100
                             cumulativePercent += percentage

@@ -947,7 +947,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
     // Handle PDF files via @hyzyla/pdfium
     if (ext.endsWith('.pdf')) {
       const { PDFiumLibrary } = await import('@hyzyla/pdfium')
-      const library = await PDFiumLibrary.init()
+      const library = await PDFiumLibrary.init({ wasmUrl: '/pdfium.wasm' })
 
       const buffer = new Uint8Array(await file.arrayBuffer())
       const document = await library.loadDocument(buffer)

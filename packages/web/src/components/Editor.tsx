@@ -1027,7 +1027,7 @@ The log structure, timestamps, error messages, and non-sensitive data remain int
 
   return (
     <div ref={editorContainerRef} className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
-      <div className="flex flex-col min-h-0 relative w-full md:w-0" style={{ flex: `0 0 ${splitRatio}%` }}>
+      <div className="flex flex-col min-h-0 min-w-0 relative w-full md:w-0" style={{ flex: `0 0 ${splitRatio}%` }}>
         {/* Resize handle on left edge of Original panel (controls Rules panel width) */}
         {showLeftHandle && onLeftResize && (
           <div
@@ -1197,7 +1197,7 @@ The log structure, timestamps, error messages, and non-sensitive data remain int
         />
       </div>
 
-      <div className="flex flex-col min-h-0 relative flex-1">
+      <div className="flex flex-col min-h-0 min-w-0 relative flex-1">
         {/* Resize handle on left edge of Scrubbed panel */}
         <div
           className="hidden md:block absolute top-0 left-0 w-2 h-full cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors z-10"

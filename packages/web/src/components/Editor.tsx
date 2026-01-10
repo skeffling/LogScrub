@@ -587,7 +587,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const lineNumText = terminalStyle ? 'text-[#858585]' : 'text-gray-500 dark:text-gray-500'
   const outputPaneBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-gray-50 dark:bg-gray-900'
   const placeholderBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-gray-50 dark:bg-gray-900'
-  const placeholderText = terminalStyle ? 'text-[#858585]' : 'text-gray-400 dark:text-gray-500'
+  const placeholderText = terminalStyle ? 'text-[#858585]' : 'text-gray-500 dark:text-gray-400'
 
   const inputContainerRef = useRef<HTMLDivElement | null>(null)
   const outputContainerRef = useRef<HTMLDivElement | null>(null)
@@ -1133,16 +1133,17 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
               onChange={(e) => onInputChange(e.target.value)}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
+              aria-label="Original log content - paste or type your log text here"
               className={`w-full h-full p-4 font-mono text-sm border dark:border-gray-600 rounded-b-lg rounded-tr-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${paneBg} ${paneText}`}
             />
             {!input && (
-              <div className={`absolute inset-0 p-4 pointer-events-none ${terminalStyle ? 'text-[#858585]' : 'text-gray-400 dark:text-gray-500'}`}>
+              <div className={`absolute inset-0 p-4 pointer-events-none ${terminalStyle ? 'text-[#858585]' : 'text-gray-500 dark:text-gray-400'}`}>
                 <div className="font-mono text-sm space-y-2">
                   <p className="font-semibold">Getting Started:</p>
-                  <p>1. Paste logs here, or use <span className="text-blue-500 dark:text-blue-400">Upload</span>/drag & drop</p>
-                  <p>2. Click <span className="text-purple-500 dark:text-purple-400">Analyze</span> to detect PII and get rule suggestions</p>
+                  <p>1. Paste logs here, or use <span className="text-blue-600 dark:text-blue-400">Upload</span>/drag & drop</p>
+                  <p>2. Click <span className="text-purple-600 dark:text-purple-400">Analyze</span> to detect PII and get rule suggestions</p>
                   <p>3. Enable/disable rules in Detection Rules panel</p>
-                  <p>4. Click <span className="text-blue-500 dark:text-blue-400">Scrub</span> to apply replacements</p>
+                  <p>4. Click <span className="text-blue-600 dark:text-blue-400">Scrub</span> to apply replacements</p>
                   <p>5. Use diff view, fullscreen, and other tools to review, then Copy or Download</p>
                   <p className="text-yellow-600 dark:text-yellow-500 mt-2">⚠ Always double-check for PII before sharing the file!</p>
                 </div>
@@ -1227,7 +1228,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
           title="Drag to resize"
         />
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
-          <label className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'} ${output ? outputPaneBg : placeholderBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
+          <label className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400'} ${output ? outputPaneBg : placeholderBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
             Scrubbed
             {useVirtualScrolling && outputLines.length > VIRTUAL_THRESHOLD && output && (
               <span className="ml-2 text-xs text-gray-400">

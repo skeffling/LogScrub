@@ -113,7 +113,8 @@ function App() {
     analyzeText, isAnalyzing, analysisReplacements, analysisCompleted, clearAnalysis, analysisLogs,
     replacements, syntaxHighlight, setSyntaxHighlight,
     timeShift, setTimeShift,
-    setStats, setMatches, setReplacements
+    setStats, setMatches, setReplacements,
+    documentType
   } = useAppStore()
   const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
   const [rulePanelWidth, setRulePanelWidth] = useState(() => loadUiPreference('rulePanelWidth', 320))
@@ -491,44 +492,48 @@ function App() {
                 <span className="text-gray-300 dark:text-gray-600">|</span>
               </>
             )}
-            {fullscreenGoToLine ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  const line = parseInt(fullscreenGoToLineValue, 10)
-                  if (!isNaN(line) && line > 0 && fullscreenScrollRef.current) {
-                    fullscreenScrollRef.current.scrollTop = (line - 1) * 20
-                  }
-                  setFullscreenGoToLine(false)
-                  setFullscreenGoToLineValue('')
-                }}
-                className="flex items-center text-sm text-gray-600 dark:text-gray-400"
-              >
-                <span>Line</span>
-                <input
-                  type="number"
-                  min="1"
-                  max={fullscreenLines.length}
-                  value={fullscreenGoToLineValue}
-                  onChange={(e) => setFullscreenGoToLineValue(e.target.value)}
-                  placeholder="#"
-                  autoFocus
-                  className="w-12 px-1 mx-1 text-sm bg-transparent border-b border-gray-400 dark:border-gray-500 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-700 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  onBlur={() => { if (!fullscreenGoToLineValue) setFullscreenGoToLine(false) }}
-                  onKeyDown={(e) => { if (e.key === 'Escape') { setFullscreenGoToLine(false); setFullscreenGoToLineValue('') } }}
-                />
-                <button type="submit" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">↵</button>
-              </form>
-            ) : (
-              <button
-                onClick={() => setFullscreenGoToLine(true)}
-                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                title="Go to line (⌘G)"
-              >
-                Go to Line
-              </button>
+            {!documentType && (
+              <>
+                {fullscreenGoToLine ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      const line = parseInt(fullscreenGoToLineValue, 10)
+                      if (!isNaN(line) && line > 0 && fullscreenScrollRef.current) {
+                        fullscreenScrollRef.current.scrollTop = (line - 1) * 20
+                      }
+                      setFullscreenGoToLine(false)
+                      setFullscreenGoToLineValue('')
+                    }}
+                    className="flex items-center text-sm text-gray-600 dark:text-gray-400"
+                  >
+                    <span>Line</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max={fullscreenLines.length}
+                      value={fullscreenGoToLineValue}
+                      onChange={(e) => setFullscreenGoToLineValue(e.target.value)}
+                      placeholder="#"
+                      autoFocus
+                      className="w-12 px-1 mx-1 text-sm bg-transparent border-b border-gray-400 dark:border-gray-500 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-700 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      onBlur={() => { if (!fullscreenGoToLineValue) setFullscreenGoToLine(false) }}
+                      onKeyDown={(e) => { if (e.key === 'Escape') { setFullscreenGoToLine(false); setFullscreenGoToLineValue('') } }}
+                    />
+                    <button type="submit" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">↵</button>
+                  </form>
+                ) : (
+                  <button
+                    onClick={() => setFullscreenGoToLine(true)}
+                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    title="Go to line (⌘G)"
+                  >
+                    Go to Line
+                  </button>
+                )}
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+              </>
             )}
-            <span className="text-gray-300 dark:text-gray-600">|</span>
             <button
               onClick={handleDownload}
               className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border dark:border-gray-600 rounded"
@@ -689,55 +694,59 @@ function App() {
                   <span className={`w-2 h-2 rounded-full ${!input.trim() ? 'bg-gray-300 dark:bg-gray-600' : syntaxHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
                   Syntax
                 </button>
-                <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
-                {showGoToLine ? (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      const line = parseInt(goToLineValue, 10)
-                      if (!isNaN(line) && line > 0 && editorRef.current) {
-                        editorRef.current.scrollToLine(line - 1)
-                      }
-                      setShowGoToLine(false)
-                      setGoToLineValue('')
-                    }}
-                    className="flex items-center text-sm text-gray-600 dark:text-gray-400"
-                  >
-                    <span>Line</span>
-                    <input
-                      type="number"
-                      min="1"
-                      value={goToLineValue}
-                      onChange={(e) => setGoToLineValue(e.target.value)}
-                      placeholder="#"
-                      autoFocus
-                      className="w-12 px-1 mx-1 text-sm bg-transparent border-b border-gray-400 dark:border-gray-500 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-700 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      onBlur={() => {
-                        if (!goToLineValue) setShowGoToLine(false)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
+                {!documentType && (
+                  <>
+                    <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
+                    {showGoToLine ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          const line = parseInt(goToLineValue, 10)
+                          if (!isNaN(line) && line > 0 && editorRef.current) {
+                            editorRef.current.scrollToLine(line - 1)
+                          }
                           setShowGoToLine(false)
                           setGoToLineValue('')
-                        }
-                      }}
-                    />
-                    <button type="submit" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
-                      ↵
-                    </button>
-                  </form>
-                ) : (
-                  <button
-                    onClick={() => input.trim() && setShowGoToLine(true)}
-                    className={`text-sm hidden md:block ${
-                      !input.trim()
-                        ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                    }`}
-                    title={!input.trim() ? 'Load a log file first' : 'Go to line (⌘G)'}
-                  >
-                    Go to Line
-                  </button>
+                        }}
+                        className="flex items-center text-sm text-gray-600 dark:text-gray-400"
+                      >
+                        <span>Line</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={goToLineValue}
+                          onChange={(e) => setGoToLineValue(e.target.value)}
+                          placeholder="#"
+                          autoFocus
+                          className="w-12 px-1 mx-1 text-sm bg-transparent border-b border-gray-400 dark:border-gray-500 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-700 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          onBlur={() => {
+                            if (!goToLineValue) setShowGoToLine(false)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                              setShowGoToLine(false)
+                              setGoToLineValue('')
+                            }
+                          }}
+                        />
+                        <button type="submit" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                          ↵
+                        </button>
+                      </form>
+                    ) : (
+                      <button
+                        onClick={() => input.trim() && setShowGoToLine(true)}
+                        className={`text-sm hidden md:block ${
+                          !input.trim()
+                            ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}
+                        title={!input.trim() ? 'Load a log file first' : 'Go to line (⌘G)'}
+                      >
+                        Go to Line
+                      </button>
+                    )}
+                  </>
                 )}
                 <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
                 <button

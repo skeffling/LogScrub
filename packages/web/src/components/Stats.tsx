@@ -446,7 +446,7 @@ ${entries.map(([type]) => {
 
   if (total === 0) {
     return (
-      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+      <div className="text-center py-8 text-gray-600 dark:text-gray-400">
         <p>No PII detected yet.</p>
         <p className="text-sm mt-1">Run Analyze or Scrub to see statistics.</p>
       </div>
@@ -563,7 +563,7 @@ ${entries.map(([type]) => {
                             <span className="text-gray-700 dark:text-gray-300 truncate flex-1 text-left group-hover:text-blue-600 dark:group-hover:text-blue-400">
                               {TYPE_LABELS[type] || type}
                             </span>
-                            <span className="text-gray-500 dark:text-gray-400 tabular-nums">
+                            <span className="text-gray-600 dark:text-gray-400 tabular-nums">
                               {count} ({percentage.toFixed(1)}%)
                             </span>
                           </div>
@@ -684,13 +684,13 @@ ${entries.map(([type]) => {
                         <span className="flex-1 text-left text-sm font-medium text-gray-900 dark:text-white">
                           {category}
                         </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
                           {types.length} type{types.length !== 1 ? 's' : ''}
                         </span>
                         <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
                           {categoryTotal}
                         </span>
-                        <span className="text-xs text-gray-400 dark:text-gray-500 w-12 text-right">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 w-12 text-right">
                           {percentage.toFixed(1)}%
                         </span>
                       </button>
@@ -808,7 +808,7 @@ ${entries.map(([type]) => {
             <div className="max-h-72 overflow-y-auto">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800">
-                  <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
+                  <tr className="text-left text-xs text-gray-600 dark:text-gray-400">
                     <th className="pb-2 pr-2">Replacement</th>
                     <th className="pb-2 pr-2">Original</th>
                     <th className="pb-2 pr-2 text-center">#</th>
@@ -828,10 +828,10 @@ ${entries.map(([type]) => {
                           {entry.original.length > 25 ? entry.original.slice(0, 25) + '...' : entry.original}
                         </code>
                       </td>
-                      <td className="py-1.5 pr-2 text-center text-gray-500 dark:text-gray-400">
+                      <td className="py-1.5 pr-2 text-center text-gray-600 dark:text-gray-400">
                         {entry.count}
                       </td>
-                      <td className="py-1.5 text-xs text-gray-400 dark:text-gray-500">
+                      <td className="py-1.5 text-xs text-gray-600 dark:text-gray-400">
                         {entry.lines.length > 0 ? (
                           entry.lines.length > 3
                             ? `${entry.lines.slice(0, 3).join(', ')}...`
@@ -843,7 +843,7 @@ ${entries.map(([type]) => {
                 </tbody>
               </table>
               {filteredMappingTable.length === 0 && (
-                <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                <div className="text-center py-4 text-gray-600 dark:text-gray-400 text-sm">
                   {mappingSearch ? 'No matches found' : 'No mappings available'}
                 </div>
               )}
@@ -881,7 +881,7 @@ ${entries.map(([type]) => {
               >
                 <div className="text-2xl mb-1">📄</div>
                 <div className="text-sm font-medium text-gray-900 dark:text-white">Text</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">.txt</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">.txt</div>
               </button>
               <button
                 onClick={() => { generateAuditReport('json'); setShowAuditReport(false) }}
@@ -889,7 +889,7 @@ ${entries.map(([type]) => {
               >
                 <div className="text-2xl mb-1">📋</div>
                 <div className="text-sm font-medium text-gray-900 dark:text-white">JSON</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">.json</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">.json</div>
               </button>
               <button
                 onClick={() => { generateAuditReport('html'); setShowAuditReport(false) }}
@@ -897,11 +897,11 @@ ${entries.map(([type]) => {
               >
                 <div className="text-2xl mb-1">🌐</div>
                 <div className="text-sm font-medium text-gray-900 dark:text-white">HTML</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">.html</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">.html</div>
               </button>
             </div>
             
-            <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-2 rounded">
+            <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-2 rounded">
               Report includes: {total} detections across {entries.length} types
             </div>
           </div>
@@ -922,7 +922,7 @@ ${entries.map(([type]) => {
               >
                 <div className="text-2xl mb-1">📋</div>
                 <div className="text-sm font-medium text-gray-900 dark:text-white">JSON</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">For programmatic use</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">For programmatic use</div>
               </button>
               <button
                 onClick={() => { generateMappingExport('csv'); setShowMappingExport(false) }}
@@ -930,11 +930,11 @@ ${entries.map(([type]) => {
               >
                 <div className="text-2xl mb-1">📊</div>
                 <div className="text-sm font-medium text-gray-900 dark:text-white">CSV</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">For spreadsheets</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">For spreadsheets</div>
               </button>
             </div>
 
-            <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-2 rounded">
+            <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-2 rounded">
               Includes {mappingTable.length} unique replacements with original values and line numbers
             </div>
           </div>

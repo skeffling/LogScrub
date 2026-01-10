@@ -68,7 +68,7 @@ function FullscreenVirtualList({ lines, lineNumbers, changedLines, highlightLine
                 <div
                   key={virtualRow.key}
                   className={`px-3 font-mono text-sm h-5 flex items-center justify-end ${
-                    hasChange ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-500'
+                    hasChange ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'
                   }`}
                 >
                   {lineNum + 1}
@@ -448,7 +448,7 @@ function App() {
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Scrubbed Output {fileName && <span className="text-gray-500 dark:text-gray-400 text-sm" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
+            Scrubbed Output {fileName && <span className="text-gray-600 dark:text-gray-400 text-sm" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
             <span className="ml-2 text-xs text-gray-400">
               ({filteredFullscreenLines.length.toLocaleString()} lines{fullscreenLineFilter !== 'all' && ` of ${fullscreenLines.length.toLocaleString()}`})
             </span>
@@ -456,7 +456,7 @@ function App() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => setFullscreenHighlight(!fullscreenHighlight)}
-              className={`text-sm flex items-center gap-1 ${fullscreenHighlight ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}
+              className={`text-sm flex items-center gap-1 ${fullscreenHighlight ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
               title="Toggle highlighting of replaced values"
             >
               <span className={`w-2 h-2 rounded-full ${fullscreenHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
@@ -467,7 +467,7 @@ function App() {
               <>
                 <button
                   onClick={() => setFullscreenLineFilter('all')}
-                  className={`text-sm ${fullscreenLineFilter === 'all' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  className={`text-sm ${fullscreenLineFilter === 'all' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
                   title={`All ${fullscreenLines.length.toLocaleString()} lines (${changedLinesSet.size.toLocaleString()} changed, ${(fullscreenLines.length - changedLinesSet.size).toLocaleString()} unchanged)`}
                 >
                   All
@@ -475,7 +475,7 @@ function App() {
                 <span className="text-gray-300 dark:text-gray-600">|</span>
                 <button
                   onClick={() => setFullscreenLineFilter('changed')}
-                  className={`text-sm ${fullscreenLineFilter === 'changed' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  className={`text-sm ${fullscreenLineFilter === 'changed' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
                   title={`${changedLinesSet.size.toLocaleString()} changed lines`}
                 >
                   Changed
@@ -483,7 +483,7 @@ function App() {
                 <span className="text-gray-300 dark:text-gray-600">|</span>
                 <button
                   onClick={() => setFullscreenLineFilter('unchanged')}
-                  className={`text-sm ${fullscreenLineFilter === 'unchanged' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  className={`text-sm ${fullscreenLineFilter === 'unchanged' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
                   title={`${(fullscreenLines.length - changedLinesSet.size).toLocaleString()} unchanged lines`}
                 >
                   Unchanged
@@ -502,7 +502,7 @@ function App() {
                   setFullscreenGoToLine(false)
                   setFullscreenGoToLineValue('')
                 }}
-                className="flex items-center text-sm text-gray-500 dark:text-gray-400"
+                className="flex items-center text-sm text-gray-600 dark:text-gray-400"
               >
                 <span>Line</span>
                 <input
@@ -522,7 +522,7 @@ function App() {
             ) : (
               <button
                 onClick={() => setFullscreenGoToLine(true)}
-                className="text-sm text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                 title="Go to line (⌘G)"
               >
                 Go to Line
@@ -565,7 +565,7 @@ function App() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              <span className="text-gray-500 dark:text-gray-400">Loading {fullscreenLines.length.toLocaleString()} lines...</span>
+              <span className="text-gray-600 dark:text-gray-400">Loading {fullscreenLines.length.toLocaleString()} lines...</span>
             </div>
           </div>
         ) : (
@@ -591,7 +591,7 @@ function App() {
         {(isProcessing || isAnalyzing) && processingProgress > 0 && (
           <div className="mb-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-500 dark:text-gray-400">{isAnalyzing ? 'Analyzing...' : 'Processing...'}</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">{isAnalyzing ? 'Analyzing...' : 'Processing...'}</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -604,7 +604,7 @@ function App() {
                   </svg>
                   {showAnalysisLogs ? 'Hide' : 'Info'}
                 </button>
-                <span className="text-xs text-gray-500 dark:text-gray-400">{processingProgress}%</span>
+                <span className="text-xs text-gray-600 dark:text-gray-400">{processingProgress}%</span>
               </div>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
@@ -655,7 +655,7 @@ function App() {
                 </button>
                 <button
                   onClick={() => setConstrainWidth(!constrainWidth)}
-                  className="text-sm text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hidden xl:block"
+                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hidden xl:block"
                   title={constrainWidth ? 'Use full width' : 'Constrain width'}
                 >
                   {constrainWidth ? '⬌ Expand' : '⬄ Compact'}
@@ -668,7 +668,7 @@ function App() {
                       ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                       : showDiffHighlight
                         ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500 dark:text-gray-500'
+                        : 'text-gray-600 dark:text-gray-400'
                   }`}
                   title={!input.trim() ? 'Load a log file first' : 'Toggle diff highlighting'}
                 >
@@ -682,7 +682,7 @@ function App() {
                       ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                       : syntaxHighlight
                         ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500 dark:text-gray-500'
+                        : 'text-gray-600 dark:text-gray-400'
                   }`}
                   title={!input.trim() ? 'Load a log file first' : 'Toggle syntax highlighting (JSON, XML, SQL)'}
                 >
@@ -701,7 +701,7 @@ function App() {
                       setShowGoToLine(false)
                       setGoToLineValue('')
                     }}
-                    className="flex items-center text-sm text-gray-500 dark:text-gray-400"
+                    className="flex items-center text-sm text-gray-600 dark:text-gray-400"
                   >
                     <span>Line</span>
                     <input
@@ -732,7 +732,7 @@ function App() {
                     className={`text-sm hidden md:block ${
                       !input.trim()
                         ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                        : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}
                     title={!input.trim() ? 'Load a log file first' : 'Go to line (⌘G)'}
                   >
@@ -747,7 +747,7 @@ function App() {
                       ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                       : syncScroll
                         ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
                   title={!input.trim() ? 'Load a log file first' : lineFilter !== 'all' ? 'Disabled while filtering lines' : 'Sync scrolling between original and sanitized panes'}
                 >
@@ -760,7 +760,7 @@ function App() {
                   className={`text-sm hidden md:flex items-center gap-1 ${
                     !input.trim()
                       ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                      : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
                   title={!input.trim() ? 'Load a log file first' : 'View detection statistics and download audit reports'}
                 >
@@ -833,7 +833,7 @@ function App() {
                                 onChange={(e) => setTimeShift({ enabled: e.target.checked })}
                                 className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
                               />
-                              <span className="text-xs text-gray-500 dark:text-gray-400">Enable</span>
+                              <span className="text-xs text-gray-600 dark:text-gray-400">Enable</span>
                             </label>
                           </div>
 

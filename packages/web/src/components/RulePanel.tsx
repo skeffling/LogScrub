@@ -202,6 +202,7 @@ const RuleRow = memo(function RuleRow({
         value={strategy}
         onChange={(e) => onStrategyChange(e.target.value as ReplacementStrategy)}
         disabled={!enabled}
+        aria-label="Replacement strategy"
         className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
       >
         {STRATEGY_OPTIONS.map((opt) => (
@@ -340,7 +341,7 @@ function SortableCategoryItem({
               ▶
             </span>
             {id}
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-gray-600 dark:text-gray-400">
               ({enabledCount}/{totalCount})
             </span>
           </button>
@@ -356,7 +357,7 @@ function SortableCategoryItem({
           <span className="text-gray-300 dark:text-gray-600">|</span>
           <button
             onClick={onDisableAll}
-            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             title={`Disable all rules in ${id}`}
           >
             None
@@ -734,13 +735,14 @@ export function RulePanel() {
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="Search rules... (e.g. ip4, phone)"
+        aria-label="Search detection rules"
         className="w-full px-3 py-1.5 text-sm border dark:border-gray-600 rounded-md mb-3 bg-white dark:bg-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-shrink-0"
       />
       
       <div className="flex-1 min-h-0 overflow-y-auto">
       
       <div className="flex gap-1 mb-3">
-        <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">Set all:</span>
+        <span className="text-xs text-gray-600 dark:text-gray-400 mr-1">Set all:</span>
         {STRATEGY_OPTIONS.map((opt) => (
           opt.value === 'label' ? (
             <div key={opt.value} className="relative flex">
@@ -820,6 +822,7 @@ export function RulePanel() {
           type="file"
           accept=".json"
           onChange={handleImport}
+          aria-label="Import preset file"
           className="hidden"
         />
       </div>
@@ -886,7 +889,7 @@ export function RulePanel() {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-gray-400 dark:text-gray-500">No saved presets yet</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">No saved presets yet</p>
             )}
 
             <div className="flex gap-1 mt-2 pt-2 border-t dark:border-gray-700">
@@ -906,7 +909,7 @@ export function RulePanel() {
               </button>
               <button
                 onClick={resetToDefaults}
-                className="text-xs px-2 py-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                className="text-xs px-2 py-1 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                 title="Reset all rules to their default enabled/disabled state and strategies"
               >
                 Reset
@@ -962,6 +965,7 @@ export function RulePanel() {
                     value={rule.strategy}
                     onChange={(e) => setCustomRuleStrategy(rule.id, e.target.value as ReplacementStrategy)}
                     disabled={!rule.enabled}
+                    aria-label="Replacement strategy"
                     className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
                   >
                     {STRATEGY_OPTIONS.map((opt) => (
@@ -1023,6 +1027,7 @@ export function RulePanel() {
                     value={pattern.strategy}
                     onChange={(e) => setPlainTextPatternStrategy(pattern.id, e.target.value as ReplacementStrategy)}
                     disabled={!pattern.enabled}
+                    aria-label="Replacement strategy"
                     className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
                   >
                     {STRATEGY_OPTIONS.filter(opt => opt.value !== 'fake' && opt.value !== 'template').map((opt) => (
@@ -1125,7 +1130,7 @@ export function RulePanel() {
                   <span className="text-gray-400 px-0.5">⋮⋮</span>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     ▶ {activeCategory}
-                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                    <span className="text-xs text-gray-600 dark:text-gray-400 ml-1">
                       ({filteredCategories[activeCategory].filter(id => rules[id]?.enabled).length}/{filteredCategories[activeCategory].length})
                     </span>
                   </span>
@@ -1148,7 +1153,7 @@ export function RulePanel() {
                     )
                   })}
                   {filteredCategories[activeCategory].length > 5 && (
-                    <div className="text-xs text-gray-400 dark:text-gray-500 ml-5">
+                    <div className="text-xs text-gray-600 dark:text-gray-400 ml-5">
                       +{filteredCategories[activeCategory].length - 5} more...
                     </div>
                   )}
@@ -1159,7 +1164,7 @@ export function RulePanel() {
         </DndContext>
 
         {Object.keys(filteredCategories).length === 0 && filteredCustomRules.length === 0 && searchQuery && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
             No rules match "{searchQuery}"
           </p>
         )}
@@ -1178,7 +1183,7 @@ export function RulePanel() {
           />
           <span className="text-sm text-gray-700 dark:text-gray-300">Consistency Mode</span>
         </label>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
           Same input → same replacement
         </p>
       </div>
@@ -1222,7 +1227,7 @@ export function RulePanel() {
                           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             {viewingPattern.label}
                           </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
                             {currentRuleMatches ? `${currentRuleMatches.matches.length} match${currentRuleMatches.matches.length > 1 ? 'es' : ''}` : 'No matches'}
                           </span>
                         </div>
@@ -1239,7 +1244,7 @@ export function RulePanel() {
 
                       {otherMatches.length > 0 && (
                         <div className="border-t dark:border-gray-700 pt-3">
-                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
                             Other rules that also match:
                           </p>
                           <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -1248,7 +1253,7 @@ export function RulePanel() {
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="w-2 h-2 rounded-full bg-yellow-500" />
                                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{result.ruleLabel}</span>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">
                                     {result.matches.length} match{result.matches.length > 1 ? 'es' : ''}
                                   </span>
                                 </div>
@@ -1273,7 +1278,7 @@ export function RulePanel() {
               </div>
             )}
 
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               Built-in patterns cannot be edited. Create a custom rule to use your own regex.
             </p>
           </div>
@@ -1349,7 +1354,7 @@ export function RulePanel() {
                 rows={3}
                 className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                 Use JavaScript regex syntax. The pattern will be applied with global and case-insensitive flags.
               </p>
             </div>
@@ -1398,7 +1403,7 @@ export function RulePanel() {
                 placeholder="e.g. server.internal.example.com"
                 className="w-full px-3 py-2 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                 Exact text to find and replace. Case-insensitive matching.
               </p>
             </div>
@@ -1562,7 +1567,7 @@ export function RulePanel() {
                 <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{TYPE}'}</code> - TYPE (uppercase)</div>
                 <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{len}'}</code> - Original length</div>
               </div>
-              <p className="text-gray-500 dark:text-gray-500 mt-2">
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
                 Example: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">[REDACTED-{'{TYPE}'}-{'{n}'}]</code> → [REDACTED-EMAIL-1]
               </p>
             </div>

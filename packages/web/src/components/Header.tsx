@@ -26,7 +26,7 @@ export function Header({ onAboutClick }: HeaderProps) {
             About
           </button>
           <span
-            className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline cursor-help"
+            className="text-sm text-gray-600 dark:text-gray-400 hidden sm:inline cursor-help"
             title="Your data never leaves your browser."
           >
             100% client-side

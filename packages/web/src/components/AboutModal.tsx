@@ -14,7 +14,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">About LogScrub</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               v{__APP_VERSION__} · <a href="changelog.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Changelog</a>
             </p>
           </div>
@@ -214,7 +214,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
               />
               <div>
                 <span className="text-sm font-medium text-gray-900 dark:text-white">Terminal Style</span>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   Dark grey background with light text for Original and Scrubbed panes
                 </p>
               </div>
@@ -246,7 +246,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
         </div>
 
         <div className="pt-4 border-t dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-600 dark:text-gray-400">
             Built with React, TypeScript, Rust/WebAssembly, TanStack Virtual, Tailwind CSS, and Zustand. Press ESC to close.
           </p>
         </div>

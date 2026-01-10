@@ -43,9 +43,9 @@ export function FeatureBanner() {
       </button>
 
       <div className="pr-8">
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
           Free Online Log Scrubber &amp; PII Redaction Tool
-        </h1>
+        </h2>
 
         <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
           Securely remove sensitive data from logs, text files, and documents.
@@ -98,9 +98,9 @@ export function FeatureBanner() {
         </div>
 
         <div className="mt-4 pt-3 border-t border-blue-200/50 dark:border-gray-700/50">
-          <h2 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
+          <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
             Why sanitize your logs?
-          </h2>
+          </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
             <strong>Share logs safely with AI assistants</strong> like ChatGPT, Claude, or Gemini for debugging help without exposing customer data or API keys.
             Perfect for <strong>posting to GitHub issues</strong>, Stack Overflow, pastebins, or support tickets without leaking sensitive information.

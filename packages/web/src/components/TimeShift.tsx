@@ -48,13 +48,13 @@ export function TimeShift() {
             onChange={(e) => setTimeShift({ enabled: e.target.checked })}
             className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
           />
-          <span className="text-xs text-gray-500 dark:text-gray-400">Enable</span>
+          <span className="text-xs text-gray-600 dark:text-gray-400">Enable</span>
         </label>
       </div>
 
       {expanded && (
         <div className="mt-4 space-y-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-600 dark:text-gray-400">
             Shift timestamps in your logs to anonymize temporal data while preserving relative timing.
           </p>
 
@@ -108,7 +108,7 @@ export function TimeShift() {
                   placeholder="Min"
                 />
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 Use negative values to shift backwards. Relative timing between events is preserved.
               </p>
             </div>
@@ -136,7 +136,7 @@ export function TimeShift() {
                   className="w-full px-2 py-1.5 text-sm border dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white"
                 />
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 The first timestamp will become this date/time. All other timestamps shift accordingly.
               </p>
             </div>
@@ -168,7 +168,7 @@ export function TimeShift() {
                 All Timestamps
               </button>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               {timeShift.lineOnly 
                 ? 'Only timestamps at line start are shifted. Use date/time rules to scrub dates in content.'
                 : 'All timestamps are shifted, including dates within log messages.'}

@@ -17,7 +17,7 @@ export function FullscreenViewer({ title, content, fileName, onClose, onDownload
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-50 dark:bg-gray-900">
       <div className="flex items-center justify-between p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {title} {fileName && <span className="text-gray-500 dark:text-gray-400 text-sm" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
+          {title} {fileName && <span className="text-gray-600 dark:text-gray-400 text-sm" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
         </h2>
         <div className="flex gap-2">
           <button
@@ -44,7 +44,7 @@ export function FullscreenViewer({ title, content, fileName, onClose, onDownload
       </div>
       <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
         <div className="flex min-w-fit">
-          <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-950 text-gray-500 dark:text-gray-500 text-right select-none border-r dark:border-gray-700">
+          <div className="flex-shrink-0 sticky left-0 bg-gray-100 dark:bg-gray-950 text-gray-600 dark:text-gray-400 text-right select-none border-r dark:border-gray-700">
             {lines.map((_, i) => (
               <div key={i} className="px-3 font-mono text-sm leading-6">
                 {i + 1}

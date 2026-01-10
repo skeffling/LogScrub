@@ -456,7 +456,7 @@ function VirtualizedList({
   showDiff, type, scrollRef, onScroll, className, changedLines,
   originalLineNumbers, replacementLookup,
   lineNumBg = 'bg-gray-100 dark:bg-gray-900',
-  lineNumText = 'text-gray-500 dark:text-gray-500',
+  lineNumText = 'text-gray-600 dark:text-gray-400',
   paneText = 'text-gray-900 dark:text-gray-100',
   syntaxHighlight = false
 }: VirtualizedListProps) {
@@ -584,10 +584,10 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const paneBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-white dark:bg-gray-800'
   const paneText = terminalStyle ? 'text-[#d4d4d4]' : 'text-gray-900 dark:text-gray-100'
   const lineNumBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-gray-100 dark:bg-gray-900'
-  const lineNumText = terminalStyle ? 'text-[#858585]' : 'text-gray-500 dark:text-gray-500'
+  const lineNumText = terminalStyle ? 'text-[#858585]' : 'text-gray-600 dark:text-gray-400'
   const outputPaneBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-gray-50 dark:bg-gray-900'
   const placeholderBg = terminalStyle ? 'bg-[#1e1e1e]' : 'bg-gray-50 dark:bg-gray-900'
-  const placeholderText = terminalStyle ? 'text-[#858585]' : 'text-gray-500 dark:text-gray-400'
+  const placeholderText = terminalStyle ? 'text-[#858585]' : 'text-gray-600 dark:text-gray-400'
 
   const inputContainerRef = useRef<HTMLDivElement | null>(null)
   const outputContainerRef = useRef<HTMLDivElement | null>(null)
@@ -1060,7 +1060,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
         )}
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
           <label className={`text-sm font-medium text-gray-700 dark:text-gray-300 ${titleBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
-            Original {fileName && <span className="text-gray-500 dark:text-gray-400" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
+            Original {fileName && <span className="text-gray-600 dark:text-gray-400" title={fileName}>({fileName.length > 8 ? fileName.slice(0, 8) + '…' : fileName})</span>}
             {useVirtualScrolling && inputLines.length > VIRTUAL_THRESHOLD && (
               <span className="ml-2 text-xs text-gray-400">
                 ({(lineFilter !== 'all' ? filteredInputLines.length : inputLines.length).toLocaleString()} lines{lineFilter !== 'all' && ` of ${inputLines.length.toLocaleString()}`})
@@ -1072,7 +1072,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
               <div className="flex items-center gap-1 text-xs">
                 <button
                   onClick={() => setLineFilter('all')}
-                  className={lineFilter === 'all' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}
+                  className={lineFilter === 'all' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}
                   title={`All ${inputLines.length.toLocaleString()} lines (${changedLines.size.toLocaleString()} changed, ${(inputLines.length - changedLines.size).toLocaleString()} unchanged)`}
                 >
                   All
@@ -1080,7 +1080,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
                 <span className="text-gray-300 dark:text-gray-600">|</span>
                 <button
                   onClick={() => setLineFilter('changed')}
-                  className={lineFilter === 'changed' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}
+                  className={lineFilter === 'changed' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}
                   title={`${changedLines.size.toLocaleString()} changed lines`}
                 >
                   Changed
@@ -1088,7 +1088,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
                 <span className="text-gray-300 dark:text-gray-600">|</span>
                 <button
                   onClick={() => setLineFilter('unchanged')}
-                  className={lineFilter === 'unchanged' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}
+                  className={lineFilter === 'unchanged' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}
                   title={`${(inputLines.length - changedLines.size).toLocaleString()} unchanged lines`}
                 >
                   Unchanged
@@ -1137,7 +1137,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
               className={`w-full h-full p-4 font-mono text-sm border dark:border-gray-600 rounded-b-lg rounded-tr-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${paneBg} ${paneText}`}
             />
             {!input && (
-              <div className={`absolute inset-0 p-4 pointer-events-none ${terminalStyle ? 'text-[#858585]' : 'text-gray-500 dark:text-gray-400'}`}>
+              <div className={`absolute inset-0 p-4 pointer-events-none ${terminalStyle ? 'text-[#858585]' : 'text-gray-600 dark:text-gray-400'}`}>
                 <div className="font-mono text-sm space-y-2">
                   <p className="font-semibold">Getting Started:</p>
                   <p>1. Paste logs here, or use <span className="text-blue-600 dark:text-blue-400">Upload</span>/drag & drop</p>
@@ -1228,7 +1228,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
           title="Drag to resize"
         />
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
-          <label className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400'} ${output ? outputPaneBg : placeholderBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
+          <label className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-600 dark:text-gray-400'} ${output ? outputPaneBg : placeholderBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3`}>
             Scrubbed
             {useVirtualScrolling && outputLines.length > VIRTUAL_THRESHOLD && output && (
               <span className="ml-2 text-xs text-gray-400">
@@ -1382,7 +1382,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
                     dismissDonationForever()
                     setShowDonationModal(false)
                   }}
-                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
+                  className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-400"
                 >
                   Don't show this again
                 </button>
@@ -1406,7 +1406,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-gray-600 dark:text-gray-400">
                 {consistencyMode ? (
                   <span className="flex items-center gap-1">
                     <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -1446,7 +1446,7 @@ This log has been sanitized using LogScrub to remove personally identifiable inf
             </div>
 
             <div className="pt-3 border-t dark:border-gray-700">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 <strong>Tip:</strong> Paste this explanation first, then paste your scrubbed log. The AI will be able to reference replacements like{' '}
                 {(() => {
                   // Get the first detected type and show its actual replacement format

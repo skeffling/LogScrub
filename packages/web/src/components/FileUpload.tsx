@@ -49,7 +49,7 @@ export function FileUpload() {
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           <span className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500">Upload a file</span> or drag and drop
         </p>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
           .log, .txt, .json, .xml, .csv
         </p>
       </label>

@@ -655,7 +655,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
         if (documentType === 'pdf') {
           // Configure mupdf WASM location
           ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
-            locateFile: (path: string) => `/assets/${path}`
+            locateFile: (path: string) => `./assets/${path}`
           }
           const mupdf = await import('mupdf')
 
@@ -1209,7 +1209,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     // Handle Excel files (XLSX) via excelize-wasm
     if (ext.endsWith('.xlsx')) {
       const { init } = await import('excelize-wasm')
-      const excelize = await init('/assets/excelize.wasm.gz')
+      const excelize = await init('./assets/excelize.wasm.gz')
       const buffer = new Uint8Array(await file.arrayBuffer())
       const f = excelize.OpenReader(buffer)
 
@@ -1235,7 +1235,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     if (ext.endsWith('.pdf')) {
       // Configure mupdf WASM location before importing
       ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
-        locateFile: (path: string) => `/assets/${path}`
+        locateFile: (path: string) => `./assets/${path}`
       }
       const mupdf = await import('mupdf')
 
@@ -1447,7 +1447,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
   // Generate scrubbed Excel file with PII replaced in cells
   const generateScrubbedExcel = async (buffer: Uint8Array, replacementMap: Map<string, string>, stripMetadata: boolean = false): Promise<Blob> => {
     const { init } = await import('excelize-wasm')
-    const excelize = await init('/assets/excelize.wasm.gz')
+    const excelize = await init('./assets/excelize.wasm.gz')
     const f = excelize.OpenReader(buffer)
 
     if (f.error) {
@@ -1643,7 +1643,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
   const generateScrubbedPdf = async (buffer: Uint8Array, replacementMap: Map<string, string>, stripMetadata: boolean = false): Promise<Blob> => {
     // Configure mupdf WASM location before importing
     ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
-      locateFile: (path: string) => `/assets/${path}`
+      locateFile: (path: string) => `./assets/${path}`
     }
     const mupdf = await import('mupdf')
 

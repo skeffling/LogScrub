@@ -1658,11 +1658,16 @@ Here are examples of actual replacements made in this ${docTypeShort}:
         const searchResults = stext.search(original)
 
         // Add redaction annotation for each match
+        // searchResults is Quad[][] - array of matches, each match has array of quads
+        // Process each quad individually to avoid oversized redaction boxes
+        // when text wraps across multiple lines
         for (const quads of searchResults) {
-          const annot = page.createAnnotation('Redact')
-          annot.setQuadPoints(quads)
-          // Set redaction fill color to black
-          annot.setColor([0, 0, 0])
+          for (const quad of quads) {
+            const annot = page.createAnnotation('Redact')
+            annot.setQuadPoints([quad])
+            // Set redaction fill color to black
+            annot.setColor([0, 0, 0])
+          }
         }
       }
 

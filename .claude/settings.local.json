@@ -25,7 +25,25 @@
       "WebFetch(domain:www.exim.org)",
       "Bash(cat:*)",
       "Bash(tr:*)",
-      "WebFetch(domain:docs.readthedocs.com)"
+      "WebFetch(domain:docs.readthedocs.com)",
+      "Bash(tree:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:crates.io)",
+      "Bash(ls:*)",
+      "Bash(npm view:*)",
+      "Bash(npm search:*)",
+      "Bash(npm run build:wasm:*)",
+      "WebFetch(domain:artifex.com)",
+      "WebFetch(domain:mupdf.readthedocs.io)",
+      "Bash(npm uninstall:*)",
+      "Bash(pkill:*)",
+      "Bash(curl:*)",
+      "Bash(cargo build:*)",
+      "Bash(wasm-objdump:*)",
+      "Bash(cargo clean:*)",
+      "Bash(wasm2wat:*)",
+      "WebFetch(domain:www.rfc-editor.org)",
+      "WebFetch(domain:www.regular-expressions.info)"
     ]
   }
 }

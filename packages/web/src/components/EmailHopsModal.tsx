@@ -8,6 +8,7 @@ interface EmailHop {
   rawTimestamp: string
   delay: number | null // delay from previous hop in seconds
   timezone: string | null
+  rawBlock: string // original Received header content
 }
 
 interface EmailHopsModalProps {
@@ -18,12 +19,34 @@ interface EmailHopsModalProps {
 function parseReceivedHeaders(headers: string): EmailHop[] {
   const hops: EmailHop[] = []
 
-  // Match Received: headers (they can span multiple lines with indentation)
-  const receivedRegex = /^Received:\s*([\s\S]*?)(?=^[A-Z][a-zA-Z-]*:|$)/gm
-  let match
+  // Split headers into individual header blocks
+  // A header starts at beginning of line with Name: and continues on indented lines
+  const lines = headers.split(/\r?\n/)
+  const headerBlocks: { name: string; content: string }[] = []
+  let currentHeader: { name: string; content: string } | null = null
 
-  while ((match = receivedRegex.exec(headers)) !== null) {
-    const receivedBlock = match[1].replace(/\n\s+/g, ' ').trim()
+  for (const line of lines) {
+    // Check if this is a new header (starts with HeaderName:)
+    const headerMatch = line.match(/^([A-Za-z][A-Za-z0-9-]*):\s*(.*)$/)
+    if (headerMatch) {
+      if (currentHeader) {
+        headerBlocks.push(currentHeader)
+      }
+      currentHeader = { name: headerMatch[1], content: headerMatch[2] }
+    } else if (currentHeader && /^\s+/.test(line)) {
+      // Continuation line (starts with whitespace)
+      currentHeader.content += ' ' + line.trim()
+    }
+  }
+  if (currentHeader) {
+    headerBlocks.push(currentHeader)
+  }
+
+  // Process only Received headers
+  const receivedHeaders = headerBlocks.filter(h => h.name.toLowerCase() === 'received')
+
+  for (const header of receivedHeaders) {
+    const receivedBlock = header.content
 
     // Extract "from" server
     const fromMatch = receivedBlock.match(/from\s+([^\s(]+)/i)
@@ -62,7 +85,7 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
       }
     }
 
-    hops.push({ from, by, timestamp, rawTimestamp, delay: null, timezone })
+    hops.push({ from, by, timestamp, rawTimestamp, delay: null, timezone, rawBlock: receivedBlock })
   }
 
   // Received headers are in reverse order (most recent first)
@@ -220,7 +243,10 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
                   </div>
 
                   {/* Server details box */}
-                  <div className="ml-4 flex-1 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                  <div
+                    className="ml-4 flex-1 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 cursor-help"
+                    title={`Received: ${hop.rawBlock}`}
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         {/* Server name */}

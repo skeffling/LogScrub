@@ -96,16 +96,31 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
 
     const { timestamp, rawTimestamp, timezone } = parseTimestamp(receivedBlock)
 
-    // Extract TLS/encryption info
-    // Examples: "(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits))"
-    //           "(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384)"
+    // Extract TLS/encryption info - multiple formats
+    // Format 1: "(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits))"
+    // Format 2: "(TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" (Exim)
+    // Format 3: "with esmtps (TLS1.2:..."
     let tls: TlsInfo | null = null
-    const tlsMatch = receivedBlock.match(/\(using\s+(TLSv[\d.]+|SSLv[\d.]+)\s+with\s+cipher\s+([^\s()]+)(?:\s+\((\d+\/\d+\s+bits)\))?\)/i)
-    if (tlsMatch) {
+
+    // Try format 1: "(using TLSv1.3 with cipher ...)"
+    const tlsMatch1 = receivedBlock.match(/\(using\s+(TLSv[\d.]+|SSLv[\d.]+)\s+with\s+cipher\s+([^\s()]+)(?:\s+\((\d+\/\d+\s+bits)\))?\)/i)
+    if (tlsMatch1) {
       tls = {
-        version: tlsMatch[1],
-        cipher: tlsMatch[2],
-        bits: tlsMatch[3] || null
+        version: tlsMatch1[1],
+        cipher: tlsMatch1[2],
+        bits: tlsMatch1[3] || null
+      }
+    }
+
+    // Try format 2: "(TLS1.3) tls CIPHER_NAME" (Exim style)
+    if (!tls) {
+      const tlsMatch2 = receivedBlock.match(/\((TLS[\d.]+|SSLv[\d.]+)\)\s+tls\s+([^\s()]+)/i)
+      if (tlsMatch2) {
+        tls = {
+          version: tlsMatch2[1],
+          cipher: tlsMatch2[2],
+          bits: null
+        }
       }
     }
 
@@ -262,17 +277,29 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
           <div className="space-y-0 max-h-[60vh] overflow-y-auto pr-2">
             {hops.map((hop, i) => (
               <div key={i}>
-                {/* Arrow with delay (between hops) */}
+                {/* Arrow with delay and TLS indicator (between hops) */}
                 {i > 0 && (
                   <div className="flex items-center py-2">
                     <div className="w-8 flex justify-center">
                       <div className="w-0.5 h-6 bg-gray-300 dark:bg-gray-600" />
                     </div>
-                    {hop.delay !== null && (
-                      <div className={`ml-4 px-3 py-1 rounded-full text-sm font-medium ${getDelayBgColor(hop.delay)} ${getDelayColor(hop.delay)}`}>
-                        {hop.delay >= 0 ? '+' : ''}{formatDuration(hop.delay)}
-                      </div>
-                    )}
+                    <div className="ml-4 flex items-center gap-2">
+                      {hop.tls && (
+                        <span
+                          className="text-green-600 dark:text-green-400 cursor-help"
+                          title={`${hop.tls.version} - ${hop.tls.cipher}${hop.tls.bits ? ` (${hop.tls.bits})` : ''}`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                        </span>
+                      )}
+                      {hop.delay !== null && (
+                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${getDelayBgColor(hop.delay)} ${getDelayColor(hop.delay)}`}>
+                          {hop.delay >= 0 ? '+' : ''}{formatDuration(hop.delay)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -298,21 +325,9 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        {/* Server name with optional TLS indicator */}
-                        <div className="flex items-center gap-1.5">
-                          <div className="font-mono text-sm font-medium text-gray-900 dark:text-white truncate" title={hop.by}>
-                            {hop.by}
-                          </div>
-                          {hop.tls && (
-                            <span
-                              className="text-green-600 dark:text-green-400 flex-shrink-0 cursor-help"
-                              title={`${hop.tls.version} - ${hop.tls.cipher}${hop.tls.bits ? ` (${hop.tls.bits})` : ''}`}
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                              </svg>
-                            </span>
-                          )}
+                        {/* Server name */}
+                        <div className="font-mono text-sm font-medium text-gray-900 dark:text-white truncate" title={hop.by}>
+                          {hop.by}
                         </div>
 
                         {/* Label for origin server */}

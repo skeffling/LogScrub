@@ -179,4 +179,35 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
     },
     customRules: []
   },
+  {
+    id: 'sip-voip',
+    name: 'SIP / VoIP',
+    description: 'SIP protocol traces with caller info, auth, and URIs',
+    rules: {
+      // SIP-specific rules
+      sip_username: { enabled: true },
+      sip_realm: { enabled: true },
+      sip_nonce: { enabled: true },
+      sip_response: { enabled: true },
+      sip_from_display: { enabled: true },
+      sip_to_display: { enabled: true },
+      sip_contact: { enabled: true },
+      sip_uri: { enabled: true },
+      sip_call_id: { enabled: true },
+      // Common network/contact rules useful for SIP
+      ipv4: { enabled: true },
+      ipv6: { enabled: true },
+      phone_us: { enabled: true },
+      phone_uk: { enabled: true },
+      phone_intl: { enabled: true },
+      email: { enabled: true },
+      hostname: { enabled: true },
+      // Disable noisy rules
+      url: { enabled: false },
+      uuid: { enabled: false },
+      datetime_iso: { enabled: false },
+      timestamp_unix: { enabled: false },
+    },
+    customRules: []
+  },
 ]

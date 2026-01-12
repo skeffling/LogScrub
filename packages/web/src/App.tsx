@@ -5,6 +5,8 @@ import { Editor } from './components/Editor'
 import { RulePanel } from './components/RulePanel'
 import { AboutModal } from './components/AboutModal'
 import { DmesgTimestampModal } from './components/DmesgTimestampModal'
+import { SipTraceModal } from './components/SipTraceModal'
+import { BUILTIN_PRESETS } from './data/presets'
 import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
 import { Modal } from './components/Modal'
@@ -115,7 +117,8 @@ function App() {
     replacements, syntaxHighlight, setSyntaxHighlight,
     timeShift, setTimeShift,
     setStats, setMatches, setReplacements,
-    documentType
+    documentType,
+    rules, toggleRule, setRuleStrategy, customRules, addCustomRule
   } = useAppStore()
   const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
   const [rulePanelWidth, setRulePanelWidth] = useState(() => loadUiPreference('rulePanelWidth', 320))
@@ -131,6 +134,8 @@ function App() {
   const [showAnalysisLogs, setShowAnalysisLogs] = useState(false)
   const [showDmesgModal, setShowDmesgModal] = useState(false)
   const [dmesgModalDismissed, setDmesgModalDismissed] = useState(false)
+  const [showSipModal, setShowSipModal] = useState(false)
+  const [sipModalDismissed, setSipModalDismissed] = useState(false)
   const [showTimeShift, setShowTimeShift] = useState(false)
   const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
   const [fullscreenLoading, setFullscreenLoading] = useState(false)
@@ -354,6 +359,74 @@ function App() {
   useEffect(() => {
     setDmesgModalDismissed(false)
   }, [fileName])
+
+  // Detect SIP protocol traces: INVITE sip: or REGISTER sip: at line start
+  const sipDetection = useMemo(() => {
+    if (!input || input.length < 20) return { detected: false, firstLine: '' }
+    const sample = input.slice(0, 10000)
+    // Match SIP request lines at start of line (usually after a timestamp)
+    const sipPattern = /^.*?(?:INVITE|REGISTER|OPTIONS|ACK|BYE|CANCEL|SUBSCRIBE|NOTIFY|REFER|MESSAGE|UPDATE|PRACK|INFO)\s+sip:/mi
+    const detected = sipPattern.test(sample)
+
+    let firstLine = ''
+    if (detected) {
+      const lineMatch = sample.match(/^.*?(?:INVITE|REGISTER|OPTIONS|ACK|BYE|CANCEL)\s+sip:[^\r\n]*/mi)
+      if (lineMatch) {
+        firstLine = lineMatch[0].trim()
+      }
+    }
+
+    return { detected, firstLine }
+  }, [input])
+
+  const hasSipTrace = sipDetection.detected
+
+  // Reset SIP modal dismissed state when a new file is loaded
+  useEffect(() => {
+    setSipModalDismissed(false)
+  }, [fileName])
+
+  // Function to load the SIP preset
+  const loadSipPreset = useCallback(() => {
+    const sipPreset = BUILTIN_PRESETS.find(p => p.id === 'sip-voip')
+    if (!sipPreset) return
+
+    // Disable all rules first
+    Object.keys(rules).forEach(id => {
+      if (rules[id].enabled) {
+        toggleRule(id)
+      }
+    })
+
+    // Enable rules from the preset
+    Object.entries(sipPreset.rules).forEach(([id, updates]) => {
+      if (rules[id] && updates) {
+        if (updates.enabled && !rules[id].enabled) {
+          toggleRule(id)
+        }
+        if (updates.strategy && rules[id].strategy !== updates.strategy) {
+          setRuleStrategy(id, updates.strategy)
+        }
+      }
+    })
+
+    // Add any custom rules from preset
+    if (sipPreset.customRules && sipPreset.customRules.length > 0) {
+      sipPreset.customRules.forEach(cr => {
+        const existingIdx = customRules.findIndex(r => r.id === cr.id)
+        if (existingIdx === -1) {
+          addCustomRule({ ...cr, id: `preset_${cr.id}_${Date.now()}` })
+        }
+      })
+    }
+  }, [rules, toggleRule, setRuleStrategy, customRules, addCustomRule])
+
+  // Show SIP modal when analysis completes and SIP trace is detected
+  useEffect(() => {
+    if (analysisCompleted && hasSipTrace && !sipModalDismissed) {
+      setShowSipModal(true)
+    }
+  }, [analysisCompleted, hasSipTrace, sipModalDismissed])
 
   const lineOffsets = useMemo(() => {
     const offsets: number[] = []
@@ -1123,6 +1196,17 @@ function App() {
             setShowDmesgModal(false)
             setDmesgModalDismissed(true)
           }}
+        />
+      )}
+
+      {showSipModal && (
+        <SipTraceModal
+          firstLine={sipDetection.firstLine}
+          onClose={() => {
+            setShowSipModal(false)
+            setSipModalDismissed(true)
+          }}
+          onLoadPreset={loadSipPreset}
         />
       )}
     </div>

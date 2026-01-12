@@ -85,4 +85,14 @@ export const BUILTIN_PATTERNS: Record<string, string> = {
   sha1_hash: String.raw`(?i)\b[a-f0-9]{40}\b`,
   sha256_hash: String.raw`(?i)\b[a-f0-9]{64}\b`,
   docker_container_id: String.raw`(?i)\b[a-f0-9]{12}\b`,
+  // SIP/VoIP protocol patterns
+  sip_username: String.raw`(?i)username="[^"]+"`,
+  sip_realm: String.raw`(?i)realm="[^"]+"`,
+  sip_nonce: String.raw`(?i)nonce="[^"]+"`,
+  sip_response: String.raw`(?i)response="[a-f0-9]+"`,
+  sip_from_display: String.raw`(?i)^From:\s*"[^"]*"`,
+  sip_to_display: String.raw`(?i)^To:\s*"[^"]*"`,
+  sip_contact: String.raw`(?i)^Contact:\s*<?sip:[^>]+>?`,
+  sip_uri: String.raw`sip:[^\s<>@]+@[^\s<>;]+`,
+  sip_call_id: String.raw`(?i)^Call-ID:\s*[^\s]+`,
 }

@@ -4,6 +4,7 @@ import { Header } from './components/Header'
 import { Editor } from './components/Editor'
 import { RulePanel } from './components/RulePanel'
 import { AboutModal } from './components/AboutModal'
+import { DmesgTimestampModal } from './components/DmesgTimestampModal'
 import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
 import { Modal } from './components/Modal'
@@ -128,6 +129,8 @@ function App() {
   const [syncScroll, setSyncScroll] = useState(() => loadUiPreference('syncScroll', true))
   const [showStats, setShowStats] = useState(false)
   const [showAnalysisLogs, setShowAnalysisLogs] = useState(false)
+  const [showDmesgModal, setShowDmesgModal] = useState(false)
+  const [dmesgModalDismissed, setDmesgModalDismissed] = useState(false)
   const [showTimeShift, setShowTimeShift] = useState(false)
   const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
   const [fullscreenLoading, setFullscreenLoading] = useState(false)
@@ -315,7 +318,30 @@ function App() {
     ]
     return patterns.some(pattern => pattern.test(sample))
   }, [input])
-  
+
+  // Detect dmesg relative timestamp format: [seconds.microseconds]
+  const hasDmesgTimestamps = useMemo(() => {
+    if (!input || input.length < 20) return false
+    const sample = input.slice(0, 5000)
+    // Match dmesg format: [123456.123456] followed by typical kernel log content
+    // Must have multiple matches to confirm it's actually dmesg output
+    const dmesgPattern = /^\[\s*\d+\.\d{6}\]\s+\S/m
+    const matches = sample.match(/\[\s*\d+\.\d{6}\]/g)
+    return dmesgPattern.test(sample) && matches && matches.length >= 2
+  }, [input])
+
+  // Show dmesg timestamp modal when detected
+  useEffect(() => {
+    if (hasDmesgTimestamps && input && !dmesgModalDismissed) {
+      setShowDmesgModal(true)
+    }
+  }, [hasDmesgTimestamps, input, dmesgModalDismissed])
+
+  // Reset dmesg modal dismissed state when a new file is loaded
+  useEffect(() => {
+    setDmesgModalDismissed(false)
+  }, [fileName])
+
   const lineOffsets = useMemo(() => {
     const offsets: number[] = []
     let offset = 0
@@ -1075,6 +1101,15 @@ function App() {
         <Modal onClose={() => setShowStats(false)} title="Detection Statistics">
           <Stats />
         </Modal>
+      )}
+
+      {showDmesgModal && (
+        <DmesgTimestampModal
+          onClose={() => {
+            setShowDmesgModal(false)
+            setDmesgModalDismissed(true)
+          }}
+        />
       )}
     </div>
   )

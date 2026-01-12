@@ -38,15 +38,43 @@ export function Suggestions() {
             </div>
             {item.samples.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
-                {item.samples.map((sample, i) => (
-                  <code
-                    key={i}
-                    className="text-xs px-1 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded truncate max-w-[200px]"
-                    title={sample}
-                  >
-                    {sample.length > 35 ? sample.slice(0, 35) + '…' : sample}
-                  </code>
-                ))}
+                {item.samples.map((sample, i) => {
+                  const fullText = `${sample.truncatedBefore ? '…' : ''}${sample.before}${sample.match}${sample.after}${sample.truncatedAfter ? '…' : ''}`
+                  const totalLen = sample.before.length + sample.match.length + sample.after.length
+                  const needsTruncate = totalLen > 55
+
+                  // For truncation, prioritize showing the match with balanced context
+                  let displayBefore = sample.before
+                  let displayAfter = sample.after
+                  if (needsTruncate) {
+                    const availableContext = 55 - sample.match.length
+                    const halfContext = Math.floor(availableContext / 2)
+                    if (sample.before.length > halfContext) {
+                      displayBefore = sample.before.slice(-halfContext)
+                    }
+                    if (sample.after.length > halfContext) {
+                      displayAfter = sample.after.slice(0, halfContext)
+                    }
+                  }
+
+                  return (
+                    <code
+                      key={i}
+                      className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded max-w-[300px] inline-flex items-baseline"
+                      title={fullText}
+                    >
+                      {(sample.truncatedBefore || displayBefore.length < sample.before.length) && (
+                        <span className="text-gray-400 dark:text-gray-500">…</span>
+                      )}
+                      <span className="text-gray-500 dark:text-gray-400">{displayBefore}</span>
+                      <mark className="bg-yellow-200 dark:bg-yellow-700 text-gray-900 dark:text-yellow-100 font-medium px-0.5 rounded-sm">{sample.match}</mark>
+                      <span className="text-gray-500 dark:text-gray-400">{displayAfter}</span>
+                      {(sample.truncatedAfter || displayAfter.length < sample.after.length) && (
+                        <span className="text-gray-400 dark:text-gray-500">…</span>
+                      )}
+                    </code>
+                  )
+                })}
               </div>
             )}
           </div>

@@ -34,11 +34,19 @@ export interface TimeShiftConfig {
   lineOnly: boolean
 }
 
+export interface SampleSnippet {
+  before: string
+  match: string
+  after: string
+  truncatedBefore: boolean
+  truncatedAfter: boolean
+}
+
 export interface RuleSuggestion {
   id: string
   label: string
   count: number
-  samples: string[]
+  samples: SampleSnippet[]
 }
 
 export interface RulePreset {
@@ -789,14 +797,38 @@ export const useAppStore = create<AppState>((set, get) => ({
         const stats = result.stats || {}
         const allReplacements = result.replacements || []
         
-        const extractSamplesWithContext = (piiType: string, maxSamples: number): string[] => {
+        const extractSamplesWithContext = (piiType: string, maxSamples: number): SampleSnippet[] => {
           const typeReplacements = allReplacements.filter(r => r.pii_type === piiType).slice(0, maxSamples)
           return typeReplacements.map(r => {
-            const contextBefore = text.slice(Math.max(0, r.start - 20), r.start)
-            const contextAfter = text.slice(r.end, Math.min(text.length, r.end + 20))
-            const before = contextBefore.includes('\n') ? contextBefore.slice(contextBefore.lastIndexOf('\n') + 1) : contextBefore
-            const after = contextAfter.includes('\n') ? contextAfter.slice(0, contextAfter.indexOf('\n')) : contextAfter
-            return `${before.length < contextBefore.length ? '' : '…'}${before}${r.original}${after}${after.length < contextAfter.length ? '' : '…'}`
+            const contextBefore = text.slice(Math.max(0, r.start - 30), r.start)
+            const contextAfter = text.slice(r.end, Math.min(text.length, r.end + 30))
+
+            // Respect line boundaries
+            let before = contextBefore.includes('\n')
+              ? contextBefore.slice(contextBefore.lastIndexOf('\n') + 1)
+              : contextBefore
+            let after = contextAfter.includes('\n')
+              ? contextAfter.slice(0, contextAfter.indexOf('\n'))
+              : contextAfter
+
+            // Extend to word boundaries if we're mid-word
+            if (before.length > 0 && before.length < contextBefore.length && !/\s/.test(before[0])) {
+              const spaceIdx = before.indexOf(' ')
+              if (spaceIdx !== -1 && spaceIdx < 10) {
+                before = before.slice(spaceIdx + 1)
+              }
+            }
+            if (after.length > 0 && after.length < contextAfter.length && !/\s/.test(after[after.length - 1])) {
+              const spaceIdx = after.lastIndexOf(' ')
+              if (spaceIdx !== -1 && after.length - spaceIdx < 10) {
+                after = after.slice(0, spaceIdx)
+              }
+            }
+
+            const truncatedBefore = before.length < contextBefore.length
+            const truncatedAfter = after.length < contextAfter.length
+
+            return { before, match: r.original, after, truncatedBefore, truncatedAfter }
           })
         }
         

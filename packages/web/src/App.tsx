@@ -137,6 +137,7 @@ function App() {
   const [dmesgModalDismissed, setDmesgModalDismissed] = useState(false)
   const [showSipModal, setShowSipModal] = useState(false)
   const [sipModalDismissed, setSipModalDismissed] = useState(false)
+  const [emailBannerDismissed, setEmailBannerDismissed] = useState(false)
   const [showEmailHopsModal, setShowEmailHopsModal] = useState(false)
   const [showTimeShift, setShowTimeShift] = useState(false)
   const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
@@ -387,6 +388,11 @@ function App() {
   useEffect(() => {
     setSipModalDismissed(false)
   }, [fileName])
+
+  // Reset email banner dismissed state when input changes
+  useEffect(() => {
+    setEmailBannerDismissed(false)
+  }, [input])
 
   // Detect email headers (multiple Received: headers indicate email)
   const emailHeadersDetected = useMemo(() => {
@@ -1139,7 +1145,7 @@ function App() {
             
             <div className="flex-shrink-0">
               <Suggestions />
-              {analysisCompleted && emailHeadersDetected && (
+              {emailHeadersDetected && !emailBannerDismissed && (
                 <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-3">
                   <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -1152,6 +1158,15 @@ function App() {
                     className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                   >
                     View Routing
+                  </button>
+                  <button
+                    onClick={() => setEmailBannerDismissed(true)}
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                    title="Dismiss"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 </div>
               )}

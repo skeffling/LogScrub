@@ -630,6 +630,7 @@
           <a href="#analyze-mode">Analyze Mode</a>
           <a href="#email-headers">Email Header Analysis</a>
           <a href="#spam-reports">Spam Report Parsing</a>
+          <a href="#gpx-routes">GPX Route Transposition</a>
           <a href="#audit-reports">Audit Reports</a>
           <a href="#reverse-lookup">Reverse Lookup</a>
           <a href="#ai-explain">AI Explain</a>
@@ -1308,6 +1309,50 @@ User [EMAIL-3] logged in</div>
           <div class="tip">
             <div class="callout-title">Tip</div>
             <p>When an amber banner appears saying "spam reports detected", click "View Reports" to see the parsed rules. If multiple reports are present, use the tabs at the top to switch between them.</p>
+          </div>
+        </section>
+
+        <section id="gpx-routes">
+          <h2>GPX Route Transposition</h2>
+          <p>GPX files contain GPS track data from fitness devices, cycling computers, and navigation apps. When sharing routes for debugging or analysis, you may want to hide your actual location while preserving all other statistics.</p>
+
+          <h3>How It Works</h3>
+          <p>When LogScrub detects a GPX file (by extension or content), a green banner offers to transpose the route to a different continent. The transposition:</p>
+          <ul>
+            <li><strong>Shifts all coordinates</strong> — Moves the entire route to a new location</li>
+            <li><strong>Preserves route shape</strong> — All turns, distances, and geometry remain identical</li>
+            <li><strong>Keeps timestamps</strong> — Duration and timing data unchanged</li>
+            <li><strong>Retains elevation</strong> — All elevation data preserved</li>
+            <li><strong>Includes waypoints</strong> — Waypoints and route points also transposed</li>
+          </ul>
+
+          <h3>Destination Regions</h3>
+          <p>Choose from six destination regions:</p>
+          <div class="table-wrapper">
+            <table>
+              <tr><th>Region</th><th>Target Area</th></tr>
+              <tr><td>Europe</td><td>Paris, France</td></tr>
+              <tr><td>North America</td><td>New York, USA</td></tr>
+              <tr><td>South America</td><td>São Paulo, Brazil</td></tr>
+              <tr><td>Asia</td><td>Tokyo, Japan</td></tr>
+              <tr><td>Oceania</td><td>Sydney, Australia</td></tr>
+              <tr><td>Africa</td><td>Cape Town, South Africa</td></tr>
+            </table>
+          </div>
+
+          <h3>Route Statistics</h3>
+          <p>Before transposition, the modal displays:</p>
+          <ul>
+            <li>Track name and detected region</li>
+            <li>Number of GPS points</li>
+            <li>Total duration</li>
+            <li>Elevation range</li>
+            <li>Center coordinates</li>
+          </ul>
+
+          <div class="tip">
+            <div class="callout-title">Use Case</div>
+            <p>Perfect for sharing cycling or running routes in bug reports without revealing where you live or work. The route shape and performance data remain valid for debugging.</p>
           </div>
         </section>
 

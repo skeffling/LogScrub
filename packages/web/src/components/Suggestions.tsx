@@ -11,9 +11,9 @@ export function Suggestions() {
     showSuggestions,
     dismissSuggestions,
     enableSuggestedRule,
+    disableActiveMatch,
     enableAllSuggested,
-    disableUnmatchedRules,
-    toggleRule
+    disableUnmatchedRules
   } = useAppStore()
 
   const [activeTab, setActiveTab] = useState<Tab>('suggestions')
@@ -68,7 +68,7 @@ export function Suggestions() {
           )}
           {showDisableButton && (
             <button
-              onClick={() => toggleRule(item.id)}
+              onClick={() => disableActiveMatch(item.id)}
               className="flex-shrink-0 text-xs px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
             >
               Disable

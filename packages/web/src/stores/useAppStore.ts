@@ -119,6 +119,7 @@ interface AppState {
   clearAnalysis: () => void
   dismissSuggestions: () => void
   enableSuggestedRule: (id: string) => void
+  disableActiveMatch: (id: string) => void
   enableAllSuggested: () => void
   disableUnmatchedRules: () => void
   savePreset: (name: string) => void
@@ -960,6 +961,49 @@ export const useAppStore = create<AppState>((set, get) => ({
           set({ 
             plainTextPatterns: updated,
             suggestions: get().suggestions.filter(s => s.id !== id)
+          })
+        }
+      }
+    }
+  },
+
+  disableActiveMatch: (id) => {
+    const { rules, customRules, plainTextPatterns, activeMatches, suggestions } = get()
+    const match = activeMatches.find(m => m.id === id)
+    if (!match) return
+
+    const newActiveMatches = activeMatches.filter(m => m.id !== id)
+    const newSuggestions = [...suggestions, match].sort((a, b) => b.count - a.count)
+
+    if (rules[id]) {
+      const newRules = { ...rules, [id]: { ...rules[id], enabled: false } }
+      saveRulesToStorage(newRules)
+      set({
+        rules: newRules,
+        activeMatches: newActiveMatches,
+        suggestions: newSuggestions
+      })
+    } else {
+      const customIdx = customRules.findIndex(r => r.id === id)
+      if (customIdx >= 0) {
+        const updated = [...customRules]
+        updated[customIdx] = { ...updated[customIdx], enabled: false }
+        saveCustomRulesToStorage(updated)
+        set({
+          customRules: updated,
+          activeMatches: newActiveMatches,
+          suggestions: newSuggestions
+        })
+      } else {
+        const plainIdx = plainTextPatterns.findIndex(p => p.id === id)
+        if (plainIdx >= 0) {
+          const updated = [...plainTextPatterns]
+          updated[plainIdx] = { ...updated[plainIdx], enabled: false }
+          savePlainTextPatternsToStorage(updated)
+          set({
+            plainTextPatterns: updated,
+            activeMatches: newActiveMatches,
+            suggestions: newSuggestions
           })
         }
       }

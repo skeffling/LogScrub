@@ -1054,7 +1054,7 @@ function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span className="text-green-800 dark:text-green-200 text-sm">
-                    No PII detected with enabled rules. Try enabling more detection rules in the panel.
+                    No PII detected.
                   </span>
                   <button
                     onClick={clearAnalysis}

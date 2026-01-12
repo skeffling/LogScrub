@@ -21,7 +21,7 @@ export function Suggestions() {
   if (!showSuggestions || (suggestions.length === 0 && activeMatches.length === 0)) return null
 
   const renderMatchList = (items: typeof activeMatches, showEnableButton: boolean, showDisableButton: boolean = false) => (
-    <div className="space-y-2 max-h-48 overflow-y-auto">
+    <div className="space-y-2 max-h-80 overflow-y-auto">
       {items.map(item => (
         <div
           key={item.id}

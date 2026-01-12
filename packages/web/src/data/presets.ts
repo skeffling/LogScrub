@@ -180,6 +180,28 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
     customRules: []
   },
   {
+    id: 'auth-logs',
+    name: 'Auth / SSH Logs',
+    description: 'Authentication logs with usernames, IPs, and auth attempts',
+    rules: {
+      email: { enabled: true },
+      ipv4: { enabled: true },
+      ipv6: { enabled: true },
+      hostname: { enabled: true },
+      mac_address: { enabled: true },
+      // Disable noisy patterns
+      url: { enabled: false },
+      uuid: { enabled: false },
+      datetime_iso: { enabled: false },
+      timestamp_unix: { enabled: false },
+    },
+    customRules: [
+      { id: 'unix_username', label: 'Unix Username', pattern: '(?:user|User|USER)[=:\\s]+([a-z_][a-z0-9_-]{0,31})', enabled: true, strategy: 'label' },
+      { id: 'ssh_key_fingerprint', label: 'SSH Key Fingerprint', pattern: 'SHA256:[A-Za-z0-9+/]{43}|MD5(?::[0-9a-f]{2}){16}', enabled: true, strategy: 'label' },
+      { id: 'pam_module', label: 'PAM Session', pattern: 'pam_unix\\([^)]+\\):', enabled: false, strategy: 'label' },
+    ]
+  },
+  {
     id: 'sip-voip',
     name: 'SIP / VoIP',
     description: 'SIP protocol traces with caller info, auth, and URIs',

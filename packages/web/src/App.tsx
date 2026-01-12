@@ -138,6 +138,9 @@ function App() {
   const [showSipModal, setShowSipModal] = useState(false)
   const [sipModalDismissed, setSipModalDismissed] = useState(false)
   const [emailBannerDismissed, setEmailBannerDismissed] = useState(false)
+  const [webServerBannerDismissed, setWebServerBannerDismissed] = useState(false)
+  const [awsBannerDismissed, setAwsBannerDismissed] = useState(false)
+  const [authBannerDismissed, setAuthBannerDismissed] = useState(false)
   const [showEmailHopsModal, setShowEmailHopsModal] = useState(false)
   const [showTimeShift, setShowTimeShift] = useState(false)
   const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
@@ -389,9 +392,12 @@ function App() {
     setSipModalDismissed(false)
   }, [fileName])
 
-  // Reset email banner dismissed state when input changes
+  // Reset log format banner dismissed states when input changes
   useEffect(() => {
     setEmailBannerDismissed(false)
+    setWebServerBannerDismissed(false)
+    setAwsBannerDismissed(false)
+    setAuthBannerDismissed(false)
   }, [input])
 
   // Detect email headers (multiple Received: headers indicate email)
@@ -403,10 +409,50 @@ function App() {
     return receivedMatches && receivedMatches.length >= 2
   }, [input])
 
-  // Function to load the SIP preset and re-run analysis
-  const loadSipPreset = useCallback(() => {
-    const sipPreset = BUILTIN_PRESETS.find(p => p.id === 'sip-voip')
-    if (!sipPreset) return
+  // Detect Apache/Nginx access logs (CLF format with HTTP method)
+  const webServerLogsDetected = useMemo(() => {
+    if (!input || input.length < 50) return false
+    const sample = input.slice(0, 10000)
+    // Look for Common Log Format: IP - - [timestamp] "METHOD /path HTTP/x.x" status size
+    const clfPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\s+-\s+-?\s*\[.+?\]\s+"(?:GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s/m
+    // Also check for nginx combined format
+    const combinedPattern = /"\s+\d{3}\s+\d+\s+"[^"]*"\s+"[^"]*"$/m
+    return clfPattern.test(sample) || (sample.includes('" 200 ') && combinedPattern.test(sample))
+  }, [input])
+
+  // Detect AWS CloudTrail/CloudWatch logs
+  const awsLogsDetected = useMemo(() => {
+    if (!input || input.length < 50) return false
+    const sample = input.slice(0, 15000)
+    // CloudTrail JSON format
+    const cloudTrailPattern = /"eventSource":\s*"[a-z0-9.-]+\.amazonaws\.com"|"eventName":\s*"|"awsRegion":\s*"/
+    // CloudWatch Logs Insights or standard format with AWS ARNs
+    const arnPattern = /arn:aws:[a-z0-9-]+:[a-z0-9-]*:\d{12}:/
+    return cloudTrailPattern.test(sample) || (arnPattern.test(sample) && sample.includes('aws'))
+  }, [input])
+
+  // Detect SSH/Auth logs (syslog format with auth messages)
+  const authLogsDetected = useMemo(() => {
+    if (!input || input.length < 50) return false
+    const sample = input.slice(0, 15000)
+    // Look for sshd, sudo, su, or pam messages
+    const authPatterns = [
+      /sshd\[\d+\]:/,
+      /sudo:\s+\w+\s*:/,
+      /su\[\d+\]:/,
+      /pam_unix\([^)]+\):/,
+      /Failed password for/i,
+      /Accepted (?:password|publickey) for/i,
+      /authentication failure/i,
+    ]
+    const matches = authPatterns.filter(p => p.test(sample))
+    return matches.length >= 2  // Need at least 2 different auth patterns
+  }, [input])
+
+  // Function to load a preset by ID and re-run analysis
+  const loadPresetById = useCallback((presetId: string) => {
+    const preset = BUILTIN_PRESETS.find(p => p.id === presetId)
+    if (!preset) return
 
     // Disable all rules first
     Object.keys(rules).forEach(id => {
@@ -416,7 +462,7 @@ function App() {
     })
 
     // Enable rules from the preset
-    Object.entries(sipPreset.rules).forEach(([id, updates]) => {
+    Object.entries(preset.rules).forEach(([id, updates]) => {
       if (rules[id] && updates) {
         if (updates.enabled && !rules[id].enabled) {
           toggleRule(id)
@@ -428,8 +474,8 @@ function App() {
     })
 
     // Add any custom rules from preset
-    if (sipPreset.customRules && sipPreset.customRules.length > 0) {
-      sipPreset.customRules.forEach(cr => {
+    if (preset.customRules && preset.customRules.length > 0) {
+      preset.customRules.forEach(cr => {
         const existingIdx = customRules.findIndex(r => r.id === cr.id)
         if (existingIdx === -1) {
           addCustomRule({ ...cr, id: `preset_${cr.id}_${Date.now()}` })
@@ -444,6 +490,9 @@ function App() {
       }
     }, 100)
   }, [rules, toggleRule, setRuleStrategy, customRules, addCustomRule, input, analyzeText])
+
+  // Shortcut for SIP preset (used by SipTraceModal)
+  const loadSipPreset = useCallback(() => loadPresetById('sip-voip'), [loadPresetById])
 
   // Show SIP modal when analysis completes and SIP trace is detected
   useEffect(() => {
@@ -1162,6 +1211,81 @@ function App() {
                   <button
                     onClick={() => setEmailBannerDismissed(true)}
                     className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                    title="Dismiss"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              {webServerLogsDetected && !webServerBannerDismissed && (
+                <div className="mb-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg flex items-center gap-3">
+                  <svg className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                  </svg>
+                  <span className="text-purple-800 dark:text-purple-200 text-sm flex-1">
+                    Apache/Nginx access logs detected.
+                  </span>
+                  <button
+                    onClick={() => { loadPresetById('nginx-apache'); setWebServerBannerDismissed(true) }}
+                    className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
+                  >
+                    Use Web Server Preset
+                  </button>
+                  <button
+                    onClick={() => setWebServerBannerDismissed(true)}
+                    className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200"
+                    title="Dismiss"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              {awsLogsDetected && !awsBannerDismissed && (
+                <div className="mb-3 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg flex items-center gap-3">
+                  <svg className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                  </svg>
+                  <span className="text-orange-800 dark:text-orange-200 text-sm flex-1">
+                    AWS CloudTrail/CloudWatch logs detected.
+                  </span>
+                  <button
+                    onClick={() => { loadPresetById('aws-cloudwatch'); setAwsBannerDismissed(true) }}
+                    className="px-3 py-1.5 bg-orange-600 text-white text-sm rounded hover:bg-orange-700"
+                  >
+                    Use AWS Preset
+                  </button>
+                  <button
+                    onClick={() => setAwsBannerDismissed(true)}
+                    className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
+                    title="Dismiss"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              {authLogsDetected && !authBannerDismissed && (
+                <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
+                  <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span className="text-red-800 dark:text-red-200 text-sm flex-1">
+                    SSH/Auth logs detected with authentication events.
+                  </span>
+                  <button
+                    onClick={() => { loadPresetById('auth-logs'); setAuthBannerDismissed(true) }}
+                    className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                  >
+                    Use Auth Preset
+                  </button>
+                  <button
+                    onClick={() => setAuthBannerDismissed(true)}
+                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
                     title="Dismiss"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

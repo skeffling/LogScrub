@@ -1302,9 +1302,12 @@ User [EMAIL-3] logged in</div>
           <h3>Multi-line Headers</h3>
           <p>Spam reports are often split across multiple lines in email headers. LogScrub automatically handles header continuation lines (lines starting with whitespace) and reassembles the complete report.</p>
 
+          <h3>Multiple Reports</h3>
+          <p>Some mail systems run multiple spam filters. When both SpamAssassin and rspamd reports are present (e.g., <code>X-Spam-Report</code> and <code>X-Spam-Report-Secondary</code>), LogScrub detects both and displays them with tabs to switch between the two reports for comparison.</p>
+
           <div class="tip">
             <div class="callout-title">Tip</div>
-            <p>When an amber banner appears saying "rspamd report detected" or "SpamAssassin report detected", click "View Report" to see the parsed rules in a sortable table format.</p>
+            <p>When an amber banner appears saying "spam reports detected", click "View Reports" to see the parsed rules. If multiple reports are present, use the tabs at the top to switch between them.</p>
           </div>
         </section>
 

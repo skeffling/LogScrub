@@ -628,6 +628,7 @@
           <a href="#organizing-rules">Organizing Rules</a>
           <a href="#time-shift">Time Shift</a>
           <a href="#analyze-mode">Analyze Mode</a>
+          <a href="#email-headers">Email Header Analysis</a>
           <a href="#audit-reports">Audit Reports</a>
           <a href="#reverse-lookup">Reverse Lookup</a>
           <a href="#ai-explain">AI Explain</a>
@@ -1184,6 +1185,87 @@ User [EMAIL-3] logged in</div>
 
           <h3>Smart Suggestions</h3>
           <p>After analysis, LogScrub suggests disabled rules that found matches in your text. This helps you discover rules you might want to enable.</p>
+
+          <h3>Log Format Detection</h3>
+          <p>When you run Analyze, LogScrub automatically detects common log formats and offers to load a suitable preset. This saves time by enabling the most relevant rules for your log type.</p>
+
+          <div class="table-wrapper">
+            <table>
+              <tr><th>Log Format</th><th>Detection Method</th><th>Suggested Preset</th></tr>
+              <tr>
+                <td><strong>Apache/Nginx</strong></td>
+                <td>Common Log Format (CLF) with HTTP methods</td>
+                <td>nginx / Apache</td>
+              </tr>
+              <tr>
+                <td><strong>AWS CloudTrail/CloudWatch</strong></td>
+                <td>AWS ARNs, eventSource, eventName patterns</td>
+                <td>AWS CloudWatch</td>
+              </tr>
+              <tr>
+                <td><strong>SSH/Auth Logs</strong></td>
+                <td>sshd, sudo, pam_unix, failed password messages</td>
+                <td>Auth / SSH Logs</td>
+              </tr>
+              <tr>
+                <td><strong>Email Headers</strong></td>
+                <td>Multiple <code>Received:</code> headers</td>
+                <td>Opens Email Routing visualization</td>
+              </tr>
+              <tr>
+                <td><strong>SIP/VoIP Traces</strong></td>
+                <td>SIP protocol headers (Via, From, To, Call-ID)</td>
+                <td>SIP / VoIP</td>
+              </tr>
+            </table>
+          </div>
+
+          <p>When a log format is detected, a colored banner appears above the editor with a button to load the recommended preset. You can dismiss the banner if you prefer to configure rules manually.</p>
+        </section>
+
+        <section id="email-headers">
+          <h2>Email Header Analysis</h2>
+          <p>When LogScrub detects email headers (multiple <code>Received:</code> headers), it offers to visualize the email's routing path through mail servers.</p>
+
+          <h3>Email Routing Visualization</h3>
+          <p>Click "View Email Routing" in the blue banner to open a visual diagram showing:</p>
+          <ul>
+            <li><strong>Server chain</strong> — Each mail server the message passed through, from origin to destination</li>
+            <li><strong>Timestamps</strong> — When each server received the message</li>
+            <li><strong>Transit time</strong> — Duration between each hop (shown on the connector lines)</li>
+            <li><strong>TLS encryption</strong> — A padlock icon indicates encrypted transmission, with TLS version and cipher details on hover</li>
+            <li><strong>Protocol</strong> — The mail protocol used (SMTP, ESMTP, LMTPS, etc.)</li>
+          </ul>
+
+          <h3>What Gets Parsed</h3>
+          <div class="table-wrapper">
+            <table>
+              <tr><th>Header</th><th>Information Extracted</th></tr>
+              <tr><td><code>Received:</code></td><td>Server hostnames, IP addresses, timestamps, TLS info, protocol</td></tr>
+              <tr><td><code>Date:</code></td><td>Original send time (used as the origin timestamp)</td></tr>
+            </table>
+          </div>
+
+          <h3>Understanding the Diagram</h3>
+          <p>The routing diagram reads from top to bottom:</p>
+          <ol>
+            <li><strong>Origin</strong> — The sending server (extracted from the first <code>Received:</code> header's "from" field)</li>
+            <li><strong>Intermediate servers</strong> — Mail relays, spam filters, or corporate gateways</li>
+            <li><strong>Destination</strong> — The final receiving server</li>
+          </ol>
+
+          <div class="tip">
+            <div class="callout-title">TLS Indicator</div>
+            <p>A padlock icon on the connector line indicates the transmission was encrypted. Hover over it to see the TLS version (e.g., TLSv1.3) and cipher suite used.</p>
+          </div>
+
+          <h3>Use Cases</h3>
+          <ul>
+            <li><strong>Debugging email delivery</strong> — Identify where delays occur in the delivery chain</li>
+            <li><strong>Security analysis</strong> — Verify TLS encryption was used throughout the route</li>
+            <li><strong>Spam investigation</strong> — Trace the origin of suspicious emails</li>
+            <li><strong>Compliance</strong> — Document that email was transmitted securely</li>
+          </ul>
         </section>
 
         <section id="audit-reports">

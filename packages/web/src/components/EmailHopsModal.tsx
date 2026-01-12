@@ -92,16 +92,42 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
   // So we reverse to get chronological order
   hops.reverse()
 
+  // Build the actual flow: origin server → receiving servers
+  // Each Received header shows: from=sender, by=receiver
+  // So the flow is: first.from → first.by → second.by → ...
+  const flow: EmailHop[] = []
+
+  if (hops.length > 0) {
+    // Add the origin server (the "from" of the first hop)
+    const firstHop = hops[0]
+    if (firstHop.from !== 'unknown') {
+      flow.push({
+        from: 'origin',
+        by: firstHop.from,
+        timestamp: null, // We don't have the send time
+        rawTimestamp: '',
+        delay: null,
+        timezone: null,
+        rawBlock: `Origin server: ${firstHop.from}`
+      })
+    }
+
+    // Add all the receiving servers
+    for (const hop of hops) {
+      flow.push(hop)
+    }
+  }
+
   // Calculate delays between hops
-  for (let i = 1; i < hops.length; i++) {
-    const prev = hops[i - 1]
-    const curr = hops[i]
+  for (let i = 1; i < flow.length; i++) {
+    const prev = flow[i - 1]
+    const curr = flow[i]
     if (prev.timestamp && curr.timestamp) {
       curr.delay = Math.round((curr.timestamp.getTime() - prev.timestamp.getTime()) / 1000)
     }
   }
 
-  return hops
+  return flow
 }
 
 function formatDuration(seconds: number): string {
@@ -164,13 +190,12 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
   const hops = useMemo(() => parseReceivedHeaders(rawHeaders), [rawHeaders])
 
   const totalDelay = useMemo(() => {
-    if (hops.length < 2) return null
-    const first = hops[0]
-    const last = hops[hops.length - 1]
-    if (first.timestamp && last.timestamp) {
-      return Math.round((last.timestamp.getTime() - first.timestamp.getTime()) / 1000)
-    }
-    return null
+    // Find first and last hops with timestamps
+    const hopsWithTimestamps = hops.filter(h => h.timestamp !== null)
+    if (hopsWithTimestamps.length < 2) return null
+    const first = hopsWithTimestamps[0]
+    const last = hopsWithTimestamps[hopsWithTimestamps.length - 1]
+    return Math.round((last.timestamp!.getTime() - first.timestamp!.getTime()) / 1000)
   }, [hops])
 
   // Check if timezones differ
@@ -184,14 +209,17 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
     <Modal onClose={onClose} title="Email Routing Analysis" maxWidth="max-w-3xl">
       <div className="space-y-4">
         {/* Summary */}
-        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <div className="text-gray-700 dark:text-gray-300">
             <span className="font-medium">{hops.length}</span> server{hops.length !== 1 ? 's' : ''}
           </div>
           {totalDelay !== null && (
-            <div className={`font-medium ${getDelayColor(totalDelay)}`}>
-              Total: {formatDuration(totalDelay)}
-            </div>
+            <>
+              <span className="text-gray-400 dark:text-gray-500">|</span>
+              <div className="text-gray-700 dark:text-gray-300">
+                Total time: <span className={`font-medium ${getDelayColor(totalDelay)}`}>{formatDuration(totalDelay)}</span>
+              </div>
+            </>
           )}
         </div>
 
@@ -215,15 +243,11 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
                     <div className="w-8 flex justify-center">
                       <div className="w-0.5 h-6 bg-gray-300 dark:bg-gray-600" />
                     </div>
-                    <div className={`ml-4 px-3 py-1 rounded-full text-sm font-medium ${getDelayBgColor(hop.delay)} ${getDelayColor(hop.delay)}`}>
-                      {hop.delay !== null ? (
-                        <>
-                          {hop.delay >= 0 ? '+' : ''}{formatDuration(hop.delay)}
-                        </>
-                      ) : (
-                        '? delay'
-                      )}
-                    </div>
+                    {hop.delay !== null && (
+                      <div className={`ml-4 px-3 py-1 rounded-full text-sm font-medium ${getDelayBgColor(hop.delay)} ${getDelayColor(hop.delay)}`}>
+                        {hop.delay >= 0 ? '+' : ''}{formatDuration(hop.delay)}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -232,7 +256,7 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
                   {/* Step indicator */}
                   <div className="w-8 flex-shrink-0 flex flex-col items-center">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      i === 0
+                      hop.from === 'origin'
                         ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
                         : i === hops.length - 1
                           ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
@@ -254,11 +278,16 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
                           {hop.by}
                         </div>
 
-                        {/* From server */}
-                        {hop.from !== 'unknown' && hop.from !== hop.by && (
-                          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            <span className="text-gray-400 dark:text-gray-500">from:</span>{' '}
-                            <span className="font-mono">{hop.from}</span>
+                        {/* Label for origin server */}
+                        {hop.from === 'origin' && (
+                          <div className="mt-1 text-xs text-green-600 dark:text-green-400">
+                            Sending server
+                          </div>
+                        )}
+                        {/* Label for final destination */}
+                        {i === hops.length - 1 && hop.from !== 'origin' && (
+                          <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                            Final destination
                           </div>
                         )}
                       </div>

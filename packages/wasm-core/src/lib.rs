@@ -53,17 +53,6 @@ pub fn sanitize(text: &str, rules_json: &str, consistency_mode: bool, label_pref
     let detector = PiiDetector::new();
     let DetectResult { matches, logs } = detector.detect(text, &enabled_rules);
 
-    let mut stats: HashMap<String, usize> = HashMap::new();
-    let mut found_matches: HashMap<String, Vec<String>> = HashMap::new();
-
-    for m in &matches {
-        *stats.entry(m.pii_type.clone()).or_insert(0) += 1;
-        found_matches
-            .entry(m.pii_type.clone())
-            .or_default()
-            .push(m.value.clone());
-    }
-
     let (output, replacements) = apply_replacements(
         text,
         &matches,
@@ -73,6 +62,18 @@ pub fn sanitize(text: &str, rules_json: &str, consistency_mode: bool, label_pref
         label_prefix,
         label_suffix,
     );
+
+    // Calculate stats from actual replacements (after overlap filtering)
+    let mut stats: HashMap<String, usize> = HashMap::new();
+    let mut found_matches: HashMap<String, Vec<String>> = HashMap::new();
+
+    for r in &replacements {
+        *stats.entry(r.pii_type.clone()).or_insert(0) += 1;
+        found_matches
+            .entry(r.pii_type.clone())
+            .or_default()
+            .push(r.original.clone());
+    }
 
     let result = SanitizeResult {
         output,

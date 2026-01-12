@@ -466,6 +466,8 @@ function VirtualizedList({
   syntaxHighlight = false
 }: VirtualizedListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
+  const [hoveredLineIndex, setHoveredLineIndex] = useState<number | null>(null)
+  const [copiedLineIndex, setCopiedLineIndex] = useState<number | null>(null)
 
   useEffect(() => {
     if (scrollRef && parentRef.current) {
@@ -483,6 +485,14 @@ function VirtualizedList({
   const handleScroll = useCallback(() => {
     onScroll?.()
   }, [onScroll])
+
+  const handleCopyLine = useCallback(async (index: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const lineContent = lines[index]
+    await navigator.clipboard.writeText(lineContent)
+    setCopiedLineIndex(index)
+    setTimeout(() => setCopiedLineIndex(null), 1500)
+  }, [lines])
 
   return (
     <div 
@@ -511,15 +521,37 @@ function VirtualizedList({
               const lineColor = hasChange
                 ? (type === 'output' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')
                 : lineNumText
+              const isHovered = hoveredLineIndex === virtualRow.index
+              const isCopied = copiedLineIndex === virtualRow.index
               return (
                 <div
                   key={virtualRow.key}
-                  className={`px-2 font-mono text-sm cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-end ${lineColor} ${
+                  className={`px-2 font-mono text-sm cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-end gap-1 ${lineColor} ${
                     selectedLine === lineNum ? 'bg-yellow-200 dark:bg-yellow-900' : ''
                   }`}
                   style={{ height: LINE_HEIGHT }}
                   onClick={() => onLineClick(lineNum)}
+                  onMouseEnter={() => setHoveredLineIndex(virtualRow.index)}
+                  onMouseLeave={() => setHoveredLineIndex(null)}
                 >
+                  {isHovered && !isCopied && (
+                    <button
+                      onClick={(e) => handleCopyLine(virtualRow.index, e)}
+                      className="opacity-60 hover:opacity-100 text-gray-500 dark:text-gray-400"
+                      title="Copy line"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  )}
+                  {isCopied && (
+                    <span className="text-green-500 dark:text-green-400">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                  )}
                   {lineNum + 1}
                 </div>
               )
@@ -613,6 +645,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const inputContainerRef = useRef<HTMLDivElement | null>(null)
   const outputContainerRef = useRef<HTMLDivElement | null>(null)
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
+  const [hoveredLineIndex, setHoveredLineIndex] = useState<number | null>(null)
+  const [copiedLineIndex, setCopiedLineIndex] = useState<number | null>(null)
   const [showDiff, setShowDiff] = useState(showDiffProp)
   const lineFilter = lineFilterProp
   const setLineFilter = onLineFilterChange || (() => {})
@@ -1720,6 +1754,14 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     setSelectedLine(lineNum === selectedLine ? null : lineNum)
   }
 
+  const handleCopyLine = useCallback(async (lines: string[], index: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const lineContent = lines[index]
+    await navigator.clipboard.writeText(lineContent)
+    setCopiedLineIndex(index)
+    setTimeout(() => setCopiedLineIndex(null), 1500)
+  }, [])
+
   useEffect(() => {
     setSelectedLine(null)
   }, [output])
@@ -1768,14 +1810,36 @@ Here are examples of actual replacements made in this ${docTypeShort}:
           const lineColor = hasChange
             ? (type === 'output' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')
             : lineNumText
+          const isHovered = hoveredLineIndex === i
+          const isCopied = copiedLineIndex === i
           return (
             <div
               key={lineNum}
-              className={`px-2 font-mono text-sm cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 h-5 flex items-center justify-end ${lineColor} ${
+              className={`px-2 font-mono text-sm cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 h-5 flex items-center justify-end gap-1 ${lineColor} ${
                 selectedLine === lineNum ? 'bg-yellow-200 dark:bg-yellow-900' : ''
               }`}
               onClick={() => handleLineClick(lineNum)}
+              onMouseEnter={() => setHoveredLineIndex(i)}
+              onMouseLeave={() => setHoveredLineIndex(null)}
             >
+              {isHovered && !isCopied && (
+                <button
+                  onClick={(e) => handleCopyLine(lines, i, e)}
+                  className="opacity-60 hover:opacity-100 text-gray-500 dark:text-gray-400"
+                  title="Copy line"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              )}
+              {isCopied && (
+                <span className="text-green-500 dark:text-green-400">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+              )}
               {lineNum + 1}
             </div>
           )

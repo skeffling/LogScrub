@@ -1,6 +1,12 @@
 import { useMemo } from 'react'
 import { Modal } from './Modal'
 
+interface TlsInfo {
+  version: string
+  cipher: string
+  bits: string | null
+}
+
 interface EmailHop {
   from: string
   by: string
@@ -9,6 +15,7 @@ interface EmailHop {
   delay: number | null // delay from previous hop in seconds
   timezone: string | null
   rawBlock: string // original Received header content
+  tls: TlsInfo | null // encryption info if present
 }
 
 interface EmailHopsModalProps {
@@ -89,7 +96,20 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
 
     const { timestamp, rawTimestamp, timezone } = parseTimestamp(receivedBlock)
 
-    hops.push({ from, by, timestamp, rawTimestamp, delay: null, timezone, rawBlock: receivedBlock })
+    // Extract TLS/encryption info
+    // Examples: "(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits))"
+    //           "(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384)"
+    let tls: TlsInfo | null = null
+    const tlsMatch = receivedBlock.match(/\(using\s+(TLSv[\d.]+|SSLv[\d.]+)\s+with\s+cipher\s+([^\s()]+)(?:\s+\((\d+\/\d+\s+bits)\))?\)/i)
+    if (tlsMatch) {
+      tls = {
+        version: tlsMatch[1],
+        cipher: tlsMatch[2],
+        bits: tlsMatch[3] || null
+      }
+    }
+
+    hops.push({ from, by, timestamp, rawTimestamp, delay: null, timezone, rawBlock: receivedBlock, tls })
   }
 
   // Received headers are in reverse order (most recent first)
@@ -112,7 +132,8 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
         rawTimestamp: sentDate?.rawTimestamp ?? '',
         delay: null,
         timezone: sentDate?.timezone ?? null,
-        rawBlock: sentDate ? `Date: ${dateHeader!.content}` : `Origin server: ${firstHop.from}`
+        rawBlock: sentDate ? `Date: ${dateHeader!.content}` : `Origin server: ${firstHop.from}`,
+        tls: null
       })
     }
 
@@ -277,9 +298,21 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        {/* Server name */}
-                        <div className="font-mono text-sm font-medium text-gray-900 dark:text-white truncate" title={hop.by}>
-                          {hop.by}
+                        {/* Server name with optional TLS indicator */}
+                        <div className="flex items-center gap-1.5">
+                          <div className="font-mono text-sm font-medium text-gray-900 dark:text-white truncate" title={hop.by}>
+                            {hop.by}
+                          </div>
+                          {hop.tls && (
+                            <span
+                              className="text-green-600 dark:text-green-400 flex-shrink-0 cursor-help"
+                              title={`${hop.tls.version} - ${hop.tls.cipher}${hop.tls.bits ? ` (${hop.tls.bits})` : ''}`}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                              </svg>
+                            </span>
+                          )}
                         </div>
 
                         {/* Label for origin server */}

@@ -320,15 +320,28 @@ function App() {
   }, [input])
 
   // Detect dmesg relative timestamp format: [seconds.microseconds]
-  const hasDmesgTimestamps = useMemo(() => {
-    if (!input || input.length < 20) return false
+  const dmesgDetection = useMemo(() => {
+    if (!input || input.length < 20) return { detected: false, firstLine: '' }
     const sample = input.slice(0, 5000)
     // Match dmesg format: [123456.123456] followed by typical kernel log content
     // Must have multiple matches to confirm it's actually dmesg output
     const dmesgPattern = /^\[\s*\d+\.\d{6}\]\s+\S/m
     const matches = sample.match(/\[\s*\d+\.\d{6}\]/g)
-    return dmesgPattern.test(sample) && matches && matches.length >= 2
+    const detected = dmesgPattern.test(sample) && matches && matches.length >= 2
+
+    // Extract the first dmesg line
+    let firstLine = ''
+    if (detected) {
+      const lineMatch = sample.match(/^\[\s*\d+\.\d{6}\].*$/m)
+      if (lineMatch) {
+        firstLine = lineMatch[0]
+      }
+    }
+
+    return { detected, firstLine }
   }, [input])
+
+  const hasDmesgTimestamps = dmesgDetection.detected
 
   // Show dmesg timestamp modal when detected
   useEffect(() => {
@@ -1105,6 +1118,7 @@ function App() {
 
       {showDmesgModal && (
         <DmesgTimestampModal
+          firstLine={dmesgDetection.firstLine}
           onClose={() => {
             setShowDmesgModal(false)
             setDmesgModalDismissed(true)

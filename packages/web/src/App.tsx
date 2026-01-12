@@ -6,6 +6,7 @@ import { RulePanel } from './components/RulePanel'
 import { AboutModal } from './components/AboutModal'
 import { DmesgTimestampModal } from './components/DmesgTimestampModal'
 import { SipTraceModal } from './components/SipTraceModal'
+import { EmailHopsModal } from './components/EmailHopsModal'
 import { BUILTIN_PRESETS } from './data/presets'
 import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
@@ -136,6 +137,7 @@ function App() {
   const [dmesgModalDismissed, setDmesgModalDismissed] = useState(false)
   const [showSipModal, setShowSipModal] = useState(false)
   const [sipModalDismissed, setSipModalDismissed] = useState(false)
+  const [showEmailHopsModal, setShowEmailHopsModal] = useState(false)
   const [showTimeShift, setShowTimeShift] = useState(false)
   const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
   const [fullscreenLoading, setFullscreenLoading] = useState(false)
@@ -386,7 +388,16 @@ function App() {
     setSipModalDismissed(false)
   }, [fileName])
 
-  // Function to load the SIP preset
+  // Detect email headers (multiple Received: headers indicate email)
+  const emailHeadersDetected = useMemo(() => {
+    if (!input || input.length < 50) return false
+    const sample = input.slice(0, 15000)
+    // Look for at least 2 Received: headers, which indicates email routing
+    const receivedMatches = sample.match(/^Received:\s/gim)
+    return receivedMatches && receivedMatches.length >= 2
+  }, [input])
+
+  // Function to load the SIP preset and re-run analysis
   const loadSipPreset = useCallback(() => {
     const sipPreset = BUILTIN_PRESETS.find(p => p.id === 'sip-voip')
     if (!sipPreset) return
@@ -419,7 +430,14 @@ function App() {
         }
       })
     }
-  }, [rules, toggleRule, setRuleStrategy, customRules, addCustomRule])
+
+    // Re-run analysis with the new preset after a short delay to ensure state updates
+    setTimeout(() => {
+      if (input.trim()) {
+        analyzeText(input)
+      }
+    }, 100)
+  }, [rules, toggleRule, setRuleStrategy, customRules, addCustomRule, input, analyzeText])
 
   // Show SIP modal when analysis completes and SIP trace is detected
   useEffect(() => {
@@ -1121,6 +1139,22 @@ function App() {
             
             <div className="flex-shrink-0">
               <Suggestions />
+              {analysisCompleted && emailHeadersDetected && (
+                <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-3">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-blue-800 dark:text-blue-200 text-sm flex-1">
+                    Email headers detected with routing information.
+                  </span>
+                  <button
+                    onClick={() => setShowEmailHopsModal(true)}
+                    className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                  >
+                    View Routing
+                  </button>
+                </div>
+              )}
               {analysisCompleted && analysisReplacements.length === 0 && !output && (
                 <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
                   <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1207,6 +1241,13 @@ function App() {
             setSipModalDismissed(true)
           }}
           onLoadPreset={loadSipPreset}
+        />
+      )}
+
+      {showEmailHopsModal && (
+        <EmailHopsModal
+          rawHeaders={input}
+          onClose={() => setShowEmailHopsModal(false)}
         />
       )}
     </div>

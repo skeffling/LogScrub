@@ -7,7 +7,7 @@ import { AboutModal } from './components/AboutModal'
 import { DmesgTimestampModal } from './components/DmesgTimestampModal'
 import { SipTraceModal } from './components/SipTraceModal'
 import { EmailHopsModal } from './components/EmailHopsModal'
-import { SpamReportModal, detectSpamReport } from './components/SpamReportModal'
+import { SpamReportModal, detectSpamReports } from './components/SpamReportModal'
 import { BUILTIN_PRESETS } from './data/presets'
 import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
@@ -454,9 +454,9 @@ function App() {
   }, [input])
 
   // Detect spam reports (rspamd or SpamAssassin format)
-  const spamReportDetected = useMemo(() => {
-    if (!input || input.length < 50) return null
-    return detectSpamReport(input)
+  const spamReportsDetected = useMemo(() => {
+    if (!input || input.length < 50) return []
+    return detectSpamReports(input)
   }, [input])
 
   // Function to load a preset by ID and re-run analysis
@@ -1304,19 +1304,22 @@ function App() {
                   </button>
                 </div>
               )}
-              {spamReportDetected && !spamReportBannerDismissed && (
+              {spamReportsDetected.length > 0 && !spamReportBannerDismissed && (
                 <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
                   <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
                   </svg>
                   <span className="text-amber-800 dark:text-amber-200 text-sm flex-1">
-                    {spamReportDetected.type === 'rspamd' ? 'Rspamd' : 'SpamAssassin'} report detected ({spamReportDetected.rules.length} rules, score: {spamReportDetected.totalScore?.toFixed(1) ?? 'N/A'})
+                    {spamReportsDetected.length === 1
+                      ? `${spamReportsDetected[0].type === 'rspamd' ? 'Rspamd' : 'SpamAssassin'} report detected (${spamReportsDetected[0].rules.length} rules, score: ${spamReportsDetected[0].totalScore?.toFixed(1) ?? 'N/A'})`
+                      : `${spamReportsDetected.length} spam reports detected (${spamReportsDetected.map(r => r.type === 'rspamd' ? 'Rspamd' : 'SpamAssassin').join(' + ')})`
+                    }
                   </span>
                   <button
                     onClick={() => setShowSpamReportModal(true)}
                     className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-700"
                   >
-                    View Report
+                    View {spamReportsDetected.length > 1 ? 'Reports' : 'Report'}
                   </button>
                   <button
                     onClick={() => setSpamReportBannerDismissed(true)}
@@ -1436,7 +1439,8 @@ function App() {
       <SpamReportModal
         isOpen={showSpamReportModal}
         onClose={() => setShowSpamReportModal(false)}
-        report={spamReportDetected}
+        report={spamReportsDetected[0] || null}
+        reports={spamReportsDetected}
       />
     </div>
   )

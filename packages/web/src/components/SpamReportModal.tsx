@@ -19,6 +19,7 @@ interface SpamReportModalProps {
   isOpen: boolean
   onClose: () => void
   report: SpamReport | null
+  reports?: SpamReport[]
 }
 
 type SortField = 'name' | 'score'
@@ -127,27 +128,60 @@ export function parseSpamAssassinReport(text: string): SpamReport | null {
 }
 
 export function detectSpamReport(text: string): SpamReport | null {
-  // Check for rspamd format first (has Symbol: pattern)
-  if (/Symbol:\s*[A-Z0-9_]+\(-?[\d.]+\)/i.test(text)) {
-    return parseRspamdReport(text)
-  }
-
-  // Check for SpamAssassin format (has pts/rule table or "scored" text)
-  if (/scored?\s*\(-?[\d.]+\s*points?\)/i.test(text) || /^\s*-?[\d.]+\s+[A-Z][A-Z0-9_]+\s+/m.test(text)) {
-    return parseSpamAssassinReport(text)
-  }
-
-  return null
+  const reports = detectSpamReports(text)
+  return reports.length > 0 ? reports[0] : null
 }
 
-export function SpamReportModal({ isOpen, onClose, report }: SpamReportModalProps) {
+export function detectSpamReports(text: string): SpamReport[] {
+  const reports: SpamReport[] = []
+
+  // Check for SpamAssassin format (has pts/rule table or "scored" text)
+  // Look specifically in X-Spam-Report header (not X-Spam-Report-Secondary)
+  const spamAssassinMatch = text.match(/X-Spam-Report:[\s\S]*?(?=X-Spam-Report-Secondary:|X-[A-Z][a-zA-Z-]+:|$)/i)
+  if (spamAssassinMatch) {
+    const saReport = parseSpamAssassinReport(spamAssassinMatch[0])
+    if (saReport) reports.push(saReport)
+  } else if (/scored?\s*\(-?[\d.]+\s*points?\)/i.test(text) || /^\s*-?[\d.]+\s+[A-Z][A-Z0-9_]+\s+/m.test(text)) {
+    // Fallback: try parsing the whole text as SpamAssassin
+    const saReport = parseSpamAssassinReport(text)
+    if (saReport) reports.push(saReport)
+  }
+
+  // Check for rspamd format (has Symbol: pattern)
+  // Look specifically in X-Spam-Report-Secondary or X-Spam-Report headers
+  const rspamdMatch = text.match(/X-Spam-Report(?:-Secondary)?:[\s\S]*?Symbol:[\s\S]*?(?=X-[A-Z][a-zA-Z-]+:|$)/i)
+  if (rspamdMatch && /Symbol:\s*[A-Z0-9_]+\(-?[\d.]+\)/i.test(rspamdMatch[0])) {
+    const rspamdReport = parseRspamdReport(rspamdMatch[0])
+    if (rspamdReport) {
+      // Avoid duplicate if we already found it
+      if (!reports.some(r => r.type === 'rspamd')) {
+        reports.push(rspamdReport)
+      }
+    }
+  } else if (/Symbol:\s*[A-Z0-9_]+\(-?[\d.]+\)/i.test(text)) {
+    // Fallback: try parsing the whole text as rspamd
+    const rspamdReport = parseRspamdReport(text)
+    if (rspamdReport && !reports.some(r => r.type === 'rspamd')) {
+      reports.push(rspamdReport)
+    }
+  }
+
+  return reports
+}
+
+export function SpamReportModal({ isOpen, onClose, report, reports: reportsProp }: SpamReportModalProps) {
   const [sortField, setSortField] = useState<SortField>('score')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [activeReportIndex, setActiveReportIndex] = useState(0)
+
+  // Use reports array if provided, otherwise wrap single report
+  const allReports = reportsProp && reportsProp.length > 0 ? reportsProp : (report ? [report] : [])
+  const activeReport = allReports[activeReportIndex] || null
 
   const sortedRules = useMemo(() => {
-    if (!report) return []
+    if (!activeReport) return []
 
-    return [...report.rules].sort((a, b) => {
+    return [...activeReport.rules].sort((a, b) => {
       let comparison = 0
       if (sortField === 'name') {
         comparison = a.name.localeCompare(b.name)
@@ -156,7 +190,7 @@ export function SpamReportModal({ isOpen, onClose, report }: SpamReportModalProp
       }
       return sortDirection === 'asc' ? comparison : -comparison
     })
-  }, [report, sortField, sortDirection])
+  }, [activeReport, sortField, sortDirection])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -167,11 +201,11 @@ export function SpamReportModal({ isOpen, onClose, report }: SpamReportModalProp
     }
   }
 
-  if (!isOpen || !report) return null
+  if (!isOpen || !activeReport) return null
 
-  const positiveRules = report.rules.filter(r => r.score > 0)
-  const negativeRules = report.rules.filter(r => r.score < 0)
-  const neutralRules = report.rules.filter(r => r.score === 0)
+  const positiveRules = activeReport.rules.filter(r => r.score > 0)
+  const negativeRules = activeReport.rules.filter(r => r.score < 0)
+  const neutralRules = activeReport.rules.filter(r => r.score === 0)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -180,25 +214,14 @@ export function SpamReportModal({ isOpen, onClose, report }: SpamReportModalProp
         <div className="p-4 border-b dark:border-gray-700 flex items-center justify-between flex-shrink-0">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              {report.type === 'rspamd' ? (
-                <>
-                  <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                  Rspamd Report
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  SpamAssassin Report
-                </>
-              )}
+              <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
+              </svg>
+              Spam Filter Reports
             </h2>
-            {report.hostname && (
+            {activeReport.hostname && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Scanned by: {report.hostname}
+                Scanned by: {activeReport.hostname}
               </p>
             )}
           </div>
@@ -212,30 +235,61 @@ export function SpamReportModal({ isOpen, onClose, report }: SpamReportModalProp
           </button>
         </div>
 
+        {/* Report Tabs (if multiple reports) */}
+        {allReports.length > 1 && (
+          <div className="flex border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0">
+            {allReports.map((r, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveReportIndex(idx)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  idx === activeReportIndex
+                    ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-white dark:bg-gray-800'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                {r.type === 'rspamd' ? 'Rspamd' : 'SpamAssassin'}
+                <span className={`ml-2 px-1.5 py-0.5 text-xs rounded ${
+                  (r.totalScore ?? 0) > 5 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                  (r.totalScore ?? 0) > 0 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                  'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                }`}>
+                  {r.totalScore?.toFixed(1) ?? 'N/A'}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Summary */}
         <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-b dark:border-gray-700 flex-shrink-0">
           <div className="flex flex-wrap gap-4 items-center">
-            {report.totalScore !== undefined && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {activeReport.type === 'rspamd' ? 'Rspamd' : 'SpamAssassin'}:
+              </span>
+            </div>
+            {activeReport.totalScore !== undefined && (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Total Score:</span>
                 <span className={`text-xl font-bold ${
-                  report.totalScore > 5 ? 'text-red-600 dark:text-red-400' :
-                  report.totalScore > 0 ? 'text-yellow-600 dark:text-yellow-400' :
+                  activeReport.totalScore > 5 ? 'text-red-600 dark:text-red-400' :
+                  activeReport.totalScore > 0 ? 'text-yellow-600 dark:text-yellow-400' :
                   'text-green-600 dark:text-green-400'
                 }`}>
-                  {report.totalScore.toFixed(2)}
+                  {activeReport.totalScore.toFixed(2)}
                 </span>
               </div>
             )}
-            {report.action && (
+            {activeReport.action && (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Action:</span>
                 <span className={`px-2 py-0.5 rounded text-sm font-medium ${
-                  report.action.toLowerCase().includes('reject') ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
-                  report.action.toLowerCase().includes('add header') ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                  activeReport.action.toLowerCase().includes('reject') ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                  activeReport.action.toLowerCase().includes('add header') ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
                   'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                 }`}>
-                  {report.action}
+                  {activeReport.action}
                 </span>
               </div>
             )}
@@ -278,7 +332,7 @@ export function SpamReportModal({ isOpen, onClose, report }: SpamReportModalProp
                     )}
                   </div>
                 </th>
-                {report.type === 'spamassassin' && (
+                {activeReport.type === 'spamassassin' && (
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
                     Description
                   </th>
@@ -306,7 +360,7 @@ export function SpamReportModal({ isOpen, onClose, report }: SpamReportModalProp
                   }`}>
                     {rule.score > 0 ? '+' : ''}{rule.score.toFixed(2)}
                   </td>
-                  {report.type === 'spamassassin' && (
+                  {activeReport.type === 'spamassassin' && (
                     <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
                       {rule.description || <span className="text-gray-400 dark:text-gray-600 italic">No description</span>}
                     </td>

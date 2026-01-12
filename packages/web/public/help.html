@@ -629,6 +629,7 @@
           <a href="#time-shift">Time Shift</a>
           <a href="#analyze-mode">Analyze Mode</a>
           <a href="#email-headers">Email Header Analysis</a>
+          <a href="#spam-reports">Spam Report Parsing</a>
           <a href="#audit-reports">Audit Reports</a>
           <a href="#reverse-lookup">Reverse Lookup</a>
           <a href="#ai-explain">AI Explain</a>
@@ -1266,6 +1267,45 @@ User [EMAIL-3] logged in</div>
             <li><strong>Spam investigation</strong> — Trace the origin of suspicious emails</li>
             <li><strong>Compliance</strong> — Document that email was transmitted securely</li>
           </ul>
+        </section>
+
+        <section id="spam-reports">
+          <h2>Spam Report Parsing</h2>
+          <p>LogScrub detects and parses spam filter reports from <strong>SpamAssassin</strong> and <strong>rspamd</strong>, displaying them in an easy-to-read sortable table.</p>
+
+          <h3>Supported Formats</h3>
+          <div class="table-wrapper">
+            <table>
+              <tr><th>Filter</th><th>Header</th><th>Format</th></tr>
+              <tr>
+                <td><strong>SpamAssassin</strong></td>
+                <td><code>X-Spam-Report</code></td>
+                <td>Table with pts, rule name, and description columns</td>
+              </tr>
+              <tr>
+                <td><strong>rspamd</strong></td>
+                <td><code>X-Spam-Report</code></td>
+                <td><code>Symbol: RULE_NAME(score)</code> format with Action field</td>
+              </tr>
+            </table>
+          </div>
+
+          <h3>Report View Features</h3>
+          <ul>
+            <li><strong>Sortable table</strong> — Click column headers to sort by rule name or score</li>
+            <li><strong>Color-coded rules</strong> — Green for ham (negative scores), red for spam (positive scores)</li>
+            <li><strong>Total score</strong> — Combined score with visual indicator</li>
+            <li><strong>Action taken</strong> — Shows what the filter decided (no action, add header, reject, etc.)</li>
+            <li><strong>Rule breakdown</strong> — Count of ham, neutral, and spam rules</li>
+          </ul>
+
+          <h3>Multi-line Headers</h3>
+          <p>Spam reports are often split across multiple lines in email headers. LogScrub automatically handles header continuation lines (lines starting with whitespace) and reassembles the complete report.</p>
+
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>When an amber banner appears saying "rspamd report detected" or "SpamAssassin report detected", click "View Report" to see the parsed rules in a sortable table format.</p>
+          </div>
         </section>
 
         <section id="audit-reports">

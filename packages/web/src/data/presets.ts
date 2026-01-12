@@ -194,6 +194,9 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
       sip_contact: { enabled: true },
       sip_uri: { enabled: true },
       sip_call_id: { enabled: true },
+      sip_branch: { enabled: true },
+      sip_user_agent: { enabled: true },
+      sip_via: { enabled: true },
       // Common network/contact rules useful for SIP
       ipv4: { enabled: true },
       ipv6: { enabled: true },

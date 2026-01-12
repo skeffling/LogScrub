@@ -89,7 +89,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Postfix': ['postfix_from', 'postfix_to', 'postfix_relay', 'postfix_sasl'],
   'Dovecot': ['dovecot_user', 'dovecot_rip', 'dovecot_lip'],
   'Sendmail': ['sendmail_from', 'sendmail_relay', 'sendmail_msgid'],
-  'SIP/VoIP': ['sip_username', 'sip_realm', 'sip_nonce', 'sip_response', 'sip_from_display', 'sip_to_display', 'sip_contact', 'sip_uri', 'sip_call_id'],
+  'SIP/VoIP': ['sip_username', 'sip_realm', 'sip_nonce', 'sip_response', 'sip_from_display', 'sip_to_display', 'sip_contact', 'sip_uri', 'sip_call_id', 'sip_branch', 'sip_user_agent', 'sip_via'],
   'Hashes': ['md5_hash', 'sha1_hash', 'sha256_hash', 'docker_container_id'],
   'Other': ['uuid', 'email_message_id', 'file_path_unix', 'file_path_windows'],
 }

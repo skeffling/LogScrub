@@ -93,6 +93,9 @@ export const BUILTIN_PATTERNS: Record<string, string> = {
   sip_from_display: String.raw`(?i)^From:\s*"[^"]*"`,
   sip_to_display: String.raw`(?i)^To:\s*"[^"]*"`,
   sip_contact: String.raw`(?i)^Contact:\s*<?sip:[^>]+>?`,
-  sip_uri: String.raw`sip:[^\s<>@]+@[^\s<>;]+`,
+  sip_uri: String.raw`sips?:[^\s<>@]+@[^\s<>;]+`,
   sip_call_id: String.raw`(?i)^Call-ID:\s*[^\s]+`,
+  sip_branch: String.raw`(?i)branch=z9hG4bK[a-zA-Z0-9]+`,
+  sip_user_agent: String.raw`(?i)^User-Agent:\s*[^\r\n]+`,
+  sip_via: String.raw`(?i)^Via:\s*SIP/2\.0/[^\r\n]+`,
 }

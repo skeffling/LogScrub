@@ -7,6 +7,7 @@ interface EmailHop {
   timestamp: Date | null
   rawTimestamp: string
   delay: number | null // delay from previous hop in seconds
+  timezone: string | null
 }
 
 interface EmailHopsModalProps {
@@ -34,14 +35,16 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
 
     // Extract timestamp - RFC 2822 format at end of header
     // Examples: "Mon, 12 Jan 2026 16:27:44 +0000", "Mon, 12 Jan 2026 15:32:01 +0000 (GMT)"
-    const timestampRegex = /;\s*([A-Z][a-z]{2},\s+\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+[+-]\d{4}(?:\s+\([A-Z]+\))?)/i
+    const timestampRegex = /;\s*([A-Z][a-z]{2},\s+\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+([+-]\d{4})(?:\s+\([A-Z]+\))?)/i
     const timestampMatch = receivedBlock.match(timestampRegex)
 
     let timestamp: Date | null = null
     let rawTimestamp = ''
+    let timezone: string | null = null
 
     if (timestampMatch) {
       rawTimestamp = timestampMatch[1].trim()
+      timezone = timestampMatch[2] || null
       // Remove timezone name in parentheses for parsing
       const cleanTimestamp = rawTimestamp.replace(/\s+\([A-Z]+\)$/, '')
       timestamp = new Date(cleanTimestamp)
@@ -50,7 +53,7 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
       }
     }
 
-    hops.push({ from, by, timestamp, rawTimestamp, delay: null })
+    hops.push({ from, by, timestamp, rawTimestamp, delay: null, timezone })
   }
 
   // Received headers are in reverse order (most recent first)
@@ -86,13 +89,43 @@ function formatDuration(seconds: number): string {
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString('en-GB', {
+function formatTime(date: Date, showTimezone?: string | null): string {
+  const time = date.toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hour12: false
   })
+  if (showTimezone) {
+    return `${time} ${showTimezone}`
+  }
+  return time
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  })
+}
+
+function getDelayColor(seconds: number | null): string {
+  if (seconds === null) return 'text-gray-400'
+  if (seconds < 0) return 'text-purple-600 dark:text-purple-400'
+  if (seconds > 300) return 'text-red-600 dark:text-red-400' // >5 min
+  if (seconds > 60) return 'text-orange-600 dark:text-orange-400' // >1 min
+  if (seconds > 10) return 'text-yellow-600 dark:text-yellow-400' // >10s
+  return 'text-green-600 dark:text-green-400'
+}
+
+function getDelayBgColor(seconds: number | null): string {
+  if (seconds === null) return 'bg-gray-100 dark:bg-gray-700'
+  if (seconds < 0) return 'bg-purple-100 dark:bg-purple-900/30'
+  if (seconds > 300) return 'bg-red-100 dark:bg-red-900/30'
+  if (seconds > 60) return 'bg-orange-100 dark:bg-orange-900/30'
+  if (seconds > 10) return 'bg-yellow-100 dark:bg-yellow-900/30'
+  return 'bg-green-100 dark:bg-green-900/30'
 }
 
 export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
@@ -108,60 +141,106 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
     return null
   }, [hops])
 
-  return (
-    <Modal onClose={onClose} title="Email Routing Analysis" maxWidth="max-w-2xl">
-      <div className="space-y-4">
-        <p className="text-gray-700 dark:text-gray-300">
-          This email passed through <strong>{hops.length}</strong> server{hops.length !== 1 ? 's' : ''}.
-          {totalDelay !== null && (
-            <> Total transit time: <strong>{formatDuration(totalDelay)}</strong></>
-          )}
-        </p>
+  // Check if timezones differ
+  const hasTimezoneVariation = useMemo(() => {
+    const timezones = hops.map(h => h.timezone).filter(Boolean)
+    const unique = new Set(timezones)
+    return unique.size > 1
+  }, [hops])
 
+  return (
+    <Modal onClose={onClose} title="Email Routing Analysis" maxWidth="max-w-3xl">
+      <div className="space-y-4">
+        {/* Summary */}
+        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="text-gray-700 dark:text-gray-300">
+            <span className="font-medium">{hops.length}</span> server{hops.length !== 1 ? 's' : ''}
+          </div>
+          {totalDelay !== null && (
+            <div className={`font-medium ${getDelayColor(totalDelay)}`}>
+              Total: {formatDuration(totalDelay)}
+            </div>
+          )}
+        </div>
+
+        {hasTimezoneVariation && (
+          <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Timestamps use different timezones - delays calculated from UTC values
+          </div>
+        )}
+
+        {/* Flow diagram */}
         {hops.length > 0 ? (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-0 max-h-[60vh] overflow-y-auto pr-2">
             {hops.map((hop, i) => (
-              <div
-                key={i}
-                className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full flex items-center justify-center text-xs font-medium">
-                        {i + 1}
-                      </span>
-                      <span className="font-mono text-sm text-gray-900 dark:text-white truncate" title={hop.by}>
-                        {hop.by}
-                      </span>
+              <div key={i}>
+                {/* Arrow with delay (between hops) */}
+                {i > 0 && (
+                  <div className="flex items-center py-2">
+                    <div className="w-8 flex justify-center">
+                      <div className="w-0.5 h-6 bg-gray-300 dark:bg-gray-600" />
                     </div>
-                    <div className="ml-8 text-xs text-gray-500 dark:text-gray-400">
-                      {hop.from !== 'unknown' && (
-                        <div>
-                          <span className="text-gray-400 dark:text-gray-500">from:</span>{' '}
-                          <span className="font-mono">{hop.from}</span>
-                        </div>
+                    <div className={`ml-4 px-3 py-1 rounded-full text-sm font-medium ${getDelayBgColor(hop.delay)} ${getDelayColor(hop.delay)}`}>
+                      {hop.delay !== null ? (
+                        <>
+                          {hop.delay >= 0 ? '+' : ''}{formatDuration(hop.delay)}
+                        </>
+                      ) : (
+                        '? delay'
                       )}
-                      {hop.rawTimestamp && (
-                        <div>
-                          <span className="text-gray-400 dark:text-gray-500">time:</span>{' '}
-                          {hop.timestamp ? formatTime(hop.timestamp) : hop.rawTimestamp}
+                    </div>
+                  </div>
+                )}
+
+                {/* Server box */}
+                <div className="flex items-start">
+                  {/* Step indicator */}
+                  <div className="w-8 flex-shrink-0 flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      i === 0
+                        ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                        : i === hops.length - 1
+                          ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                    }`}>
+                      {i + 1}
+                    </div>
+                  </div>
+
+                  {/* Server details box */}
+                  <div className="ml-4 flex-1 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        {/* Server name */}
+                        <div className="font-mono text-sm font-medium text-gray-900 dark:text-white truncate" title={hop.by}>
+                          {hop.by}
+                        </div>
+
+                        {/* From server */}
+                        {hop.from !== 'unknown' && hop.from !== hop.by && (
+                          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            <span className="text-gray-400 dark:text-gray-500">from:</span>{' '}
+                            <span className="font-mono">{hop.from}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Timestamp */}
+                      {hop.timestamp && (
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            {formatTime(hop.timestamp, hasTimezoneVariation ? hop.timezone : null)}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatDate(hop.timestamp)}
+                          </div>
                         </div>
                       )}
                     </div>
                   </div>
-                  {hop.delay !== null && (
-                    <div className={`flex-shrink-0 text-right ${
-                      hop.delay > 60
-                        ? 'text-orange-600 dark:text-orange-400'
-                        : hop.delay > 10
-                          ? 'text-yellow-600 dark:text-yellow-400'
-                          : 'text-green-600 dark:text-green-400'
-                    }`}>
-                      <div className="text-sm font-medium">+{formatDuration(hop.delay)}</div>
-                      <div className="text-xs text-gray-400 dark:text-gray-500">delay</div>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
@@ -172,17 +251,32 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
           </p>
         )}
 
-        {totalDelay !== null && hops.length > 1 && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-blue-800 dark:text-blue-200 text-sm">Total Transit Time</span>
-              <span className="text-blue-900 dark:text-blue-100 font-medium">{formatDuration(totalDelay)}</span>
+        {/* Legend */}
+        {hops.length > 1 && (
+          <div className="pt-2 border-t dark:border-gray-700">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Delay indicators:</div>
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-green-100 dark:bg-green-900/30" />
+                <span className="text-green-600 dark:text-green-400">&lt;10s</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-yellow-100 dark:bg-yellow-900/30" />
+                <span className="text-yellow-600 dark:text-yellow-400">10s-1m</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-orange-100 dark:bg-orange-900/30" />
+                <span className="text-orange-600 dark:text-orange-400">1m-5m</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-red-100 dark:bg-red-900/30" />
+                <span className="text-red-600 dark:text-red-400">&gt;5m</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-purple-100 dark:bg-purple-900/30" />
+                <span className="text-purple-600 dark:text-purple-400">clock skew</span>
+              </span>
             </div>
-            {hops[0].timestamp && hops[hops.length - 1].timestamp && (
-              <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                {hops[0].timestamp!.toLocaleString()} → {hops[hops.length - 1].timestamp!.toLocaleString()}
-              </div>
-            )}
           </div>
         )}
 

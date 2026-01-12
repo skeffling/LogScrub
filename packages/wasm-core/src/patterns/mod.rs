@@ -344,6 +344,43 @@ static SHA256_HASH_REGEX: Lazy<Regex> =
 static DOCKER_CONTAINER_ID_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\b[a-f0-9]{12}\b").unwrap());
 
+// SIP/VoIP protocol patterns
+static SIP_USERNAME_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?i)username="[^"]+""#).unwrap());
+
+static SIP_REALM_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?i)realm="[^"]+""#).unwrap());
+
+static SIP_NONCE_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?i)nonce="[^"]+""#).unwrap());
+
+static SIP_RESPONSE_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?i)response="[a-f0-9]+""#).unwrap());
+
+static SIP_FROM_DISPLAY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?im)^From:\s*"[^"]*""#).unwrap());
+
+static SIP_TO_DISPLAY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?im)^To:\s*"[^"]*""#).unwrap());
+
+static SIP_CONTACT_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?im)^Contact:\s*<?sip:[^>\r\n]+>?").unwrap());
+
+static SIP_URI_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"sips?:[^\s<>@]+@[^\s<>;]+").unwrap());
+
+static SIP_CALL_ID_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?im)^Call-ID:\s*[^\s\r\n]+").unwrap());
+
+static SIP_BRANCH_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)branch=z9hG4bK[a-zA-Z0-9]+").unwrap());
+
+static SIP_USER_AGENT_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?im)^User-Agent:\s*[^\r\n]+").unwrap());
+
+static SIP_VIA_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?im)^Via:\s*SIP/2\.0/[^\r\n]+").unwrap());
+
 // Money/currency amounts - handles multiple currency symbols and formats
 // Matches: $10.99, £1,000.00, €10,99, ¥100, ₹1,00,000, etc.
 static MONEY_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -768,6 +805,67 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "docker_container_id",
             regex: &DOCKER_CONTAINER_ID_REGEX,
+            validator: None,
+        },
+        // SIP/VoIP patterns
+        PatternDef {
+            id: "sip_username",
+            regex: &SIP_USERNAME_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sip_realm",
+            regex: &SIP_REALM_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sip_nonce",
+            regex: &SIP_NONCE_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sip_response",
+            regex: &SIP_RESPONSE_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sip_from_display",
+            regex: &SIP_FROM_DISPLAY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sip_to_display",
+            regex: &SIP_TO_DISPLAY_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sip_contact",
+            regex: &SIP_CONTACT_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sip_uri",
+            regex: &SIP_URI_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sip_call_id",
+            regex: &SIP_CALL_ID_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sip_branch",
+            regex: &SIP_BRANCH_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sip_user_agent",
+            regex: &SIP_USER_AGENT_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "sip_via",
+            regex: &SIP_VIA_REGEX,
             validator: None,
         },
     ]

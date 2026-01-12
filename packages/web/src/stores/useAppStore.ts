@@ -76,6 +76,7 @@ interface AppState {
   stats: DetectionStats
   matches: DetectionMatches
   replacements: ReplacementInfo[]
+  lineCountWarning: string | null
   consistencyMode: boolean
   rules: Record<string, Rule>
   customRules: CustomRule[]
@@ -238,6 +239,9 @@ const DEFAULT_RULES: Record<string, Rule> = {
   sip_contact: { label: 'SIP Contact', enabled: false, strategy: 'label' },
   sip_uri: { label: 'SIP URI', enabled: false, strategy: 'label' },
   sip_call_id: { label: 'SIP Call-ID', enabled: false, strategy: 'label' },
+  sip_branch: { label: 'SIP Branch', enabled: false, strategy: 'label' },
+  sip_user_agent: { label: 'SIP User-Agent', enabled: false, strategy: 'label' },
+  sip_via: { label: 'SIP Via', enabled: false, strategy: 'label' },
   md5_hash: { label: 'MD5 Hash', enabled: false, strategy: 'label' },
   sha1_hash: { label: 'SHA1 Hash', enabled: false, strategy: 'label' },
   sha256_hash: { label: 'SHA256 Hash', enabled: false, strategy: 'label' },
@@ -422,6 +426,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   stats: {},
   matches: {},
   replacements: [],
+  lineCountWarning: null,
   consistencyMode: true,
   rules: loadRulesFromStorage(),
   customRules: loadCustomRulesFromStorage(),
@@ -751,7 +756,24 @@ export const useAppStore = create<AppState>((set, get) => ({
       })
 
       if (!cancelRequested) {
-        set({ output: result.output, stats: result.stats, matches: result.matches || {}, replacements: result.replacements || [] })
+        // Validate line count - lines should never be removed during sanitization
+        const inputLines = text.split('\n').length
+        const outputLines = result.output.split('\n').length
+        let lineCountWarning: string | null = null
+
+        if (outputLines < inputLines) {
+          const linesLost = inputLines - outputLines
+          lineCountWarning = `Warning: ${linesLost} line${linesLost === 1 ? '' : 's'} ${linesLost === 1 ? 'was' : 'were'} removed during processing. This may indicate a pattern matching issue.`
+          console.warn(`Line count mismatch: input had ${inputLines} lines, output has ${outputLines} lines`)
+        }
+
+        set({
+          output: result.output,
+          stats: result.stats,
+          matches: result.matches || {},
+          replacements: result.replacements || [],
+          lineCountWarning
+        })
       }
     } catch {
     } finally {

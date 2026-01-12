@@ -188,6 +188,12 @@ export function Suggestions() {
                     Disabled rules that would find matches if enabled:
                   </p>
                   {renderMatchList(suggestions, true)}
+                  <p className="text-xs text-green-600/80 dark:text-green-400/80 mt-3 italic">
+                    Note: These suggestions may include false positives. Only enable rules that match actual sensitive data in your logs.
+                    {activeMatches.length > 0 && (
+                      <> Check the <button onClick={() => setActiveTab('active')} className="underline hover:text-green-700 dark:hover:text-green-300">Active Matches</button> tab too — some matches there may also be false positives that need their rules disabled.</>
+                    )}
+                  </p>
                 </>
               ) : (
                 <p className="text-sm text-green-600 dark:text-green-400">

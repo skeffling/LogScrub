@@ -8,6 +8,7 @@ import { DmesgTimestampModal } from './components/DmesgTimestampModal'
 import { SipTraceModal } from './components/SipTraceModal'
 import { EmailHopsModal } from './components/EmailHopsModal'
 import { SpamReportModal, detectSpamReports } from './components/SpamReportModal'
+import { GpxTransposeModal, isGpxFile } from './components/GpxTransposeModal'
 import { BUILTIN_PRESETS } from './data/presets'
 import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
@@ -143,8 +144,10 @@ function App() {
   const [awsBannerDismissed, setAwsBannerDismissed] = useState(false)
   const [authBannerDismissed, setAuthBannerDismissed] = useState(false)
   const [spamReportBannerDismissed, setSpamReportBannerDismissed] = useState(false)
+  const [gpxBannerDismissed, setGpxBannerDismissed] = useState(false)
   const [showEmailHopsModal, setShowEmailHopsModal] = useState(false)
   const [showSpamReportModal, setShowSpamReportModal] = useState(false)
+  const [showGpxModal, setShowGpxModal] = useState(false)
   const [showTimeShift, setShowTimeShift] = useState(false)
   const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
   const [fullscreenLoading, setFullscreenLoading] = useState(false)
@@ -402,6 +405,7 @@ function App() {
     setAwsBannerDismissed(false)
     setAuthBannerDismissed(false)
     setSpamReportBannerDismissed(false)
+    setGpxBannerDismissed(false)
   }, [input])
 
   // Detect email headers (multiple Received: headers indicate email)
@@ -458,6 +462,25 @@ function App() {
     if (!input || input.length < 50) return []
     return detectSpamReports(input)
   }, [input])
+
+  // Detect GPX files
+  const gpxDetected = useMemo(() => {
+    if (!input || input.length < 50) return false
+    return isGpxFile(fileName || '', input)
+  }, [input, fileName])
+
+  // Handle GPX transposition
+  const handleGpxTranspose = useCallback((transposedGpx: string, continent: string) => {
+    setInput(transposedGpx)
+    setOutput('')
+    setReplacements([])
+    clearAnalysis()
+    // Update filename to indicate transposition
+    if (fileName) {
+      const baseName = fileName.replace(/\.gpx$/i, '')
+      setFileName(`${baseName}-transposed-${continent.toLowerCase().replace(/\s+/g, '-')}.gpx`)
+    }
+  }, [fileName, clearAnalysis])
 
   // Function to load a preset by ID and re-run analysis
   const loadPresetById = useCallback((presetId: string) => {
@@ -1332,6 +1355,31 @@ function App() {
                   </button>
                 </div>
               )}
+              {gpxDetected && !gpxBannerDismissed && (
+                <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-3">
+                  <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  <span className="text-green-800 dark:text-green-200 text-sm flex-1">
+                    GPX route file detected. You can transpose this route to a different continent to hide your actual location.
+                  </span>
+                  <button
+                    onClick={() => setShowGpxModal(true)}
+                    className="px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                  >
+                    Transpose Route
+                  </button>
+                  <button
+                    onClick={() => setGpxBannerDismissed(true)}
+                    className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
+                    title="Dismiss"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
               {analysisCompleted && analysisReplacements.length === 0 && !output && (
                 <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
                   <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1441,6 +1489,13 @@ function App() {
         onClose={() => setShowSpamReportModal(false)}
         report={spamReportsDetected[0] || null}
         reports={spamReportsDetected}
+      />
+
+      <GpxTransposeModal
+        isOpen={showGpxModal}
+        onClose={() => setShowGpxModal(false)}
+        gpxContent={input}
+        onTranspose={handleGpxTranspose}
       />
     </div>
   )

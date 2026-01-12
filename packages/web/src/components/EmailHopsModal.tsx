@@ -42,7 +42,38 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
     headerBlocks.push(currentHeader)
   }
 
-  // Process only Received headers
+  // RFC 2822 timestamp patterns
+  // Examples: "Mon, 12 Jan 2026 16:27:44 +0000", "Mon, 12 Jan 2026 15:32:01 +0000 (GMT)"
+  const timestampPatterns = [
+    // Standard RFC 2822: Mon, 12 Jan 2026 14:08:30 +0000
+    /([A-Z][a-z]{2},\s+\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+([+-]\d{4})(?:\s+\([A-Z]+\))?)/i,
+    // Without day name: 12 Jan 2026 14:08:30 +0000
+    /(\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+([+-]\d{4})(?:\s+\([A-Z]+\))?)/i,
+  ]
+
+  // Helper to parse timestamp from text
+  const parseTimestamp = (text: string): { timestamp: Date | null; rawTimestamp: string; timezone: string | null } => {
+    for (const pattern of timestampPatterns) {
+      const match = text.match(pattern)
+      if (match) {
+        const rawTimestamp = match[1].trim()
+        const timezone = match[2] || null
+        // Remove timezone name in parentheses for parsing
+        const cleanTimestamp = rawTimestamp.replace(/\s+\([A-Z]+\)$/, '')
+        const parsed = new Date(cleanTimestamp)
+        if (!isNaN(parsed.getTime())) {
+          return { timestamp: parsed, rawTimestamp, timezone }
+        }
+      }
+    }
+    return { timestamp: null, rawTimestamp: '', timezone: null }
+  }
+
+  // Extract Date header for the sent time
+  const dateHeader = headerBlocks.find(h => h.name.toLowerCase() === 'date')
+  const sentDate = dateHeader ? parseTimestamp(dateHeader.content) : null
+
+  // Process Received headers
   const receivedHeaders = headerBlocks.filter(h => h.name.toLowerCase() === 'received')
 
   for (const header of receivedHeaders) {
@@ -56,34 +87,7 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
     const byMatch = receivedBlock.match(/by\s+([^\s(]+)/i)
     const by = byMatch ? byMatch[1] : 'unknown'
 
-    // Extract timestamp - RFC 2822 format, can appear anywhere in the block
-    // Examples: "Mon, 12 Jan 2026 16:27:44 +0000", "Mon, 12 Jan 2026 15:32:01 +0000 (GMT)"
-    // Also handles sanitized versions where placeholders might be present
-    const timestampPatterns = [
-      // Standard RFC 2822: Mon, 12 Jan 2026 14:08:30 +0000
-      /([A-Z][a-z]{2},\s+\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+([+-]\d{4})(?:\s+\([A-Z]+\))?)/i,
-      // Without day name: 12 Jan 2026 14:08:30 +0000
-      /(\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+([+-]\d{4})(?:\s+\([A-Z]+\))?)/i,
-    ]
-
-    let timestamp: Date | null = null
-    let rawTimestamp = ''
-    let timezone: string | null = null
-
-    for (const pattern of timestampPatterns) {
-      const timestampMatch = receivedBlock.match(pattern)
-      if (timestampMatch) {
-        rawTimestamp = timestampMatch[1].trim()
-        timezone = timestampMatch[2] || null
-        // Remove timezone name in parentheses for parsing
-        const cleanTimestamp = rawTimestamp.replace(/\s+\([A-Z]+\)$/, '')
-        const parsed = new Date(cleanTimestamp)
-        if (!isNaN(parsed.getTime())) {
-          timestamp = parsed
-          break
-        }
-      }
-    }
+    const { timestamp, rawTimestamp, timezone } = parseTimestamp(receivedBlock)
 
     hops.push({ from, by, timestamp, rawTimestamp, delay: null, timezone, rawBlock: receivedBlock })
   }
@@ -104,11 +108,11 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
       flow.push({
         from: 'origin',
         by: firstHop.from,
-        timestamp: null, // We don't have the send time
-        rawTimestamp: '',
+        timestamp: sentDate?.timestamp ?? null,
+        rawTimestamp: sentDate?.rawTimestamp ?? '',
         delay: null,
-        timezone: null,
-        rawBlock: `Origin server: ${firstHop.from}`
+        timezone: sentDate?.timezone ?? null,
+        rawBlock: sentDate ? `Date: ${dateHeader!.content}` : `Origin server: ${firstHop.from}`
       })
     }
 

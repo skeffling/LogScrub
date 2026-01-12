@@ -7,6 +7,7 @@ import { AboutModal } from './components/AboutModal'
 import { DmesgTimestampModal } from './components/DmesgTimestampModal'
 import { SipTraceModal } from './components/SipTraceModal'
 import { EmailHopsModal } from './components/EmailHopsModal'
+import { SpamReportModal, detectSpamReport } from './components/SpamReportModal'
 import { BUILTIN_PRESETS } from './data/presets'
 import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
@@ -141,7 +142,9 @@ function App() {
   const [webServerBannerDismissed, setWebServerBannerDismissed] = useState(false)
   const [awsBannerDismissed, setAwsBannerDismissed] = useState(false)
   const [authBannerDismissed, setAuthBannerDismissed] = useState(false)
+  const [spamReportBannerDismissed, setSpamReportBannerDismissed] = useState(false)
   const [showEmailHopsModal, setShowEmailHopsModal] = useState(false)
+  const [showSpamReportModal, setShowSpamReportModal] = useState(false)
   const [showTimeShift, setShowTimeShift] = useState(false)
   const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
   const [fullscreenLoading, setFullscreenLoading] = useState(false)
@@ -398,6 +401,7 @@ function App() {
     setWebServerBannerDismissed(false)
     setAwsBannerDismissed(false)
     setAuthBannerDismissed(false)
+    setSpamReportBannerDismissed(false)
   }, [input])
 
   // Detect email headers (multiple Received: headers indicate email)
@@ -447,6 +451,12 @@ function App() {
     ]
     const matches = authPatterns.filter(p => p.test(sample))
     return matches.length >= 2  // Need at least 2 different auth patterns
+  }, [input])
+
+  // Detect spam reports (rspamd or SpamAssassin format)
+  const spamReportDetected = useMemo(() => {
+    if (!input || input.length < 50) return null
+    return detectSpamReport(input)
   }, [input])
 
   // Function to load a preset by ID and re-run analysis
@@ -1294,6 +1304,31 @@ function App() {
                   </button>
                 </div>
               )}
+              {spamReportDetected && !spamReportBannerDismissed && (
+                <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
+                  <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
+                  </svg>
+                  <span className="text-amber-800 dark:text-amber-200 text-sm flex-1">
+                    {spamReportDetected.type === 'rspamd' ? 'Rspamd' : 'SpamAssassin'} report detected ({spamReportDetected.rules.length} rules, score: {spamReportDetected.totalScore?.toFixed(1) ?? 'N/A'})
+                  </span>
+                  <button
+                    onClick={() => setShowSpamReportModal(true)}
+                    className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-700"
+                  >
+                    View Report
+                  </button>
+                  <button
+                    onClick={() => setSpamReportBannerDismissed(true)}
+                    className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
+                    title="Dismiss"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
               {analysisCompleted && analysisReplacements.length === 0 && !output && (
                 <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
                   <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1397,6 +1432,12 @@ function App() {
           onClose={() => setShowEmailHopsModal(false)}
         />
       )}
+
+      <SpamReportModal
+        isOpen={showSpamReportModal}
+        onClose={() => setShowSpamReportModal(false)}
+        report={spamReportDetected}
+      />
     </div>
   )
 }

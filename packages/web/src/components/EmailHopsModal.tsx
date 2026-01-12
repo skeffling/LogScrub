@@ -33,23 +33,32 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
     const byMatch = receivedBlock.match(/by\s+([^\s(]+)/i)
     const by = byMatch ? byMatch[1] : 'unknown'
 
-    // Extract timestamp - RFC 2822 format at end of header
+    // Extract timestamp - RFC 2822 format, can appear anywhere in the block
     // Examples: "Mon, 12 Jan 2026 16:27:44 +0000", "Mon, 12 Jan 2026 15:32:01 +0000 (GMT)"
-    const timestampRegex = /;\s*([A-Z][a-z]{2},\s+\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+([+-]\d{4})(?:\s+\([A-Z]+\))?)/i
-    const timestampMatch = receivedBlock.match(timestampRegex)
+    // Also handles sanitized versions where placeholders might be present
+    const timestampPatterns = [
+      // Standard RFC 2822: Mon, 12 Jan 2026 14:08:30 +0000
+      /([A-Z][a-z]{2},\s+\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+([+-]\d{4})(?:\s+\([A-Z]+\))?)/i,
+      // Without day name: 12 Jan 2026 14:08:30 +0000
+      /(\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+([+-]\d{4})(?:\s+\([A-Z]+\))?)/i,
+    ]
 
     let timestamp: Date | null = null
     let rawTimestamp = ''
     let timezone: string | null = null
 
-    if (timestampMatch) {
-      rawTimestamp = timestampMatch[1].trim()
-      timezone = timestampMatch[2] || null
-      // Remove timezone name in parentheses for parsing
-      const cleanTimestamp = rawTimestamp.replace(/\s+\([A-Z]+\)$/, '')
-      timestamp = new Date(cleanTimestamp)
-      if (isNaN(timestamp.getTime())) {
-        timestamp = null
+    for (const pattern of timestampPatterns) {
+      const timestampMatch = receivedBlock.match(pattern)
+      if (timestampMatch) {
+        rawTimestamp = timestampMatch[1].trim()
+        timezone = timestampMatch[2] || null
+        // Remove timezone name in parentheses for parsing
+        const cleanTimestamp = rawTimestamp.replace(/\s+\([A-Z]+\)$/, '')
+        const parsed = new Date(cleanTimestamp)
+        if (!isNaN(parsed.getTime())) {
+          timestamp = parsed
+          break
+        }
       }
     }
 

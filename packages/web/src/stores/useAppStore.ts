@@ -965,14 +965,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   dismissSuggestions: () => set({ showSuggestions: false }),
 
   enableSuggestedRule: (id) => {
-    const { rules, customRules, plainTextPatterns } = get()
+    const { rules, customRules, plainTextPatterns, suggestions, activeMatches } = get()
+    const suggestion = suggestions.find(s => s.id === id)
+    if (!suggestion) return
+
+    const newSuggestions = suggestions.filter(s => s.id !== id)
+    const newActiveMatches = [...activeMatches, suggestion].sort((a, b) => b.count - a.count)
 
     if (rules[id]) {
       const newRules = { ...rules, [id]: { ...rules[id], enabled: true } }
       saveRulesToStorage(newRules)
       set({
         rules: newRules,
-        suggestions: get().suggestions.filter(s => s.id !== id)
+        suggestions: newSuggestions,
+        activeMatches: newActiveMatches
       })
     } else {
       const customIdx = customRules.findIndex(r => r.id === id)
@@ -980,9 +986,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         const updated = [...customRules]
         updated[customIdx] = { ...updated[customIdx], enabled: true }
         saveCustomRulesToStorage(updated)
-        set({ 
+        set({
           customRules: updated,
-          suggestions: get().suggestions.filter(s => s.id !== id)
+          suggestions: newSuggestions,
+          activeMatches: newActiveMatches
         })
       } else {
         const plainIdx = plainTextPatterns.findIndex(p => p.id === id)
@@ -990,9 +997,10 @@ export const useAppStore = create<AppState>((set, get) => ({
           const updated = [...plainTextPatterns]
           updated[plainIdx] = { ...updated[plainIdx], enabled: true }
           savePlainTextPatternsToStorage(updated)
-          set({ 
+          set({
             plainTextPatterns: updated,
-            suggestions: get().suggestions.filter(s => s.id !== id)
+            suggestions: newSuggestions,
+            activeMatches: newActiveMatches
           })
         }
       }
@@ -1043,7 +1051,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   enableAllSuggested: () => {
-    const { rules, customRules, plainTextPatterns, suggestions } = get()
+    const { rules, customRules, plainTextPatterns, suggestions, activeMatches } = get()
     const suggestedIds = new Set(suggestions.map(s => s.id))
 
     const newRules = { ...rules }
@@ -1064,11 +1072,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     )
     savePlainTextPatternsToStorage(newPlainText)
 
+    // Move all suggestions to activeMatches
+    const newActiveMatches = [...activeMatches, ...suggestions].sort((a, b) => b.count - a.count)
+
     set({
       rules: newRules,
       customRules: newCustomRules,
       plainTextPatterns: newPlainText,
       suggestions: [],
+      activeMatches: newActiveMatches,
       showSuggestions: false
     })
   },

@@ -16,6 +16,7 @@ interface EmailHop {
   timezone: string | null
   rawBlock: string // original Received header content
   tls: TlsInfo | null // encryption info if present
+  protocol: string | null // e.g., SMTP, ESMTP, ESMTPS, LMTP, LMTPS, HTTPREST
 }
 
 interface EmailHopsModalProps {
@@ -124,7 +125,12 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
       }
     }
 
-    hops.push({ from, by, timestamp, rawTimestamp, delay: null, timezone, rawBlock: receivedBlock, tls })
+    // Extract protocol (e.g., SMTP, ESMTP, ESMTPS, LMTP, LMTPS, HTTPREST)
+    // Pattern: "with PROTOCOL" after the "by" clause
+    const protocolMatch = receivedBlock.match(/\bwith\s+([A-Z][A-Z0-9]*)/i)
+    const protocol = protocolMatch ? protocolMatch[1].toUpperCase() : null
+
+    hops.push({ from, by, timestamp, rawTimestamp, delay: null, timezone, rawBlock: receivedBlock, tls, protocol })
   }
 
   // Received headers are in reverse order (most recent first)
@@ -148,7 +154,8 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
         delay: null,
         timezone: sentDate?.timezone ?? null,
         rawBlock: sentDate ? `Date: ${dateHeader!.content}` : `Origin server: ${firstHop.from}`,
-        tls: null
+        tls: null,
+        protocol: null
       })
     }
 
@@ -277,13 +284,18 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
           <div className="space-y-0 max-h-[60vh] overflow-y-auto pr-2">
             {hops.map((hop, i) => (
               <div key={i}>
-                {/* Arrow with delay and TLS indicator (between hops) */}
+                {/* Arrow with protocol, TLS indicator, and delay (between hops) */}
                 {i > 0 && (
                   <div className="flex items-center py-2">
                     <div className="w-8 flex justify-center">
                       <div className="w-0.5 h-6 bg-gray-300 dark:bg-gray-600" />
                     </div>
                     <div className="ml-4 flex items-center gap-2">
+                      {hop.protocol && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
+                          {hop.protocol}
+                        </span>
+                      )}
                       {hop.tls && (
                         <span
                           className="text-green-600 dark:text-green-400 cursor-help"

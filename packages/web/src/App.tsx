@@ -148,6 +148,7 @@ function App() {
   const [showEmailHopsModal, setShowEmailHopsModal] = useState(false)
   const [showSpamReportModal, setShowSpamReportModal] = useState(false)
   const [showGpxModal, setShowGpxModal] = useState(false)
+  const [gpxTransposedContinent, setGpxTransposedContinent] = useState<string | null>(null)
   const [showTimeShift, setShowTimeShift] = useState(false)
   const [fullscreenHighlight, setFullscreenHighlight] = useState(true)
   const [fullscreenLoading, setFullscreenLoading] = useState(false)
@@ -243,6 +244,7 @@ function App() {
     setMatches({})
     setReplacements([])
     clearAnalysis()
+    setGpxTransposedContinent(null)
   }
 
   const handleDownload = () => {
@@ -476,6 +478,8 @@ function App() {
     // Clear any previous replacements since this is a coordinate shift, not PII scrubbing
     setReplacements([])
     clearAnalysis()
+    // Track that GPX was transposed for UI feedback
+    setGpxTransposedContinent(continent)
     // Update filename to indicate transposition
     if (fileName) {
       const baseName = fileName.replace(/\.gpx$/i, '')
@@ -1443,6 +1447,7 @@ function App() {
                 onClearAll={handleClear}
                 onLeftResize={() => setIsResizing(true)}
                 showLeftHandle={showRules}
+                gpxTransposedContinent={gpxTransposedContinent}
               />
             </div>
           </div>

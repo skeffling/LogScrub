@@ -46,6 +46,7 @@ interface EditorProps {
   onClearAll?: () => void
   onLeftResize?: () => void
   showLeftHandle?: boolean
+  gpxTransposedContinent?: string | null
 }
 
 export interface EditorHandle {
@@ -609,7 +610,7 @@ function dismissDonationForever() {
   } catch {}
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, onLeftResize, showLeftHandle = false }, ref) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, onLeftResize, showLeftHandle = false, gpxTransposedContinent }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showAIExplain, setShowAIExplain] = useState(false)
@@ -1914,10 +1915,11 @@ Here are examples of actual replacements made in this ${docTypeShort}:
             title={[
               fileName ? `File: ${fileName}` : null,
               `${inputLines.length.toLocaleString()} lines`,
-              lineFilter !== 'all' ? `Showing: ${filteredInputLines.length.toLocaleString()} ${lineFilter}` : null
+              lineFilter !== 'all' ? `Showing: ${filteredInputLines.length.toLocaleString()} ${lineFilter}` : null,
+              gpxTransposedContinent ? `Route transposed to ${gpxTransposedContinent}` : null
             ].filter(Boolean).join('\n')}
           >
-            Original
+            Original{gpxTransposedContinent && <span className="text-green-600 dark:text-green-400"> (Transposed)</span>}
           </label>
           <div className="flex gap-2 pr-1">
             {hasChanges && output && (
@@ -2134,10 +2136,15 @@ Here are examples of actual replacements made in this ${docTypeShort}:
             className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-600 dark:text-gray-400'} ${output ? outputPaneBg : placeholderBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3 ${output ? 'cursor-help' : ''}`}
             title={output ? [
               `${outputLines.length.toLocaleString()} lines`,
-              lineFilter !== 'all' ? `Showing: ${filteredOutputLines.length.toLocaleString()} ${lineFilter}` : null
+              lineFilter !== 'all' ? `Showing: ${filteredOutputLines.length.toLocaleString()} ${lineFilter}` : null,
+              gpxTransposedContinent ? `Route transposed to ${gpxTransposedContinent}` : null
             ].filter(Boolean).join('\n') : undefined}
           >
-            Scrubbed
+            {gpxTransposedContinent ? (
+              <>Transposed<span className="text-green-600 dark:text-green-400 text-xs ml-1">({gpxTransposedContinent})</span></>
+            ) : (
+              'Scrubbed'
+            )}
           </label>
           <div className="flex gap-2 pr-1">
             {onClearAll && (input || output) && (

@@ -42,7 +42,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
         <div>
           <h3 className="font-semibold text-gray-900 dark:text-white mb-2">How to Use</h3>
           <ol className="text-sm list-decimal list-inside space-y-1">
-            <li>Paste text or upload a file (txt, log, csv, json, pdf, docx, xlsx, odt, ods, zip, gz)</li>
+            <li>Paste text or upload a file (txt, log, csv, json, pdf, docx, xlsx, odt, ods, gpx, zip, gz)</li>
             <li>Select which PII types to detect</li>
             <li>Choose replacement strategy per type (label, fake data, or redact)</li>
             <li>Click "Scrub" to process</li>

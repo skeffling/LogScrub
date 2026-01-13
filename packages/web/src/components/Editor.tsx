@@ -645,6 +645,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
 
   const inputContainerRef = useRef<HTMLDivElement | null>(null)
   const outputContainerRef = useRef<HTMLDivElement | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const lineGutterRef = useRef<HTMLDivElement | null>(null)
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
   const [hoveredLineIndex, setHoveredLineIndex] = useState<number | null>(null)
   const [copiedLineIndex, setCopiedLineIndex] = useState<number | null>(null)
@@ -830,6 +832,13 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
       }
       if (outputContainerRef.current) {
         outputContainerRef.current.scrollTop = scrollTop
+      }
+      // Handle textarea scrolling when no output/analysis
+      if (textareaRef.current) {
+        textareaRef.current.scrollTop = scrollTop
+      }
+      if (lineGutterRef.current) {
+        lineGutterRef.current.scrollTop = scrollTop
       }
       setSelectedLine(line)
     }
@@ -2030,14 +2039,41 @@ Here are examples of actual replacements made in this ${docTypeShort}:
         )}
 
         {!output && analysisReplacements.length === 0 ? (
-          <div className="flex-1 min-h-0 relative">
+          <div className="flex-1 min-h-0 relative flex border dark:border-gray-600 rounded-b-lg rounded-tr-lg overflow-hidden">
+            {/* Line number gutter - only show when there's input and not too many lines */}
+            {input && inputLines.length <= 2000 && (
+              <div
+                ref={lineGutterRef}
+                className={`flex-shrink-0 overflow-hidden select-none font-mono text-sm ${lineNumBg} ${lineNumText} border-r dark:border-gray-600`}
+                style={{ width: `${Math.max(3, String(inputLines.length).length) + 1.5}ch` }}
+              >
+                <div className="py-2 pr-2 text-right">
+                  {inputLines.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`leading-5 px-1 ${selectedLine === i ? 'bg-yellow-200 dark:bg-yellow-800' : ''}`}
+                      style={{ height: `${LINE_HEIGHT}px` }}
+                    >
+                      {i + 1}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
+              onScroll={(e) => {
+                if (lineGutterRef.current) {
+                  lineGutterRef.current.scrollTop = e.currentTarget.scrollTop
+                }
+              }}
               aria-label="Original log content - paste or type your log text here"
-              className={`w-full h-full p-4 font-mono text-sm border dark:border-gray-600 rounded-b-lg rounded-tr-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${paneBg} ${paneText}`}
+              className={`flex-1 min-w-0 ${input ? 'py-2 px-3' : 'p-4'} font-mono text-sm resize-none focus:outline-none leading-5 ${paneBg} ${paneText}`}
+              style={input ? { lineHeight: `${LINE_HEIGHT}px` } : undefined}
             />
             {!input && (
               <div className={`absolute inset-0 p-4 pointer-events-none ${terminalStyle ? 'text-[#858585]' : 'text-gray-600 dark:text-gray-400'}`}>

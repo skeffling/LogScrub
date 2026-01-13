@@ -922,6 +922,22 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     triggerDonationModal()
   }
 
+  const handleCopyInput = async () => {
+    if (!input) return
+    await navigator.clipboard.writeText(input)
+  }
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) {
+        onInputChange(text)
+      }
+    } catch {
+      // Clipboard access denied or not available
+    }
+  }
+
   const generateAIExplanation = useCallback(() => {
     const prefix = labelFormat.prefix || '['
     const suffix = labelFormat.suffix || ']'
@@ -1931,6 +1947,29 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                 className="hidden"
               />
             </label>
+            {input ? (
+              <button
+                onClick={handleCopyInput}
+                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                title="Copy original text to clipboard"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copy
+              </button>
+            ) : (
+              <button
+                onClick={handlePaste}
+                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                title="Paste text from clipboard"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Paste
+              </button>
+            )}
             {documentType && (
               <button
                 onClick={() => setShowDocumentPreview(!showDocumentPreview)}

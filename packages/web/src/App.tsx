@@ -471,8 +471,9 @@ function App() {
 
   // Handle GPX transposition
   const handleGpxTranspose = useCallback((transposedGpx: string, continent: string) => {
-    setInput(transposedGpx)
-    setOutput('')
+    // Put the transposed GPX in the output pane
+    setOutput(transposedGpx)
+    // Clear any previous replacements since this is a coordinate shift, not PII scrubbing
     setReplacements([])
     clearAnalysis()
     // Update filename to indicate transposition

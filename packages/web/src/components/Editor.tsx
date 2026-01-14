@@ -1405,6 +1405,83 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     triggerDonationModal()
   }
 
+  const handleDownloadRtf = () => {
+    if (!output) return
+
+    // Build a set of all replacement strings for fast lookup
+    const replacementStrings = new Set(replacements.map(r => r.replacement))
+
+    // RTF header with color table
+    // Color 0: default (black), Color 1: green for replacements (bg), Color 2: dark green text
+    const rtfHeader = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0\\fmodern Courier New;}}{\\colortbl;\\red0\\green0\\blue0;\\red187\\green247\\blue208;\\red22\\green101\\blue52;}'
+
+    // Escape RTF special characters
+    const escapeRtf = (text: string): string => {
+      return text
+        .replace(/\\/g, '\\\\')
+        .replace(/\{/g, '\\{')
+        .replace(/\}/g, '\\}')
+        .replace(/\n/g, '\\line ')
+        .replace(/\t/g, '\\tab ')
+    }
+
+    // Build pattern to find all replacements in the output
+    const escapedPatterns = replacements.map(r => ({
+      pattern: r.replacement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+      replacement: r.replacement
+    }))
+
+    // Create regex that matches any replacement
+    const combinedPattern = escapedPatterns.length > 0
+      ? new RegExp(`(${escapedPatterns.map(p => p.pattern).join('|')})`, 'g')
+      : null
+
+    // Process output line by line
+    const lines = output.split('\n')
+    let rtfBody = ''
+
+    for (const line of lines) {
+      if (combinedPattern && replacementStrings.size > 0) {
+        // Split line by replacements and highlight matches
+        let lastIndex = 0
+        let lineContent = ''
+        let match
+
+        combinedPattern.lastIndex = 0
+        while ((match = combinedPattern.exec(line)) !== null) {
+          // Add text before the match
+          if (match.index > lastIndex) {
+            lineContent += escapeRtf(line.slice(lastIndex, match.index))
+          }
+          // Add highlighted replacement: green background with dark green text
+          lineContent += '{\\highlight2\\cf3 ' + escapeRtf(match[0]) + '}'
+          lastIndex = match.index + match[0].length
+        }
+        // Add remaining text after last match
+        if (lastIndex < line.length) {
+          lineContent += escapeRtf(line.slice(lastIndex))
+        }
+        rtfBody += lineContent + '\\line '
+      } else {
+        rtfBody += escapeRtf(line) + '\\line '
+      }
+    }
+
+    const rtfContent = rtfHeader + '\\f0\\fs18 ' + rtfBody + '}'
+
+    const blob = new Blob([rtfContent], { type: 'application/rtf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const baseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'sanitized_output'
+    a.download = `${baseName}_highlighted.rtf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    triggerDonationModal()
+  }
+
   // Extract metadata from a file (used during upload)
   const extractMetadataFromFile = async (file: File, docType: DocumentType): Promise<DocumentMetadata | null> => {
     await ensureWasm()
@@ -2266,6 +2343,16 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                     gz
+                  </button>
+                  <button
+                    onClick={handleDownloadRtf}
+                    className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
+                    title="Download as RTF with highlighted replacements"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    rtf
                   </button>
                 </>
               )}

@@ -146,7 +146,7 @@ static GPS_COORD_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 static FILE_PATH_UNIX_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?:/(?:home|Users)/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9._-]+)+)").unwrap());
+    Lazy::new(|| Regex::new(r"(?:/(?:home|Users)/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9._-]+)+|/tmp(?:/[a-zA-Z0-9._-]+)+)").unwrap());
 
 static FILE_PATH_WIN_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)[a-z]:\\(?:Users|Documents and Settings)\\[^\s\\]+(?:\\[^\s\\]+)*").unwrap()

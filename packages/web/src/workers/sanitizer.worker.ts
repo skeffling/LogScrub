@@ -1,4 +1,5 @@
 import init, { sanitize } from 'wasm-core'
+import { detectJsonSecrets, isLikelyJson, type ContextMatch } from '../utils/contextAwareDetector'
 
 let wasmInitialized = false
 
@@ -642,6 +643,16 @@ self.onmessage = async (e: MessageEvent) => {
         parsed.output = shiftTimestamps(parsed.output, timeShift)
       }
 
+      // Run context-aware detection on the original text
+      let contextMatches: ContextMatch[] = []
+      if (isLikelyJson(text)) {
+        log('Detecting JSON key-based secrets...')
+        contextMatches = detectJsonSecrets(text)
+        if (contextMatches.length > 0) {
+          log(`Found ${contextMatches.length} potential secrets via JSON key analysis`)
+        }
+      }
+
       const totalTime = performance.now() - startTime
       log(`Analysis complete in ${totalTime.toFixed(0)}ms`)
 
@@ -653,7 +664,8 @@ self.onmessage = async (e: MessageEvent) => {
           output: parsed.output,
           stats: parsed.stats,
           matches: parsed.matches,
-          replacements: parsed.replacements || []
+          replacements: parsed.replacements || [],
+          contextMatches
         }
       })
     } catch (error) {

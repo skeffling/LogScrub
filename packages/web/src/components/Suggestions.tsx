@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 
-type Tab = 'active' | 'suggestions'
+type Tab = 'active' | 'suggestions' | 'context'
 
 export function Suggestions() {
   const {
@@ -13,12 +13,14 @@ export function Suggestions() {
     enableSuggestedRule,
     disableActiveMatch,
     enableAllSuggested,
-    disableUnmatchedRules
+    disableUnmatchedRules,
+    contextMatches,
+    addContextMatchAsPattern
   } = useAppStore()
 
   const [activeTab, setActiveTab] = useState<Tab>('suggestions')
 
-  if (!showSuggestions || (suggestions.length === 0 && activeMatches.length === 0)) return null
+  if (!showSuggestions || (suggestions.length === 0 && activeMatches.length === 0 && contextMatches.length === 0)) return null
 
   const renderMatchList = (items: typeof activeMatches, showEnableButton: boolean, showDisableButton: boolean = false) => (
     <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -124,6 +126,21 @@ export function Suggestions() {
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setActiveTab('context')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-t transition-colors ${
+                activeTab === 'context'
+                  ? 'bg-white dark:bg-gray-800 text-green-800 dark:text-green-200 border border-b-0 border-green-200 dark:border-green-800'
+                  : 'text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30'
+              }`}
+            >
+              Context-Aware
+              {contextMatches.length > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded">
+                  {contextMatches.length}
+                </span>
+              )}
+            </button>
           </div>
 
           {/* Tab Content */}
@@ -178,6 +195,65 @@ export function Suggestions() {
               ) : (
                 <p className="text-sm text-green-600 dark:text-green-400">
                   No disabled rules would find matches.
+                </p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'context' && (
+            <div>
+              {contextMatches.length > 0 ? (
+                <>
+                  <p className="text-xs text-green-600 dark:text-green-400 mb-2">
+                    Potential secrets found via JSON key analysis:
+                  </p>
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {contextMatches.map((match, index) => (
+                      <div
+                        key={`${match.start}-${match.end}-${index}`}
+                        className="flex items-center justify-between gap-3 bg-white dark:bg-gray-800 rounded p-2 border border-amber-100 dark:border-amber-900"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">
+                              {match.key}
+                            </span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                              match.confidence === 'high'
+                                ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+                                : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
+                            }`}>
+                              {match.confidence}
+                            </span>
+                            <code className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded">
+                              {match.path}
+                            </code>
+                          </div>
+                          <div className="mt-1">
+                            <code className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded inline-block max-w-full overflow-hidden text-ellipsis">
+                              <mark className="bg-yellow-200 dark:bg-yellow-700 text-gray-900 dark:text-yellow-100 font-medium px-0.5 rounded-sm">
+                                {match.value.length > 50 ? match.value.slice(0, 50) + '...' : match.value}
+                              </mark>
+                            </code>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => addContextMatchAsPattern(match)}
+                          className="flex-shrink-0 text-xs px-2 py-1 bg-amber-600 text-white rounded hover:bg-amber-700"
+                        >
+                          Add to scrub
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-green-600/80 dark:text-green-400/80 mt-3 italic">
+                    These findings are based on suspicious JSON key names like "password", "token", "api_key", etc.
+                    Click "Add to scrub" to create a plain-text pattern that will redact this value.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-green-600 dark:text-green-400">
+                  No JSON-based secrets detected. This tab analyzes JSON structures for suspicious key names.
                 </p>
               )}
             </div>

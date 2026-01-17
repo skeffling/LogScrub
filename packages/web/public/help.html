@@ -628,6 +628,7 @@
           <a href="#organizing-rules">Organizing Rules</a>
           <a href="#time-shift">Time Shift</a>
           <a href="#analyze-mode">Analyze Mode</a>
+          <a href="#context-aware">Context-Aware Detection</a>
           <a href="#email-headers">Email Header Analysis</a>
           <a href="#spam-reports">Spam Report Parsing</a>
           <a href="#gpx-routes">GPX Route Transposition</a>
@@ -1223,6 +1224,90 @@ User [EMAIL-3] logged in</div>
           </div>
 
           <p>When a log format is detected, a colored banner appears above the editor with a button to load the recommended preset. You can dismiss the banner if you prefer to configure rules manually.</p>
+        </section>
+
+        <section id="context-aware">
+          <h2>Context-Aware Detection</h2>
+          <p>Beyond regex patterns, LogScrub can detect potential secrets by analyzing JSON structures and identifying suspicious key names. This is especially useful for structured logs that contain key-value pairs.</p>
+
+          <h3>How It Works</h3>
+          <p>When you run Analyze, LogScrub automatically:</p>
+          <ol>
+            <li>Detects JSON content in your text (pure JSON, NDJSON, or embedded JSON in log lines)</li>
+            <li>Parses the JSON and walks through all key-value pairs</li>
+            <li>Flags values associated with suspicious keys like "password", "token", "api_key", etc.</li>
+            <li>Shows findings in the <strong>Context-Aware</strong> tab within Smart Suggestions</li>
+          </ol>
+
+          <h3>Supported JSON Formats</h3>
+          <div class="table-wrapper">
+            <table>
+              <tr><th>Format</th><th>Example</th></tr>
+              <tr>
+                <td><strong>Pure JSON</strong></td>
+                <td><code>{"database": {"password": "secret123"}}</code></td>
+              </tr>
+              <tr>
+                <td><strong>JSON Lines (NDJSON)</strong></td>
+                <td>Multiple JSON objects, one per line (common in logs)</td>
+              </tr>
+              <tr>
+                <td><strong>Embedded JSON</strong></td>
+                <td><code>2024-01-15 INFO Request: {"user": "john", "token": "abc123"}</code></td>
+              </tr>
+            </table>
+          </div>
+
+          <h3>Suspicious Keys</h3>
+          <p>LogScrub looks for keys that commonly contain sensitive data:</p>
+
+          <div class="card">
+            <h4>High Confidence</h4>
+            <p>Exact matches: <code>password</code>, <code>passwd</code>, <code>pwd</code>, <code>secret</code>, <code>token</code>, <code>api_key</code>, <code>apikey</code>, <code>access_key</code>, <code>private_key</code>, <code>client_secret</code>, <code>auth_token</code>, <code>access_token</code>, <code>refresh_token</code>, <code>bearer</code>, <code>jwt</code>, <code>ssh_key</code>, <code>passphrase</code>, <code>credential</code>, <code>credentials</code></p>
+          </div>
+
+          <div class="card">
+            <h4>Medium Confidence</h4>
+            <p>Pattern matches: Keys ending in <code>_key</code>, <code>_token</code>, <code>_secret</code>, <code>_password</code>; keys containing <code>auth</code>, <code>cred</code>, or ending in <code>pass</code></p>
+          </div>
+
+          <h3>Using Context-Aware Findings</h3>
+          <p>After analysis, check the <strong>Context-Aware</strong> tab in Smart Suggestions. Each finding shows:</p>
+          <ul>
+            <li><strong>Key name</strong> — The suspicious key that triggered detection</li>
+            <li><strong>Confidence level</strong> — High (exact match) or Medium (pattern match)</li>
+            <li><strong>JSON path</strong> — Full path like <code>config.database.password</code></li>
+            <li><strong>Value preview</strong> — A sample of the detected value</li>
+          </ul>
+
+          <p>Click <strong>"Add to scrub"</strong> to create a plain-text pattern that will redact that specific value. This is useful when you find a secret that wasn't caught by the regex-based rules.</p>
+
+          <div class="example">
+            <div>
+              <div class="example-label">JSON Log Entry</div>
+              <div class="example-box example-before">{"config": {"db_password": "<span class="highlight">MyS3cr3tP@ss!</span>"}}</div>
+            </div>
+            <div>
+              <div class="example-label">Context-Aware Detection</div>
+              <div class="example-box example-after">Key: db_password
+Path: config.db_password
+Confidence: Medium (_password suffix)
+Value: MyS3cr3tP@ss!</div>
+            </div>
+          </div>
+
+          <h3>Complementing Regex Detection</h3>
+          <p>Context-aware detection complements (not replaces) the regex-based rules:</p>
+          <ul>
+            <li><strong>Regex rules</strong> — Detect secrets by their format (JWT structure, API key prefixes, etc.)</li>
+            <li><strong>Context-aware</strong> — Detect secrets by their semantic context (what key they're assigned to)</li>
+          </ul>
+          <p>Using both approaches together provides more comprehensive coverage for secrets that might not have a recognizable format but are stored under suspicious key names.</p>
+
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>If you frequently work with JSON logs that contain secrets in predictable key names, consider adding custom plain-text patterns for those specific values after discovering them via context-aware detection.</p>
+          </div>
         </section>
 
         <section id="email-headers">

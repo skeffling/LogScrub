@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { ContextMatch } from '../utils/contextAwareDetector'
 
 export type ReplacementStrategy = 'label' | 'fake' | 'redact' | 'template'
 export type ThemeMode = 'light' | 'dark' | 'auto'
@@ -96,6 +97,7 @@ interface AppState {
   unmatchedRules: Array<{ id: string; label: string }>
   showSuggestions: boolean
   analysisLogs: string[]
+  contextMatches: ContextMatch[]
   terminalStyle: boolean
   syntaxHighlight: boolean
   themeMode: ThemeMode
@@ -146,7 +148,10 @@ interface AppState {
   setLabelFormat: (format: LabelFormat) => void
   setGlobalTemplate: (template: string) => void
   setDocumentType: (type: DocumentType) => void
+  addContextMatchAsPattern: (match: ContextMatch) => void
 }
+
+export type { ContextMatch }
 
 const DEFAULT_RULES: Record<string, Rule> = {
   email: { label: 'Emails', enabled: true, strategy: 'label' },
@@ -454,6 +459,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   unmatchedRules: [],
   showSuggestions: false,
   analysisLogs: [],
+  contextMatches: [],
   terminalStyle: loadTerminalStyleFromStorage(),
   syntaxHighlight: loadSyntaxHighlightFromStorage(),
   themeMode: loadThemeModeFromStorage(),
@@ -461,7 +467,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   globalTemplate: loadGlobalTemplateFromStorage(),
   documentType: null,
 
-  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [] }),
+  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [], contextMatches: [] }),
   setOutput: (output) => set({ output }),
   setStats: (stats) => set({ stats }),
   setMatches: (matches) => set({ matches }),
@@ -785,7 +791,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!text.trim()) return
 
     cancelRequested = false
-    set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [] })
+    set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [], contextMatches: [] })
 
     try {
       const { rules, customRules, plainTextPatterns, consistencyMode, labelFormat, globalTemplate } = get()
@@ -800,8 +806,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         .map(p => ({ id: p.id, strategy: p.strategy, text: p.text, label: p.label }))
 
       const w = getWorker()
-      
-      const result = await new Promise<{ output: string; stats: DetectionStats; matches: DetectionMatches; replacements: ReplacementInfo[] }>((resolve, reject) => {
+
+      const result = await new Promise<{ output: string; stats: DetectionStats; matches: DetectionMatches; replacements: ReplacementInfo[]; contextMatches?: ContextMatch[] }>((resolve, reject) => {
         const handler = (e: MessageEvent) => {
           if (e.data.type === 'result') {
             w.removeEventListener('message', handler)
@@ -951,7 +957,8 @@ export const useAppStore = create<AppState>((set, get) => ({
           suggestions,
           activeMatches,
           unmatchedRules,
-          showSuggestions: suggestions.length > 0 || activeMatches.length > 0
+          showSuggestions: suggestions.length > 0 || activeMatches.length > 0 || (result.contextMatches && result.contextMatches.length > 0),
+          contextMatches: result.contextMatches || []
         })
       }
     } catch {
@@ -960,7 +967,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  clearAnalysis: () => set({ analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, suggestions: [], activeMatches: [], unmatchedRules: [], showSuggestions: false }),
+  clearAnalysis: () => set({ analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, suggestions: [], activeMatches: [], unmatchedRules: [], showSuggestions: false, contextMatches: [] }),
 
   dismissSuggestions: () => set({ showSuggestions: false }),
 
@@ -1112,6 +1119,30 @@ export const useAppStore = create<AppState>((set, get) => ({
       customRules: newCustomRules,
       plainTextPatterns: newPlainText,
       unmatchedRules: []
+    })
+  },
+
+  addContextMatchAsPattern: (match: ContextMatch) => {
+    const { plainTextPatterns, contextMatches } = get()
+    const id = `context_${Date.now()}`
+    const newPattern: PlainTextPattern = {
+      id,
+      text: match.value,
+      label: match.key,
+      enabled: true,
+      strategy: 'redact'
+    }
+    const updated = [...plainTextPatterns, newPattern]
+    savePlainTextPatternsToStorage(updated)
+
+    // Remove this match from contextMatches since it's now a pattern
+    const newContextMatches = contextMatches.filter(
+      m => !(m.start === match.start && m.end === match.end)
+    )
+
+    set({
+      plainTextPatterns: updated,
+      contextMatches: newContextMatches
     })
   }
 }))

@@ -4,5 +4,7 @@ dist/
 *.log
 .DS_Store
 *.local
+*.tsbuildinfo
+.claude/
 packages/wasm-core/target/
 packages/wasm-core/pkg/

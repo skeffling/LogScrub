@@ -8,3 +8,10 @@ dist/
 .claude/
 packages/wasm-core/target/
 packages/wasm-core/pkg/
+
+# Local files
+project.md
+docs/
+*.gpx
+*.pdf
+README.txt

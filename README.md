@@ -33,7 +33,7 @@ Browser-based PII redaction tool. 100% client-side - your data never leaves your
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/logscrub.git
+git clone https://github.com/skeffington/logscrub.git
 cd logscrub
 
 # Install and run

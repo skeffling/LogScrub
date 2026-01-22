@@ -819,6 +819,27 @@ User [EMAIL-3] logged in</div>
                 <tr><td><strong>URL</strong></td><td>https://example.com/path</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
               </table>
             </div>
+
+            <div class="tip" style="margin-top: 1rem;">
+              <div class="callout-title">Private IP Preservation (RFC1918)</div>
+              <p>When enabling IPv4 or IPv6 scrubbing, you'll be asked whether to <strong>preserve private/internal IP addresses</strong>. Private IPs are not routable on the internet, so they're generally safe to share.</p>
+              <p style="margin-top: 0.5rem;"><strong>Preserved IPv4 ranges:</strong></p>
+              <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li><code>10.0.0.0/8</code> - Class A private network (10.0.0.0 – 10.255.255.255)</li>
+                <li><code>172.16.0.0/12</code> - Class B private network (172.16.0.0 – 172.31.255.255)</li>
+                <li><code>192.168.0.0/16</code> - Class C private network (192.168.0.0 – 192.168.255.255)</li>
+                <li><code>127.0.0.0/8</code> - Loopback (127.0.0.1, localhost)</li>
+                <li><code>169.254.0.0/16</code> - Link-local (APIPA)</li>
+              </ul>
+              <p style="margin-top: 0.5rem;"><strong>Preserved IPv6 ranges:</strong></p>
+              <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <li><code>fe80::/10</code> - Link-local addresses</li>
+                <li><code>fc00::/7</code> - Unique local addresses (fd00::/8 and fc00::/8)</li>
+                <li><code>::1</code> - Loopback</li>
+                <li><code>::ffff:x.x.x.x</code> - IPv4-mapped addresses (checks IPv4 portion)</li>
+              </ul>
+              <p style="margin-top: 0.5rem;">You can toggle this setting via the "Preserve Private IPs" checkbox in the rules panel.</p>
+            </div>
           </div>
 
           <div class="category-section">

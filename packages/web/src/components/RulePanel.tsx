@@ -428,12 +428,11 @@ export function RulePanel() {
   const displayStats = Object.keys(stats).length > 0 ? stats : analysisStats
   const totalDetections = Object.values(displayStats).reduce((sum, count) => sum + count, 0)
 
+  // Only expand the most commonly used categories by default
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'Contact': true,
     'Network': true,
     'Identity (US)': true,
-    'Identity (UK)': true,
-    'Identity (Intl)': true,
     'Financial': true,
     'Tokens & Keys': true,
     'Secrets': true,

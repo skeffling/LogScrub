@@ -792,7 +792,7 @@ User [EMAIL-3] logged in</div>
 
         <section id="detection-rules">
           <h2>Detection Rules Reference</h2>
-          <p>LogScrub includes 35+ built-in detection rules organized by category.</p>
+          <p>LogScrub includes 90+ built-in detection rules organized by category.</p>
 
           <div class="category-section">
             <h3>Contact Information</h3>
@@ -800,6 +800,7 @@ User [EMAIL-3] logged in</div>
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
                 <tr><td><strong>Email</strong></td><td>user@example.com</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Email Message-ID</strong></td><td>&lt;abc123@mail.example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
                 <tr><td><strong>Phone (US)</strong></td><td>(555) 123-4567</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
                 <tr><td><strong>Phone (UK)</strong></td><td>020 7946 0958</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
                 <tr><td><strong>Phone (Intl)</strong></td><td>+44 7911 123456</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
@@ -898,6 +899,13 @@ User [EMAIL-3] logged in</div>
                 <tr><td><strong>GitHub Token</strong></td><td>ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
                 <tr><td><strong>OpenAI API Key</strong></td><td>sk-proj-abc123def456ghi789...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
                 <tr><td><strong>Anthropic API Key</strong></td><td>sk-ant-api03-abc123def456...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>X AI API Key</strong></td><td>xai-abc123def456ghi789...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Cerebras API Key</strong></td><td>csk-abc123def456ghi789...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Slack Token</strong></td><td>xoxb-123456789012-123456789012-abc...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>NPM Token</strong></td><td>npm_abc123def456ghi789jkl012...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>SendGrid Key</strong></td><td>SG.abc123def456.ghi789jkl012mno345...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Twilio Key</strong></td><td>SK1234567890abcdef1234567890abcdef</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr><td><strong>Database URL</strong></td><td>postgres://user:pass@host:5432/db</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
               </table>
             </div>
           </div>
@@ -935,11 +943,28 @@ User [EMAIL-3] logged in</div>
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
                 <tr><td><strong>Date (ISO)</strong></td><td>2024-01-15</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Date (MM/DD/YY)</strong></td><td>01/15/24, 12/31/2024</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Date (DD/MM/YY)</strong></td><td>15/01/24, 31/12/2024</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Time</strong></td><td>14:30:00, 2:30 PM</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
                 <tr><td><strong>DateTime (ISO)</strong></td><td>2024-01-15T10:30:00Z</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>DateTime (CLF)</strong></td><td>[15/Jan/2024:10:30:00 +0000]</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
                 <tr><td><strong>Unix Timestamp</strong></td><td>1705312200</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
               </table>
             </div>
             <p>Date/time rules are disabled by default as they often match non-sensitive data.</p>
+          </div>
+
+          <div class="category-section">
+            <h3>SQL</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>SQL Tables</strong></td><td>FROM users, INSERT INTO orders</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SQL Strings</strong></td><td>'John Doe', "example@email.com"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SQL Identifiers</strong></td><td>column_name, table.field</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+            <p>SQL rules help scrub sensitive data from database queries and logs. Disabled by default to avoid false positives.</p>
           </div>
 
           <div class="category-section">
@@ -998,6 +1023,41 @@ User [EMAIL-3] logged in</div>
           </div>
 
           <div class="category-section">
+            <h3>SIP/VoIP</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>SIP Username</strong></td><td>username="john.doe"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SIP Realm</strong></td><td>realm="sip.example.com"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SIP Nonce</strong></td><td>nonce="abc123def456"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SIP Response</strong></td><td>response="9f8e7d6c5b4a3210"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SIP From Name</strong></td><td>From: "John Doe" &lt;sip:john@example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SIP To Name</strong></td><td>To: "Jane Smith" &lt;sip:jane@example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SIP Contact</strong></td><td>Contact: &lt;sip:john@192.168.1.100:5060&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SIP URI</strong></td><td>sip:user@domain.com:5060</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SIP Call-ID</strong></td><td>Call-ID: abc123@192.168.1.100</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SIP Branch</strong></td><td>branch=z9hG4bK-abc123</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SIP User-Agent</strong></td><td>User-Agent: Oasis SIP Phone</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SIP Via</strong></td><td>Via: SIP/2.0/UDP 192.168.1.100:5060</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+            <p>Rules for SIP (Session Initiation Protocol) traces used in VoIP systems. Useful for scrubbing packet captures or debug logs from phone systems.</p>
+          </div>
+
+          <div class="category-section">
+            <h3>Hashes</h3>
+            <div class="table-wrapper">
+              <table>
+                <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
+                <tr><td><strong>MD5 Hash</strong></td><td>d41d8cd98f00b204e9800998ecf8427e</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SHA1 Hash</strong></td><td>da39a3ee5e6b4b0d3255bfef95601890afd80709</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>SHA256 Hash</strong></td><td>e3b0c44298fc1c149afbf4c8996fb924...27ae41e4649b934ca495991b7852b855</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+              </table>
+            </div>
+            <p>Cryptographic hash detection. Disabled by default as hashes are often legitimate identifiers, but can be enabled if you need to scrub file checksums or content hashes.</p>
+          </div>
+
+          <div class="category-section">
             <h3>Other</h3>
             <div class="table-wrapper">
               <table>
@@ -1005,6 +1065,8 @@ User [EMAIL-3] logged in</div>
                 <tr><td><strong>UUID</strong></td><td>550e8400-e29b-41d4-a716-446655440000</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
                 <tr><td><strong>File Path (Unix)</strong></td><td>/home/john/documents/file.txt</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
                 <tr><td><strong>File Path (Windows)</strong></td><td>C:\Users\John\Documents\file.txt</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>Docker Container ID</strong></td><td>abc123def456789012345678901234567890abcd</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr><td><strong>URL Parameters</strong></td><td>?user=john&amp;token=abc123</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
               </table>
             </div>
           </div>

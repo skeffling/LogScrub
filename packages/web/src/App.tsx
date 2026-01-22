@@ -1436,7 +1436,15 @@ function App() {
                       Invalid {syntaxError.format.toUpperCase()} syntax
                     </span>
                     <span className="text-red-700 dark:text-red-300 ml-2">
-                      {syntaxError.line && `Line ${syntaxError.line}`}
+                      {syntaxError.line && (
+                        <button
+                          onClick={() => editorRef.current?.scrollToLine(syntaxError.line! - 1)}
+                          className="underline hover:text-red-900 dark:hover:text-red-100"
+                          title="Go to line"
+                        >
+                          Line {syntaxError.line}
+                        </button>
+                      )}
                       {syntaxError.column && `, Col ${syntaxError.column}`}
                       {(syntaxError.line || syntaxError.column) && ': '}
                       {syntaxError.message}

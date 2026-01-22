@@ -428,6 +428,20 @@ export function RulePanel() {
   const displayStats = Object.keys(stats).length > 0 ? stats : analysisStats
   const totalDetections = Object.values(displayStats).reduce((sum, count) => sum + count, 0)
 
+  // Calculate total enabled/total rules count
+  const { enabledRulesCount, totalRulesCount } = useMemo(() => {
+    const builtinEnabled = Object.values(rules).filter(r => r.enabled).length
+    const builtinTotal = Object.keys(rules).length
+    const customEnabled = customRules.filter(r => r.enabled).length
+    const customTotal = customRules.length
+    const plainTextEnabled = plainTextPatterns.filter(p => p.enabled).length
+    const plainTextTotal = plainTextPatterns.length
+    return {
+      enabledRulesCount: builtinEnabled + customEnabled + plainTextEnabled,
+      totalRulesCount: builtinTotal + customTotal + plainTextTotal
+    }
+  }, [rules, customRules, plainTextPatterns])
+
   // Only expand the most commonly used categories by default
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'Contact': true,
@@ -743,6 +757,9 @@ export function RulePanel() {
       <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3">
           Detection Rules
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-1">
+            ({enabledRulesCount}/{totalRulesCount})
+          </span>
         </label>
         {totalDetections > 0 && (
           <button

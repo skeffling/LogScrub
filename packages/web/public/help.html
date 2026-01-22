@@ -628,6 +628,7 @@
           <a href="#organizing-rules">Organizing Rules</a>
           <a href="#time-shift">Time Shift</a>
           <a href="#analyze-mode">Analyze Mode</a>
+          <a href="#syntax-validation">Syntax Validation</a>
           <a href="#context-aware">Context-Aware Detection</a>
           <a href="#email-headers">Email Header Analysis</a>
           <a href="#spam-reports">Spam Report Parsing</a>
@@ -1224,6 +1225,39 @@ User [EMAIL-3] logged in</div>
           </div>
 
           <p>When a log format is detected, a colored banner appears above the editor with a button to load the recommended preset. You can dismiss the banner if you prefer to configure rules manually.</p>
+        </section>
+
+        <section id="syntax-validation">
+          <h2>Syntax Validation</h2>
+          <p>LogScrub automatically validates the syntax of structured file formats when you paste or upload content. This helps catch malformed files before processing.</p>
+
+          <h3>Supported Formats</h3>
+          <ul>
+            <li><strong>JSON</strong> - Objects, arrays, and nested structures</li>
+            <li><strong>XML</strong> - Including SVG, HTML, GPX, and other XML-based formats</li>
+            <li><strong>CSV</strong> - Validates consistent column counts across rows</li>
+            <li><strong>YAML</strong> - Configuration files and structured data</li>
+            <li><strong>TOML</strong> - Configuration files (e.g., Cargo.toml, pyproject.toml)</li>
+          </ul>
+
+          <h3>Format Detection</h3>
+          <p>The format is detected automatically by:</p>
+          <ol>
+            <li><strong>File extension</strong> - When you upload a file, the extension determines the format</li>
+            <li><strong>Content analysis</strong> - For pasted content, LogScrub examines the structure (e.g., starts with <code>{</code> or <code>[</code> for JSON, <code>&lt;</code> for XML)</li>
+          </ol>
+
+          <h3>Validation Results</h3>
+          <p>After analysis completes:</p>
+          <ul>
+            <li><strong>Valid syntax</strong> - A green checkmark appears next to the "Original" heading. Hover over it to see the detected format (e.g., "Valid JSON syntax").</li>
+            <li><strong>Invalid syntax</strong> - A red error banner appears showing the format, line number, column number, and error message. Click the line number to scroll directly to the error location.</li>
+          </ul>
+
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>Syntax validation runs in WebAssembly for speed. Even large files are validated almost instantly.</p>
+          </div>
         </section>
 
         <section id="context-aware">

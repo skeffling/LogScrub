@@ -1,3 +1,5 @@
+import { Icon } from './ui'
+
 interface HeaderProps {
   onAboutClick: () => void
   compact?: boolean
@@ -7,44 +9,59 @@ export function Header({ onAboutClick, compact = false }: HeaderProps) {
   return (
     <header className="bg-white dark:bg-gray-900 border-b dark:border-gray-700">
       <div className={`container mx-auto px-4 max-w-7xl flex items-center justify-between ${compact ? 'py-2' : 'py-4'}`}>
-        <div className="flex items-center gap-2">
-          <svg className={`${compact ? 'w-6 h-6' : 'w-8 h-8'} text-blue-600`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
-          <h1 className={`${compact ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>LogScrub</h1>
+        {/* Logo and branding */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Icon name="shield" size="lg" className={`${compact ? 'w-6 h-6' : 'w-8 h-8'} text-blue-600`} />
+            <h1 className={`${compact ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>LogScrub</h1>
+          </div>
           <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 rounded-full">
             beta
           </span>
         </div>
-        <div className="flex items-center gap-4">
+
+        {/* Navigation */}
+        <nav className="flex items-center gap-1 sm:gap-2">
           <a
             href="./help.html"
-            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            className="px-2 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Help
           </a>
           <button
             onClick={onAboutClick}
-            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            className="px-2 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             About
           </button>
+
+          {/* Separator */}
+          <div className="hidden sm:block h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1" aria-hidden="true" />
+
+          {/* Client-side indicator */}
           <span
-            className="text-sm text-gray-600 dark:text-gray-400 hidden sm:inline cursor-help"
+            className="hidden sm:flex items-center gap-1.5 px-2 py-1 text-sm text-gray-600 dark:text-gray-400 cursor-help"
             title="Your data never leaves your browser."
           >
-            100% client-side
+            <span className="w-2 h-2 rounded-full bg-green-500" aria-hidden="true" />
+            <span>100% client-side</span>
           </span>
+
+          {/* Separator */}
+          <div className="hidden sm:block h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1" aria-hidden="true" />
+
+          {/* Support link */}
           <a
             href="https://ko-fi.com/pitstopper"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden sm:inline"
+            className="hidden sm:flex items-center gap-1 px-2 py-1 text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
             title="Buy us a coffee!"
           >
-            ☕ Ko-fi
+            <span aria-hidden="true">☕</span>
+            <span>Ko-fi</span>
           </a>
-        </div>
+        </nav>
       </div>
     </header>
   )

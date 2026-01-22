@@ -14,6 +14,7 @@ import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
 import { Modal } from './components/Modal'
 import { FeatureBanner } from './components/FeatureBanner'
+import { Icon, ToggleButton } from './components/ui'
 import { useAppStore } from './stores/useAppStore'
 import init, { compress_zip, compress_gzip } from './wasm-core/wasm_core'
 
@@ -872,184 +873,184 @@ function App() {
           )}
 
           <div className={`flex flex-col min-h-0 lg:overflow-hidden flex-1 ${showRules ? 'lg:pl-4' : ''}`}>
-            <div className="flex flex-wrap justify-between items-center gap-2 mb-3 flex-shrink-0">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap justify-between items-center gap-2 mb-3 flex-shrink-0" role="toolbar" aria-label="Editor controls">
+              <div className="flex items-center gap-1 sm:gap-2">
+                {/* View Controls */}
                 <button
                   onClick={() => setShowRules(!showRules)}
-                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   title={showRules ? 'Hide the detection rules panel' : 'Show the detection rules panel'}
+                  aria-expanded={showRules}
+                  aria-controls="rules-panel"
                 >
-                  {showRules ? '◀ Hide Rules' : '▶ Show Rules'}
+                  <Icon name={showRules ? 'chevron-left' : 'chevron-right'} size="sm" />
+                  <span>{showRules ? 'Hide Rules' : 'Show Rules'}</span>
                 </button>
                 <button
                   onClick={() => setConstrainWidth(!constrainWidth)}
-                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hidden xl:block"
+                  className="hidden xl:flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 px-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   title={constrainWidth ? 'Use full width' : 'Constrain width'}
+                  aria-pressed={constrainWidth}
                 >
-                  {constrainWidth ? '⬌ Expand' : '⬄ Compact'}
+                  <Icon name={constrainWidth ? 'fullscreen' : 'fullscreen-exit'} size="sm" />
+                  <span>{constrainWidth ? 'Expand' : 'Compact'}</span>
                 </button>
-                <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
-                <button
-                  onClick={() => input.trim() && setShowDiffHighlight(!showDiffHighlight)}
-                  className={`text-sm flex items-center gap-1 hidden md:flex ${
-                    !input.trim()
-                      ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                      : showDiffHighlight
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-600 dark:text-gray-400'
-                  }`}
-                  title={!input.trim() ? 'Load a log file first' : 'Toggle diff highlighting'}
-                >
-                  <span className={`w-2 h-2 rounded-full ${!input.trim() ? 'bg-gray-300 dark:bg-gray-600' : showDiffHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
-                  Diff
-                </button>
-                <button
-                  onClick={() => input.trim() && setSyntaxHighlight(!syntaxHighlight)}
-                  className={`text-sm flex items-center gap-1 hidden md:flex ${
-                    !input.trim()
-                      ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                      : syntaxHighlight
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-600 dark:text-gray-400'
-                  }`}
-                  title={!input.trim() ? 'Load a log file first' : 'Toggle syntax highlighting (JSON, XML, SQL)'}
-                >
-                  <span className={`w-2 h-2 rounded-full ${!input.trim() ? 'bg-gray-300 dark:bg-gray-600' : syntaxHighlight ? 'bg-blue-500' : 'bg-gray-400'}`} />
-                  Syntax
-                </button>
+
+                {/* Separator */}
+                <div className="hidden md:block h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1" aria-hidden="true" />
+
+                {/* Display Options */}
+                <div className="hidden md:flex items-center gap-1">
+                  <ToggleButton
+                    active={showDiffHighlight}
+                    disabled={!input.trim()}
+                    onClick={() => input.trim() && setShowDiffHighlight(!showDiffHighlight)}
+                    title={!input.trim() ? 'Load a log file first' : 'Toggle diff highlighting'}
+                  >
+                    Diff
+                  </ToggleButton>
+                  <ToggleButton
+                    active={syntaxHighlight}
+                    disabled={!input.trim()}
+                    onClick={() => input.trim() && setSyntaxHighlight(!syntaxHighlight)}
+                    title={!input.trim() ? 'Load a log file first' : 'Toggle syntax highlighting (JSON, XML, SQL)'}
+                  >
+                    Syntax
+                  </ToggleButton>
+                </div>
+                {/* Navigation Group */}
                 {!documentType && (
                   <>
-                    <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
-                    {showGoToLine ? (
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault()
-                          const line = parseInt(goToLineValue, 10)
-                          if (!isNaN(line) && line > 0 && editorRef.current) {
-                            editorRef.current.scrollToLine(line - 1)
-                          }
-                          setShowGoToLine(false)
-                          setGoToLineValue('')
-                        }}
-                        className="flex items-center text-sm text-gray-600 dark:text-gray-400"
-                      >
-                        <span>Line</span>
-                        <input
-                          type="number"
-                          min="1"
-                          value={goToLineValue}
-                          onChange={(e) => setGoToLineValue(e.target.value)}
-                          placeholder="#"
-                          autoFocus
-                          className="w-12 px-1 mx-1 text-sm bg-transparent border-b border-gray-400 dark:border-gray-500 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-700 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          onBlur={() => {
-                            if (!goToLineValue) setShowGoToLine(false)
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Escape') {
-                              setShowGoToLine(false)
-                              setGoToLineValue('')
+                    <div className="hidden md:block h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1" aria-hidden="true" />
+                    <div className="hidden md:flex items-center">
+                      {showGoToLine ? (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault()
+                            const line = parseInt(goToLineValue, 10)
+                            if (!isNaN(line) && line > 0 && editorRef.current) {
+                              editorRef.current.scrollToLine(line - 1)
                             }
+                            setShowGoToLine(false)
+                            setGoToLineValue('')
                           }}
-                        />
-                        <button type="submit" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
-                          ↵
+                          className="flex items-center text-sm text-gray-600 dark:text-gray-400"
+                        >
+                          <span>Line</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={goToLineValue}
+                            onChange={(e) => setGoToLineValue(e.target.value)}
+                            placeholder="#"
+                            autoFocus
+                            className="w-12 px-1 mx-1 text-sm bg-transparent border-b border-gray-400 dark:border-gray-500 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-700 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            onBlur={() => {
+                              if (!goToLineValue) setShowGoToLine(false)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') {
+                                setShowGoToLine(false)
+                                setGoToLineValue('')
+                              }
+                            }}
+                          />
+                          <button
+                            type="submit"
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                            aria-label="Go to line"
+                          >
+                            ↵
+                          </button>
+                        </form>
+                      ) : (
+                        <button
+                          onClick={() => input.trim() && setShowGoToLine(true)}
+                          disabled={!input.trim()}
+                          className={`text-sm px-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                            !input.trim()
+                              ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                              : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                          }`}
+                          title={!input.trim() ? 'Load a log file first' : 'Go to line (⌘G)'}
+                        >
+                          Go to Line
                         </button>
-                      </form>
-                    ) : (
-                      <button
-                        onClick={() => input.trim() && setShowGoToLine(true)}
-                        className={`text-sm hidden md:block ${
-                          !input.trim()
-                            ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                        }`}
-                        title={!input.trim() ? 'Load a log file first' : 'Go to line (⌘G)'}
-                      >
-                        Go to Line
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </>
                 )}
-                <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
-                <button
-                  onClick={() => input.trim() && lineFilter === 'all' && setSyncScroll(!syncScroll)}
-                  className={`text-sm hidden md:flex items-center gap-1 ${
-                    !input.trim() || lineFilter !== 'all'
-                      ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                      : syncScroll
-                        ? 'text-blue-600 dark:text-blue-400'
+
+                {/* Separator */}
+                <div className="hidden md:block h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1" aria-hidden="true" />
+
+                {/* Sync & Stats Group */}
+                <div className="hidden md:flex items-center gap-1">
+                  <ToggleButton
+                    active={syncScroll}
+                    disabled={!input.trim() || lineFilter !== 'all'}
+                    onClick={() => input.trim() && lineFilter === 'all' && setSyncScroll(!syncScroll)}
+                    title={!input.trim() ? 'Load a log file first' : lineFilter !== 'all' ? 'Disabled while filtering lines' : 'Sync scrolling between original and sanitized panes'}
+                  >
+                    Sync Scroll
+                  </ToggleButton>
+
+                  <div className="h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1" aria-hidden="true" />
+
+                  <button
+                    onClick={() => input.trim() && setShowStats(true)}
+                    disabled={!input.trim()}
+                    className={`flex items-center gap-1 text-sm px-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                      !input.trim()
+                        ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                         : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                  }`}
-                  title={!input.trim() ? 'Load a log file first' : lineFilter !== 'all' ? 'Disabled while filtering lines' : 'Sync scrolling between original and sanitized panes'}
-                >
-                  <span className={`w-2 h-2 rounded-full ${!input.trim() || lineFilter !== 'all' ? 'bg-gray-300 dark:bg-gray-600' : syncScroll ? 'bg-blue-500' : 'bg-gray-400'}`} />
-                  Sync Scroll
-                </button>
-                <span className="text-gray-300 dark:text-gray-600 hidden md:inline">|</span>
-                <button
-                  onClick={() => input.trim() && setShowStats(true)}
-                  className={`text-sm hidden md:flex items-center gap-1 ${
-                    !input.trim()
-                      ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                  }`}
-                  title={!input.trim() ? 'Load a log file first' : 'View detection statistics and download audit reports'}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  Stats &amp; Map
-                </button>
+                    }`}
+                    title={!input.trim() ? 'Load a log file first' : 'View detection statistics and download audit reports'}
+                  >
+                    <Icon name="chart-bar" size="md" />
+                    <span>Stats &amp; Map</span>
+                  </button>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 {analysisReplacements.length > 0 && !output && (
                   <button
                     onClick={clearAnalysis}
-                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2"
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
                     title="Clear the analysis preview"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    Clear Preview
+                    <Icon name="x" size="md" />
+                    <span>Clear Preview</span>
                   </button>
                 )}
                 {analysisReplacements.length === 0 && (
                   <button
                     onClick={() => { analyzeText(input); window.umami?.track('analyze') }}
                     disabled={isAnalyzing || !input.trim()}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
                     title="Preview what will be detected without scrubbing"
                   >
                     {isAnalyzing ? (
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
+                      <Icon name="spinner" size="md" />
                     ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                      </svg>
+                      <Icon name="lightbulb" size="md" />
                     )}
-                    {isAnalyzing ? 'Analyzing...' : 'Analyze'}
+                    <span>{isAnalyzing ? 'Analyzing...' : 'Analyze'}</span>
                   </button>
                 )}
                 {hasTimestamps && (
                   <div className="relative">
                     <button
                       onClick={() => setShowTimeShift(!showTimeShift)}
-                      className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm ${
+                      className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
                         timeShift.enabled
-                          ? 'bg-green-600 text-white hover:bg-green-700'
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                          ? 'bg-green-600 text-white hover:bg-green-700 focus-visible:ring-green-500'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 focus-visible:ring-gray-500'
                       }`}
                       title="Shift timestamps to anonymize temporal data"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      TimeShift
+                      <Icon name="clock" size="md" />
+                      <span>TimeShift</span>
                       {timeShift.enabled && <span className="text-xs">On</span>}
                     </button>
                     {showTimeShift && (
@@ -1202,28 +1203,21 @@ function App() {
                 {isProcessing && canCancel ? (
                   <button
                     onClick={cancelProcessing}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
                     title="Cancel the current processing operation (Escape)"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    Cancel
+                    <Icon name="x" size="md" />
+                    <span>Cancel</span>
                   </button>
                 ) : (
                   <button
                     onClick={handleProcess}
                     disabled={isProcessing || !input.trim()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
                     title="Apply all enabled detection rules and scrub the input text (⌘/Ctrl+Enter)"
                   >
-                    {isProcessing && (
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                    )}
-                    {isProcessing ? 'Processing...' : 'Scrub'}
+                    {isProcessing && <Icon name="spinner" size="md" />}
+                    <span>{isProcessing ? 'Processing...' : 'Scrub'}</span>
                     <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-xs bg-blue-500 rounded">⌘↵</kbd>
                   </button>
                 )}
@@ -1234,9 +1228,7 @@ function App() {
               <Suggestions />
               {emailHeadersDetected && !emailBannerDismissed && (
                 <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-3">
-                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
+                  <Icon name="mail" size="lg" className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
                   <span className="text-blue-800 dark:text-blue-200 text-sm flex-1">
                     Email headers detected with routing information.
                   </span>

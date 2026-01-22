@@ -4,6 +4,7 @@ import { Modal } from './Modal'
 import { BUILTIN_PATTERNS } from '../data/patterns'
 import { BUILTIN_PRESETS, type BuiltinPreset } from '../data/presets'
 import { Stats } from './Stats'
+import { Icon } from './ui'
 import {
   DndContext,
   DragOverlay,
@@ -183,7 +184,7 @@ const RuleRow = memo(function RuleRow({
           type="checkbox"
           checked={enabled}
           onChange={onToggle}
-          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
+          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 focus-visible:ring-2 bg-white dark:bg-gray-700"
         />
         <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{label}</span>
         {matchCount !== undefined && matchCount > 0 && (
@@ -192,24 +193,22 @@ const RuleRow = memo(function RuleRow({
           </span>
         )}
       </label>
-      
+
       <button
         onClick={onViewPattern}
-        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5"
+        className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         title="View regex"
+        aria-label={`View pattern for ${label}`}
       >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
+        <Icon name="settings" size="sm" />
       </button>
-      
+
       <select
         value={strategy}
         onChange={(e) => onStrategyChange(e.target.value as ReplacementStrategy)}
         disabled={!enabled}
         aria-label="Replacement strategy"
-        className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
+        className="text-xs border dark:border-gray-600 rounded px-1.5 py-1 disabled:opacity-50 w-18 bg-white dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
       >
         {strategyOptions.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -220,10 +219,11 @@ const RuleRow = memo(function RuleRow({
       {strategy === 'template' && (
         <button
           onClick={onEditTemplate}
-          className="text-xs text-purple-500 hover:text-purple-700 dark:text-purple-400"
+          className="p-1 text-purple-500 hover:text-purple-700 dark:text-purple-400 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
           title="Edit template"
+          aria-label={`Edit template for ${label}`}
         >
-          ✎
+          <Icon name="edit" size="sm" />
         </button>
       )}
     </div>
@@ -270,10 +270,11 @@ function SortableRuleItem({
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 select-none text-xs touch-none"
+          className="p-0.5 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 select-none touch-none rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           title="Drag to reorder"
+          aria-label="Drag to reorder rule"
         >
-          ⋮
+          <Icon name="drag-handle" size="sm" />
         </button>
       )}
       <div className="flex-1">
@@ -336,21 +337,26 @@ function SortableCategoryItem({
             <button
               {...attributes}
               {...listeners}
-              className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 select-none px-0.5 touch-none"
+              className="p-0.5 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 select-none touch-none rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               title="Drag to reorder category"
+              aria-label={`Drag to reorder ${id} category`}
             >
-              ⋮⋮
+              <Icon name="drag-handle-double" size="sm" />
             </button>
           )}
           <button
             onClick={onToggleExpand}
-            className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded px-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            aria-expanded={isExpanded}
+            aria-controls={`category-${id}`}
           >
-            <span className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
-              ▶
-            </span>
+            <Icon
+              name={isExpanded ? 'chevron-down' : 'chevron-right'}
+              size="sm"
+              className="transition-transform"
+            />
             {id}
-            <span className="text-xs text-gray-600 dark:text-gray-400">
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">
               ({enabledCount}/{totalCount})
             </span>
           </button>
@@ -358,22 +364,26 @@ function SortableCategoryItem({
         <div className="flex gap-1">
           <button
             onClick={onEnableAll}
-            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+            className="text-xs px-1.5 py-0.5 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             title={`Enable all rules in ${id}`}
           >
             All
           </button>
-          <span className="text-gray-300 dark:text-gray-600">|</span>
+          <span className="text-gray-300 dark:text-gray-600" aria-hidden="true">|</span>
           <button
             onClick={onDisableAll}
-            className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            className="text-xs px-1.5 py-0.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
             title={`Disable all rules in ${id}`}
           >
             None
           </button>
         </div>
       </div>
-      {isExpanded && children}
+      {isExpanded && (
+        <div id={`category-${id}`} className="space-y-1.5 ml-2 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
+          {children}
+        </div>
+      )}
     </div>
   )
 }
@@ -741,9 +751,7 @@ export function RulePanel() {
           >
             <span className="font-medium">{totalDetections}</span>
             <span className="hidden sm:inline">found</span>
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
+            <Icon name="chart-bar" size="sm" />
           </button>
         )}
       </div>
@@ -773,12 +781,11 @@ export function RulePanel() {
               </button>
               <button
                 onClick={() => setShowLabelConfig(!showLabelConfig)}
-                className="text-xs px-1 py-1 rounded-r bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border-l border-gray-200 dark:border-gray-600"
+                className="text-xs px-1.5 py-1 rounded-r bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border-l border-gray-200 dark:border-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 title="Configure label format"
+                aria-label="Configure label format"
               >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
+                <Icon name="edit" size="sm" />
               </button>
             </div>
           ) : opt.value === 'template' ? (
@@ -792,12 +799,11 @@ export function RulePanel() {
               </button>
               <button
                 onClick={() => setShowGlobalTemplateConfig(!showGlobalTemplateConfig)}
-                className="text-xs px-1 py-1 rounded-r bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border-l border-gray-200 dark:border-gray-600"
+                className="text-xs px-1.5 py-1 rounded-r bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border-l border-gray-200 dark:border-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 title="Configure global template format"
+                aria-label="Configure global template format"
               >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
+                <Icon name="edit" size="sm" />
               </button>
             </div>
           ) : (
@@ -898,10 +904,11 @@ export function RulePanel() {
                     </button>
                     <button
                       onClick={() => deletePreset(preset.name)}
-                      className="px-1.5 py-1 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
-                      title="Delete"
+                      className="p-1 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                      title="Delete preset"
+                      aria-label={`Delete preset ${preset.name}`}
                     >
-                      ✕
+                      <Icon name="x" size="sm" />
                     </button>
                   </div>
                 ))}
@@ -965,18 +972,20 @@ export function RulePanel() {
 
                   <button
                     onClick={() => setEditingCustomRule({ ...rule })}
-                    className="text-xs text-purple-500 hover:text-purple-700 dark:hover:text-purple-300 px-1"
+                    className="p-1 text-purple-500 hover:text-purple-700 dark:hover:text-purple-300 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
                     title="Edit"
+                    aria-label={`Edit ${rule.label}`}
                   >
-                    ✎
+                    <Icon name="edit" size="sm" />
                   </button>
 
                   <button
                     onClick={() => deleteCustomRule(rule.id)}
-                    className="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 px-1"
+                    className="p-1 text-red-500 hover:text-red-700 dark:hover:text-red-300 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                     title="Delete"
+                    aria-label={`Delete ${rule.label}`}
                   >
-                    ✕
+                    <Icon name="x" size="sm" />
                   </button>
 
                   <select
@@ -984,7 +993,7 @@ export function RulePanel() {
                     onChange={(e) => setCustomRuleStrategy(rule.id, e.target.value as ReplacementStrategy)}
                     disabled={!rule.enabled}
                     aria-label="Replacement strategy"
-                    className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
+                    className="text-xs border dark:border-gray-600 rounded px-1.5 py-1 disabled:opacity-50 w-18 bg-white dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
                   >
                     {filteredStrategyOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -1027,18 +1036,20 @@ export function RulePanel() {
 
                   <button
                     onClick={() => setEditingPlainText({ ...pattern })}
-                    className="text-xs text-orange-500 hover:text-orange-700 dark:hover:text-orange-300 px-1"
+                    className="p-1 text-orange-500 hover:text-orange-700 dark:hover:text-orange-300 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
                     title="Edit"
+                    aria-label={`Edit ${pattern.label}`}
                   >
-                    ✎
+                    <Icon name="edit" size="sm" />
                   </button>
 
                   <button
                     onClick={() => deletePlainTextPattern(pattern.id)}
-                    className="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 px-1"
+                    className="p-1 text-red-500 hover:text-red-700 dark:hover:text-red-300 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                     title="Delete"
+                    aria-label={`Delete ${pattern.label}`}
                   >
-                    ✕
+                    <Icon name="x" size="sm" />
                   </button>
 
                   <select
@@ -1046,7 +1057,7 @@ export function RulePanel() {
                     onChange={(e) => setPlainTextPatternStrategy(pattern.id, e.target.value as ReplacementStrategy)}
                     disabled={!pattern.enabled}
                     aria-label="Replacement strategy"
-                    className="text-xs border dark:border-gray-600 rounded px-1 py-0.5 disabled:opacity-50 w-16 bg-white dark:bg-gray-700 dark:text-gray-300"
+                    className="text-xs border dark:border-gray-600 rounded px-1.5 py-1 disabled:opacity-50 w-18 bg-white dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-orange-500"
                   >
                     {filteredStrategyOptions.filter(opt => opt.value !== 'fake' && opt.value !== 'template').map((opt) => (
                       <option key={opt.value} value={opt.value}>

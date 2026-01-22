@@ -739,13 +739,15 @@ export function RulePanel() {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 p-4 h-full min-h-0 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between mb-3 flex-shrink-0">
-        <h2 className="font-semibold text-gray-900 dark:text-white">Detection Rules</h2>
+    <div className="h-full min-h-0 flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3">
+          Detection Rules
+        </label>
         {totalDetections > 0 && (
           <button
             onClick={() => setShowStats(true)}
-            className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
+            className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors mr-3"
             title="View detection statistics and audit report"
           >
             <span className="font-medium">{totalDetections}</span>
@@ -754,17 +756,18 @@ export function RulePanel() {
           </button>
         )}
       </div>
-      
-      <input
-        type="text"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="Search rules... (e.g. ip4, phone)"
-        aria-label="Search detection rules"
-        className="w-full px-3 py-1.5 text-sm border dark:border-gray-600 rounded-md mb-3 bg-white dark:bg-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-shrink-0"
-      />
-      
-      <div className="flex-1 min-h-0 overflow-y-auto">
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg rounded-tl-none border dark:border-gray-700 p-4 flex-1 min-h-0 flex flex-col overflow-hidden">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search rules... (e.g. ip4, phone)"
+          aria-label="Search detection rules"
+          className="w-full px-3 py-1.5 text-sm border dark:border-gray-600 rounded-md mb-3 bg-white dark:bg-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-shrink-0"
+        />
+
+        <div className="flex-1 min-h-0 overflow-y-auto">
       
       <div className="flex gap-1 mb-3">
         <span className="text-xs text-gray-600 dark:text-gray-400 mr-1">Set all:</span>
@@ -1198,24 +1201,25 @@ export function RulePanel() {
             No rules match "{searchQuery}"
           </p>
         )}
-      </div>
-      </div>
+        </div>
+        </div>
 
-      <hr className="my-3 dark:border-gray-700 flex-shrink-0" />
+        <hr className="my-3 dark:border-gray-700 flex-shrink-0" />
 
-      <div className="flex-shrink-0">
-        <label className="flex items-center gap-2 cursor-pointer" title="When enabled, identical PII values will always be replaced with the same replacement value">
-          <input
-            type="checkbox"
-            checked={consistencyMode}
-            onChange={(e) => setConsistencyMode(e.target.checked)}
-            className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
-          />
-          <span className="text-sm text-gray-700 dark:text-gray-300">Consistency Mode</span>
-        </label>
-        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
-          Same input → same replacement
-        </p>
+        <div className="flex-shrink-0">
+          <label className="flex items-center gap-2 cursor-pointer" title="When enabled, identical PII values will always be replaced with the same replacement value">
+            <input
+              type="checkbox"
+              checked={consistencyMode}
+              onChange={(e) => setConsistencyMode(e.target.checked)}
+              className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">Consistency Mode</span>
+          </label>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
+            Same input → same replacement
+          </p>
+        </div>
       </div>
 
       {viewingPattern && (

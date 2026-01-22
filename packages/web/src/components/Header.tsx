@@ -36,15 +36,6 @@ export function Header({ onAboutClick, compact = false }: HeaderProps) {
             100% client-side
           </span>
           <a
-            href="https://github.com/skeffington/logscrub"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hidden sm:inline"
-            title="View on GitHub"
-          >
-            GitHub
-          </a>
-          <a
             href="https://ko-fi.com/pitstopper"
             target="_blank"
             rel="noopener noreferrer"

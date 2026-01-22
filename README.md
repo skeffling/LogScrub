@@ -30,17 +30,6 @@ Browser-based PII redaction tool. 100% client-side - your data never leaves your
 ## Quick Start
 
 ### Development
-
-```bash
-# Clone the repo
-git clone https://github.com/skeffington/logscrub.git
-cd logscrub
-
-# Install and run
-./scripts/build-dev.sh
-```
-
-Or manually:
 ```bash
 npm install
 npm run build:wasm

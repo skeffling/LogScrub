@@ -5,14 +5,16 @@ export type ReplacementStrategy = 'label' | 'fake' | 'redact' | 'template'
 export type ThemeMode = 'light' | 'dark' | 'auto'
 export type DocumentType = 'pdf' | 'xlsx' | 'docx' | 'odt' | 'ods' | null
 
+export type SyntaxFormat = 'json' | 'xml' | 'csv' | 'yaml' | 'toml'
+
 export interface SyntaxError {
-  format: 'json' | 'xml' | 'csv' | 'yaml' | 'toml'
+  format: SyntaxFormat
   message: string
   line?: number
   column?: number
 }
 
-export type ValidatedFormat = 'json' | 'xml' | 'csv' | 'yaml' | 'toml' | null
+export type ValidatedFormat = SyntaxFormat | null
 
 export interface Rule {
   label: string

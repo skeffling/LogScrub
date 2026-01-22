@@ -44,6 +44,14 @@ interface Match {
   end: number
 }
 
+interface ValidationResult {
+  valid: boolean
+  format: string
+  error_message?: string
+  line?: number
+  column?: number
+}
+
 interface ReplacementInfo {
   start: number
   end: number
@@ -527,13 +535,7 @@ self.onmessage = async (e: MessageEvent) => {
       // Run syntax validation
       log('Running syntax validation...')
       const validationResultJson = validate_syntax(text, fileName || undefined)
-      const validationResult = JSON.parse(validationResultJson) as {
-        valid: boolean
-        format: string
-        error_message?: string
-        line?: number
-        column?: number
-      }
+      const validationResult: ValidationResult = JSON.parse(validationResultJson)
 
       if (!validationResult.valid && validationResult.format !== 'unknown') {
         log(`Syntax error detected in ${validationResult.format}: ${validationResult.error_message}`)

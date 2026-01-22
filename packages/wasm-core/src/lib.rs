@@ -422,3 +422,176 @@ pub fn compress_zip_replace(original_data: &[u8], target_filename: &str, new_con
 
     Ok(output_buffer.into_inner())
 }
+
+// ============================================================================
+// Syntax Validation Functions
+// ============================================================================
+
+#[derive(Debug, Serialize)]
+struct ValidationResult {
+    valid: bool,
+    format: String,
+    error_message: Option<String>,
+    line: Option<usize>,
+    column: Option<usize>,
+}
+
+fn result_ok(format: &str) -> String {
+    serde_json::to_string(&ValidationResult {
+        valid: true,
+        format: format.to_string(),
+        error_message: None,
+        line: None,
+        column: None,
+    })
+    .unwrap_or_else(|_| r#"{"valid":true}"#.to_string())
+}
+
+fn result_err(format: &str, message: &str, line: Option<usize>, column: Option<usize>) -> String {
+    serde_json::to_string(&ValidationResult {
+        valid: false,
+        format: format.to_string(),
+        error_message: Some(message.to_string()),
+        line,
+        column,
+    })
+    .unwrap_or_else(|_| r#"{"valid":false}"#.to_string())
+}
+
+/// Convert a byte offset to line and column numbers (1-indexed)
+fn offset_to_line_col(text: &str, offset: usize) -> (usize, usize) {
+    let mut line = 1;
+    let mut col = 1;
+    for (i, c) in text.char_indices() {
+        if i >= offset {
+            break;
+        }
+        if c == '\n' {
+            line += 1;
+            col = 1;
+        } else {
+            col += 1;
+        }
+    }
+    (line, col)
+}
+
+#[wasm_bindgen]
+pub fn validate_json(text: &str) -> String {
+    match serde_json::from_str::<serde_json::Value>(text) {
+        Ok(_) => result_ok("json"),
+        Err(e) => result_err("json", &e.to_string(), Some(e.line()), Some(e.column())),
+    }
+}
+
+#[wasm_bindgen]
+pub fn validate_xml(text: &str) -> String {
+    use quick_xml::events::Event;
+    use quick_xml::Reader;
+
+    let mut reader = Reader::from_str(text);
+    reader.trim_text(true);
+
+    loop {
+        match reader.read_event() {
+            Ok(Event::Eof) => return result_ok("xml"),
+            Err(e) => {
+                let pos = reader.buffer_position();
+                let (line, col) = offset_to_line_col(text, pos);
+                return result_err("xml", &e.to_string(), Some(line), Some(col));
+            }
+            _ => {}
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub fn validate_csv(text: &str) -> String {
+    let mut rdr = csv::ReaderBuilder::new()
+        .flexible(false)
+        .has_headers(true)
+        .from_reader(text.as_bytes());
+
+    for (row_idx, result) in rdr.records().enumerate() {
+        if let Err(e) = result {
+            return result_err("csv", &e.to_string(), Some(row_idx + 2), None); // +2 for header + 1-indexing
+        }
+    }
+    result_ok("csv")
+}
+
+#[wasm_bindgen]
+pub fn validate_yaml(text: &str) -> String {
+    match serde_yaml::from_str::<serde_yaml::Value>(text) {
+        Ok(_) => result_ok("yaml"),
+        Err(e) => {
+            let loc = e.location();
+            result_err(
+                "yaml",
+                &e.to_string(),
+                loc.as_ref().map(|l| l.line()),
+                loc.as_ref().map(|l| l.column()),
+            )
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub fn validate_toml(text: &str) -> String {
+    match text.parse::<toml::Value>() {
+        Ok(_) => result_ok("toml"),
+        Err(e) => {
+            let span = e.span();
+            let (line, col) = span
+                .map(|s| offset_to_line_col(text, s.start))
+                .unwrap_or((1, 1));
+            result_err("toml", e.message(), Some(line), Some(col))
+        }
+    }
+}
+
+fn detect_format(text: &str, filename: Option<&str>) -> &'static str {
+    // Check filename extension first
+    if let Some(name) = filename {
+        let ext = name.rsplit('.').next().unwrap_or("").to_lowercase();
+        match ext.as_str() {
+            "json" => return "json",
+            "xml" | "svg" | "html" | "xhtml" | "gpx" => return "xml",
+            "csv" | "tsv" => return "csv",
+            "yaml" | "yml" => return "yaml",
+            "toml" => return "toml",
+            _ => {}
+        }
+    }
+
+    // Content-based detection
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return "unknown";
+    }
+
+    if trimmed.starts_with('{') || trimmed.starts_with('[') {
+        "json"
+    } else if trimmed.starts_with('<') {
+        "xml"
+    } else if trimmed.contains(" = ") && (trimmed.contains('[') || !trimmed.contains(':')) {
+        "toml"
+    } else if trimmed.contains(':') && !trimmed.contains(',') {
+        "yaml"
+    } else {
+        "unknown"
+    }
+}
+
+#[wasm_bindgen]
+pub fn validate_syntax(text: &str, filename: Option<String>) -> String {
+    let format = detect_format(text, filename.as_deref());
+    match format {
+        "json" => validate_json(text),
+        "xml" => validate_xml(text),
+        "csv" => validate_csv(text),
+        "yaml" => validate_yaml(text),
+        "toml" => validate_toml(text),
+        _ => result_ok("unknown"),
+    }
+}

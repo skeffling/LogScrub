@@ -1,4 +1,4 @@
-import init, { sanitize } from 'wasm-core'
+import init, { sanitize, validate_syntax } from 'wasm-core'
 import { detectJsonSecrets, isLikelyJson, type ContextMatch } from '../utils/contextAwareDetector'
 
 let wasmInitialized = false
@@ -34,6 +34,7 @@ interface ProcessRequest {
   timeShift?: TimeShiftConfig | null
   labelFormat?: LabelFormat
   globalTemplate?: string
+  fileName?: string
 }
 
 interface Match {
@@ -521,7 +522,35 @@ self.onmessage = async (e: MessageEvent) => {
 
       self.postMessage({ type: 'progress', payload: 30 })
 
-      const { text, rules, customRules = [], plainTextPatterns = [], consistencyMode, timeShift, labelFormat, globalTemplate } = e.data.payload as ProcessRequest
+      const { text, rules, customRules = [], plainTextPatterns = [], consistencyMode, timeShift, labelFormat, globalTemplate, fileName } = e.data.payload as ProcessRequest
+
+      // Run syntax validation
+      log('Running syntax validation...')
+      const validationResultJson = validate_syntax(text, fileName || undefined)
+      const validationResult = JSON.parse(validationResultJson) as {
+        valid: boolean
+        format: string
+        error_message?: string
+        line?: number
+        column?: number
+      }
+
+      if (!validationResult.valid && validationResult.format !== 'unknown') {
+        log(`Syntax error detected in ${validationResult.format}: ${validationResult.error_message}`)
+        self.postMessage({
+          type: 'syntax_error',
+          payload: {
+            format: validationResult.format,
+            message: validationResult.error_message,
+            line: validationResult.line,
+            column: validationResult.column
+          }
+        })
+      } else if (validationResult.valid && validationResult.format !== 'unknown') {
+        log(`Syntax valid: ${validationResult.format}`)
+        // Clear any previous syntax error
+        self.postMessage({ type: 'syntax_error', payload: null })
+      }
       const labelPrefix = labelFormat?.prefix ?? '['
       const labelSuffix = labelFormat?.suffix ?? ']'
       const defaultTemplate = globalTemplate ?? '[{TYPE}-{n}]'

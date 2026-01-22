@@ -5,6 +5,13 @@ export type ReplacementStrategy = 'label' | 'fake' | 'redact' | 'template'
 export type ThemeMode = 'light' | 'dark' | 'auto'
 export type DocumentType = 'pdf' | 'xlsx' | 'docx' | 'odt' | 'ods' | null
 
+export interface SyntaxError {
+  format: 'json' | 'xml' | 'csv' | 'yaml' | 'toml'
+  message: string
+  line?: number
+  column?: number
+}
+
 export interface Rule {
   label: string
   enabled: boolean
@@ -104,6 +111,7 @@ interface AppState {
   labelFormat: LabelFormat
   globalTemplate: string
   documentType: DocumentType
+  syntaxError: SyntaxError | null
 
   setInput: (input: string) => void
   setOutput: (output: string) => void
@@ -149,6 +157,7 @@ interface AppState {
   setGlobalTemplate: (template: string) => void
   setDocumentType: (type: DocumentType) => void
   addContextMatchAsPattern: (match: ContextMatch) => void
+  setSyntaxError: (error: SyntaxError | null) => void
 }
 
 export type { ContextMatch }
@@ -466,8 +475,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   labelFormat: loadLabelFormatFromStorage(),
   globalTemplate: loadGlobalTemplateFromStorage(),
   documentType: null,
+  syntaxError: null,
 
-  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [], contextMatches: [] }),
+  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [], contextMatches: [], syntaxError: null }),
   setOutput: (output) => set({ output }),
   setStats: (stats) => set({ stats }),
   setMatches: (matches) => set({ matches }),
@@ -717,7 +727,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isProcessing: true, processingProgress: 0, canCancel: true, analysisReplacements: [], analysisStats: {}, analysisCompleted: false })
 
     try {
-      const { rules, customRules, plainTextPatterns, consistencyMode, timeShift, labelFormat, globalTemplate } = get()
+      const { rules, customRules, plainTextPatterns, consistencyMode, timeShift, labelFormat, globalTemplate, fileName } = get()
       const enabledRules = Object.entries(rules)
         .filter(([, rule]) => rule.enabled)
         .map(([id, rule]) => ({ id, strategy: rule.strategy, template: rule.template }))
@@ -731,7 +741,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         .map(p => ({ id: p.id, strategy: p.strategy, text: p.text, label: p.label }))
 
       const w = getWorker()
-      
+
       const result = await new Promise<{ output: string; stats: DetectionStats; matches: DetectionMatches; replacements: ReplacementInfo[] }>((resolve, reject) => {
         const handler = (e: MessageEvent) => {
           if (e.data.type === 'result') {
@@ -742,9 +752,11 @@ export const useAppStore = create<AppState>((set, get) => ({
             reject(new Error(e.data.payload))
           } else if (e.data.type === 'progress') {
             set({ processingProgress: e.data.payload })
+          } else if (e.data.type === 'syntax_error') {
+            set({ syntaxError: e.data.payload })
           }
         }
-        
+
         w.addEventListener('message', handler)
         w.postMessage({
           type: 'process',
@@ -756,7 +768,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             consistencyMode,
             timeShift: timeShift.enabled ? timeShift : null,
             labelFormat,
-            globalTemplate
+            globalTemplate,
+            fileName
           }
         })
       })
@@ -791,10 +804,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!text.trim()) return
 
     cancelRequested = false
-    set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [], contextMatches: [] })
+    set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [], contextMatches: [], syntaxError: null })
 
     try {
-      const { rules, customRules, plainTextPatterns, consistencyMode, labelFormat, globalTemplate } = get()
+      const { rules, customRules, plainTextPatterns, consistencyMode, labelFormat, globalTemplate, fileName } = get()
 
       const allRules = Object.entries(rules)
         .map(([id, rule]) => ({ id, strategy: rule.strategy, template: rule.template }))
@@ -820,13 +833,15 @@ export const useAppStore = create<AppState>((set, get) => ({
           } else if (e.data.type === 'log') {
             const { analysisLogs } = get()
             set({ analysisLogs: [...analysisLogs, e.data.payload] })
+          } else if (e.data.type === 'syntax_error') {
+            set({ syntaxError: e.data.payload })
           }
         }
 
         w.addEventListener('message', handler)
         w.postMessage({
           type: 'process',
-          payload: { text, rules: allRules, customRules: allCustomRules, plainTextPatterns: allPlainTextPatterns, consistencyMode, labelFormat, globalTemplate }
+          payload: { text, rules: allRules, customRules: allCustomRules, plainTextPatterns: allPlainTextPatterns, consistencyMode, labelFormat, globalTemplate, fileName }
         })
       })
 
@@ -1144,5 +1159,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       plainTextPatterns: updated,
       contextMatches: newContextMatches
     })
-  }
+  },
+
+  setSyntaxError: (error) => set({ syntaxError: error })
 }))

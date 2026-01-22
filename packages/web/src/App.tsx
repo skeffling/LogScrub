@@ -120,7 +120,7 @@ function App() {
     replacements, syntaxHighlight, setSyntaxHighlight,
     timeShift, setTimeShift,
     setStats, setMatches, setReplacements,
-    documentType, lineCountWarning, syntaxError,
+    documentType, lineCountWarning, syntaxError, syntaxValidFormat,
     rules, toggleRule, setRuleStrategy, customRules, addCustomRule
   } = useAppStore()
   const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
@@ -1474,6 +1474,7 @@ function App() {
                 onLeftResize={() => setIsResizing(true)}
                 showLeftHandle={showRules}
                 gpxTransposedContinent={gpxTransposedContinent}
+                syntaxValidFormat={syntaxValidFormat}
               />
             </div>
           </div>

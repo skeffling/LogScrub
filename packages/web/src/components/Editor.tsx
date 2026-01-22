@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import init, { decompress_gzip, decompress_zip, decompress_zip_file, compress_zip, compress_gzip } from '../wasm-core/wasm_core'
-import { useAppStore, type ReplacementInfo, type DocumentType } from '../stores/useAppStore'
+import { useAppStore, type ReplacementInfo, type DocumentType, type ValidatedFormat } from '../stores/useAppStore'
 import { tokenizeWithPositions } from '../utils/syntaxHighlight'
 import { Modal } from './Modal'
 import { DocumentPreview } from './DocumentPreview'
@@ -47,6 +47,7 @@ interface EditorProps {
   onLeftResize?: () => void
   showLeftHandle?: boolean
   gpxTransposedContinent?: string | null
+  syntaxValidFormat?: ValidatedFormat
 }
 
 export interface EditorHandle {
@@ -610,7 +611,7 @@ function dismissDonationForever() {
   } catch {}
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, onLeftResize, showLeftHandle = false, gpxTransposedContinent }, ref) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, onLeftResize, showLeftHandle = false, gpxTransposedContinent, syntaxValidFormat }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showAIExplain, setShowAIExplain] = useState(false)
@@ -2005,7 +2006,18 @@ Here are examples of actual replacements made in this ${docTypeShort}:
               gpxTransposedContinent ? `Route transposed to ${gpxTransposedContinent}` : null
             ].filter(Boolean).join('\n')}
           >
-            Original{gpxTransposedContinent && <span className="text-green-600 dark:text-green-400"> (Transposed)</span>}
+            Original
+            {gpxTransposedContinent && <span className="text-green-600 dark:text-green-400"> (Transposed)</span>}
+            {syntaxValidFormat && (
+              <span
+                className="ml-1 text-green-600 dark:text-green-400 inline-flex items-center"
+                title={`Valid ${syntaxValidFormat.toUpperCase()} syntax`}
+              >
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </span>
+            )}
           </label>
           <div className="flex gap-2 pr-1">
             {hasChanges && output && (

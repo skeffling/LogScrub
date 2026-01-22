@@ -12,6 +12,8 @@ export interface SyntaxError {
   column?: number
 }
 
+export type ValidatedFormat = 'json' | 'xml' | 'csv' | 'yaml' | 'toml' | null
+
 export interface Rule {
   label: string
   enabled: boolean
@@ -112,6 +114,7 @@ interface AppState {
   globalTemplate: string
   documentType: DocumentType
   syntaxError: SyntaxError | null
+  syntaxValidFormat: ValidatedFormat
 
   setInput: (input: string) => void
   setOutput: (output: string) => void
@@ -158,6 +161,7 @@ interface AppState {
   setDocumentType: (type: DocumentType) => void
   addContextMatchAsPattern: (match: ContextMatch) => void
   setSyntaxError: (error: SyntaxError | null) => void
+  setSyntaxValidFormat: (format: ValidatedFormat) => void
 }
 
 export type { ContextMatch }
@@ -476,8 +480,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   globalTemplate: loadGlobalTemplateFromStorage(),
   documentType: null,
   syntaxError: null,
+  syntaxValidFormat: null,
 
-  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [], contextMatches: [], syntaxError: null }),
+  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [], contextMatches: [], syntaxError: null, syntaxValidFormat: null }),
   setOutput: (output) => set({ output }),
   setStats: (stats) => set({ stats }),
   setMatches: (matches) => set({ matches }),
@@ -753,7 +758,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           } else if (e.data.type === 'progress') {
             set({ processingProgress: e.data.payload })
           } else if (e.data.type === 'syntax_error') {
-            set({ syntaxError: e.data.payload })
+            set({ syntaxError: e.data.payload, syntaxValidFormat: null })
+          } else if (e.data.type === 'syntax_valid') {
+            set({ syntaxValidFormat: e.data.payload, syntaxError: null })
           }
         }
 
@@ -804,7 +811,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!text.trim()) return
 
     cancelRequested = false
-    set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [], contextMatches: [], syntaxError: null })
+    set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [], contextMatches: [], syntaxError: null, syntaxValidFormat: null })
 
     try {
       const { rules, customRules, plainTextPatterns, consistencyMode, labelFormat, globalTemplate, fileName } = get()
@@ -834,7 +841,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             const { analysisLogs } = get()
             set({ analysisLogs: [...analysisLogs, e.data.payload] })
           } else if (e.data.type === 'syntax_error') {
-            set({ syntaxError: e.data.payload })
+            set({ syntaxError: e.data.payload, syntaxValidFormat: null })
+          } else if (e.data.type === 'syntax_valid') {
+            set({ syntaxValidFormat: e.data.payload, syntaxError: null })
           }
         }
 
@@ -1161,5 +1170,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
 
-  setSyntaxError: (error) => set({ syntaxError: error })
+  setSyntaxError: (error) => set({ syntaxError: error }),
+
+  setSyntaxValidFormat: (format) => set({ syntaxValidFormat: format })
 }))

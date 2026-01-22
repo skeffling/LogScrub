@@ -548,8 +548,7 @@ self.onmessage = async (e: MessageEvent) => {
         })
       } else if (validationResult.valid && validationResult.format !== 'unknown') {
         log(`Syntax valid: ${validationResult.format}`)
-        // Clear any previous syntax error
-        self.postMessage({ type: 'syntax_error', payload: null })
+        self.postMessage({ type: 'syntax_valid', payload: validationResult.format })
       }
       const labelPrefix = labelFormat?.prefix ?? '['
       const labelSuffix = labelFormat?.suffix ?? ']'

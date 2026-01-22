@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, memo, useEffect } from 'react'
+import { useState, useRef, useMemo, memo, useEffect, useCallback } from 'react'
 import { useAppStore, type ReplacementStrategy, type RulePreset, type CustomRule, type PlainTextPattern } from '../stores/useAppStore'
 import { Modal } from './Modal'
 import { BUILTIN_PATTERNS } from '../data/patterns'
@@ -392,6 +392,7 @@ export function RulePanel() {
   const {
     rules, toggleRule, setRuleStrategy, setRuleTemplate, setAllStrategy,
     consistencyMode, setConsistencyMode,
+    preservePrivateIPs, setPreservePrivateIPs,
     savedPresets, loadPreset, deletePreset, importPreset, exportCurrentRules, resetToDefaults,
     customRules, addCustomRule, updateCustomRule, deleteCustomRule, toggleCustomRule, setCustomRuleStrategy,
     plainTextPatterns, addPlainTextPattern, updatePlainTextPattern, deletePlainTextPattern, togglePlainTextPattern, setPlainTextPatternStrategy,
@@ -466,7 +467,40 @@ export function RulePanel() {
   const [showLabelConfig, setShowLabelConfig] = useState(false)
   const [showGlobalTemplateConfig, setShowGlobalTemplateConfig] = useState(false)
   const [editingGlobalTemplate, setEditingGlobalTemplate] = useState('')
+  const [showPrivateIPPrompt, setShowPrivateIPPrompt] = useState(false)
+  const [pendingIPToggle, setPendingIPToggle] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Wrapper for toggleRule that shows private IP prompt when enabling IPv4/IPv6
+  const handleToggleRule = useCallback((id: string) => {
+    const rule = rules[id]
+    const isEnabling = rule && !rule.enabled
+    const isIPRule = id === 'ipv4' || id === 'ipv6'
+
+    // Check if we should show the prompt:
+    // - Enabling an IP rule
+    // - The other IP rule is not already enabled (to avoid showing twice)
+    // - preservePrivateIPs is not already set
+    if (isEnabling && isIPRule && !preservePrivateIPs) {
+      const otherIPRule = id === 'ipv4' ? 'ipv6' : 'ipv4'
+      const otherEnabled = rules[otherIPRule]?.enabled
+      if (!otherEnabled) {
+        setPendingIPToggle(id)
+        setShowPrivateIPPrompt(true)
+        return
+      }
+    }
+    toggleRule(id)
+  }, [rules, toggleRule, preservePrivateIPs])
+
+  const handlePrivateIPPromptResponse = (preserve: boolean) => {
+    setPreservePrivateIPs(preserve)
+    if (pendingIPToggle) {
+      toggleRule(pendingIPToggle)
+    }
+    setShowPrivateIPPrompt(false)
+    setPendingIPToggle(null)
+  }
 
   // Close label config on ESC
   useEffect(() => {
@@ -1135,7 +1169,7 @@ export function RulePanel() {
                               category={category}
                               rule={rule}
                               matchCount={displayStats[id]}
-                              onToggle={() => toggleRule(id)}
+                              onToggle={() => handleToggleRule(id)}
                               onStrategyChange={(newStrategy) => {
                                 setRuleStrategy(id, newStrategy)
                                 if (newStrategy === 'template' && !rule.template) {
@@ -1223,21 +1257,76 @@ export function RulePanel() {
 
         <hr className="my-3 dark:border-gray-700 flex-shrink-0" />
 
-        <div className="flex-shrink-0">
-          <label className="flex items-center gap-2 cursor-pointer" title="When enabled, identical PII values will always be replaced with the same replacement value">
-            <input
-              type="checkbox"
-              checked={consistencyMode}
-              onChange={(e) => setConsistencyMode(e.target.checked)}
-              className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">Consistency Mode</span>
-          </label>
-          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
-            Same input → same replacement
-          </p>
+        <div className="flex-shrink-0 space-y-3">
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer" title="When enabled, identical PII values will always be replaced with the same replacement value">
+              <input
+                type="checkbox"
+                checked={consistencyMode}
+                onChange={(e) => setConsistencyMode(e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">Consistency Mode</span>
+            </label>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
+              Same input → same replacement
+            </p>
+          </div>
+          {(rules.ipv4?.enabled || rules.ipv6?.enabled) && (
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer" title="When enabled, private/internal IP addresses (RFC1918, loopback, link-local) are not scrubbed">
+                <input
+                  type="checkbox"
+                  checked={preservePrivateIPs}
+                  onChange={(e) => setPreservePrivateIPs(e.target.checked)}
+                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">Preserve Private IPs</span>
+              </label>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
+                Keep 10.x, 192.168.x, etc. intact
+              </p>
+            </div>
+          )}
         </div>
       </div>
+
+      {showPrivateIPPrompt && (
+        <Modal onClose={() => { setShowPrivateIPPrompt(false); setPendingIPToggle(null) }} title="Preserve Private IP Addresses?" variant="compact">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Would you like to keep private/internal IP addresses unchanged? This preserves:
+            </p>
+            <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc list-inside space-y-1">
+              <li><code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">10.0.0.0/8</code> - Private networks</li>
+              <li><code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">172.16.0.0/12</code> - Private networks</li>
+              <li><code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">192.168.0.0/16</code> - Private networks</li>
+              <li><code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">127.0.0.0/8</code> - Loopback</li>
+              <li><code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">169.254.0.0/16</code> - Link-local</li>
+              <li><code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">fe80::/10</code> - IPv6 link-local</li>
+              <li><code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">fc00::/7</code> - IPv6 unique local</li>
+              <li><code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">::1</code> - IPv6 loopback</li>
+            </ul>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Private IPs are typically safe to share as they're not routable on the internet.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => handlePrivateIPPromptResponse(true)}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+              >
+                Yes, Preserve Private IPs
+              </button>
+              <button
+                onClick={() => handlePrivateIPPromptResponse(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+              >
+                No, Scrub All IPs
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {viewingPattern && (
         <Modal onClose={() => { setViewingPattern(null); setTestText('') }} title={`Pattern: ${viewingPattern.label}`} maxWidth="max-w-3xl">

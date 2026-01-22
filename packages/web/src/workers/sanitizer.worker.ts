@@ -31,6 +31,7 @@ interface ProcessRequest {
   customRules?: Array<{ id: string; strategy: string; pattern: string; isCustom: boolean; template?: string }>
   plainTextPatterns?: Array<{ id: string; strategy: string; text: string; label: string }>
   consistencyMode: boolean
+  preservePrivateIPs?: boolean
   timeShift?: TimeShiftConfig | null
   labelFormat?: LabelFormat
   globalTemplate?: string
@@ -67,6 +68,52 @@ function applyTemplate(template: string, vars: { n: number; type: string; origin
     .replace(/\{TYPE\}/g, vars.type.toUpperCase())
     .replace(/\{original\}/g, vars.original)
     .replace(/\{len\}/g, String(vars.original.length))
+}
+
+// Check if an IPv4 address is in a private/reserved range (RFC1918 + loopback + link-local)
+function isPrivateIPv4(ip: string): boolean {
+  const parts = ip.split('.').map(Number)
+  if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) return false
+
+  const [a, b] = parts
+
+  // 10.0.0.0/8 - Private
+  if (a === 10) return true
+  // 172.16.0.0/12 - Private (172.16.0.0 - 172.31.255.255)
+  if (a === 172 && b >= 16 && b <= 31) return true
+  // 192.168.0.0/16 - Private
+  if (a === 192 && b === 168) return true
+  // 127.0.0.0/8 - Loopback
+  if (a === 127) return true
+  // 169.254.0.0/16 - Link-local
+  if (a === 169 && b === 254) return true
+
+  return false
+}
+
+// Check if an IPv6 address is in a private/reserved range
+function isPrivateIPv6(ip: string): boolean {
+  const normalized = ip.toLowerCase()
+
+  // ::1 - Loopback
+  if (normalized === '::1') return true
+
+  // fe80::/10 - Link-local
+  if (normalized.startsWith('fe8') || normalized.startsWith('fe9') ||
+      normalized.startsWith('fea') || normalized.startsWith('feb')) return true
+
+  // fc00::/7 - Unique local (fc00::/8 and fd00::/8)
+  if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true
+
+  // :: or ::ffff:x.x.x.x (IPv4-mapped) - check the IPv4 part
+  if (normalized.startsWith('::ffff:')) {
+    const ipv4Part = normalized.slice(7)
+    if (ipv4Part.includes('.')) {
+      return isPrivateIPv4(ipv4Part)
+    }
+  }
+
+  return false
 }
 
 interface TimestampFormatDetails {
@@ -530,7 +577,7 @@ self.onmessage = async (e: MessageEvent) => {
 
       self.postMessage({ type: 'progress', payload: 30 })
 
-      const { text, rules, customRules = [], plainTextPatterns = [], consistencyMode, timeShift, labelFormat, globalTemplate, fileName } = e.data.payload as ProcessRequest
+      const { text, rules, customRules = [], plainTextPatterns = [], consistencyMode, preservePrivateIPs = false, timeShift, labelFormat, globalTemplate, fileName } = e.data.payload as ProcessRequest
 
       // Run syntax validation
       log('Running syntax validation...')
@@ -587,6 +634,52 @@ self.onmessage = async (e: MessageEvent) => {
       if (parsed.logs && Array.isArray(parsed.logs)) {
         for (const logEntry of parsed.logs) {
           log(logEntry)
+        }
+      }
+
+      // Filter out private IPs if preservePrivateIPs is enabled
+      if (preservePrivateIPs && parsed.replacements) {
+        const filteredReplacements: ReplacementInfo[] = []
+        let ipv4Preserved = 0
+        let ipv6Preserved = 0
+
+        for (const r of parsed.replacements as ReplacementInfo[]) {
+          if (r.pii_type === 'ipv4' && isPrivateIPv4(r.original)) {
+            ipv4Preserved++
+            // Decrement stats
+            if (parsed.stats.ipv4) parsed.stats.ipv4--
+            // Remove from matches
+            if (parsed.matches.ipv4) {
+              parsed.matches.ipv4 = parsed.matches.ipv4.filter((m: string) => m !== r.original)
+            }
+          } else if (r.pii_type === 'ipv6' && isPrivateIPv6(r.original)) {
+            ipv6Preserved++
+            // Decrement stats
+            if (parsed.stats.ipv6) parsed.stats.ipv6--
+            // Remove from matches
+            if (parsed.matches.ipv6) {
+              parsed.matches.ipv6 = parsed.matches.ipv6.filter((m: string) => m !== r.original)
+            }
+          } else {
+            filteredReplacements.push(r)
+          }
+        }
+
+        // Reapply replacements to get correct output (since WASM already applied them)
+        if (ipv4Preserved > 0 || ipv6Preserved > 0) {
+          log(`Preserving private IPs: ${ipv4Preserved} IPv4, ${ipv6Preserved} IPv6`)
+
+          // We need to regenerate the output since we're keeping some IPs
+          // Sort by position descending to apply in reverse order
+          const sortedReplacements = [...filteredReplacements].sort((a, b) => b.start - a.start)
+          let output = text
+          for (const r of sortedReplacements) {
+            if (r.start >= 0 && r.end >= 0) {
+              output = output.slice(0, r.start) + r.replacement + output.slice(r.end)
+            }
+          }
+          parsed.output = output
+          parsed.replacements = filteredReplacements
         }
       }
 

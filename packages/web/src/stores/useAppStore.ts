@@ -117,6 +117,7 @@ interface AppState {
   documentType: DocumentType
   syntaxError: SyntaxError | null
   syntaxValidFormat: ValidatedFormat
+  preservePrivateIPs: boolean
 
   setInput: (input: string) => void
   setOutput: (output: string) => void
@@ -129,6 +130,7 @@ interface AppState {
   setRuleTemplate: (id: string, template: string) => void
   setAllStrategy: (strategy: ReplacementStrategy) => void
   setConsistencyMode: (enabled: boolean) => void
+  setPreservePrivateIPs: (enabled: boolean) => void
   setFileName: (name: string | null) => void
   processText: (text: string) => Promise<void>
   analyzeText: (text: string) => Promise<void>
@@ -448,6 +450,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   replacements: [],
   lineCountWarning: null,
   consistencyMode: true,
+  preservePrivateIPs: false,
   rules: loadRulesFromStorage(),
   customRules: loadCustomRulesFromStorage(),
   plainTextPatterns: loadPlainTextPatternsFromStorage(),
@@ -539,6 +542,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setConsistencyMode: (enabled) => set({ consistencyMode: enabled }),
+  setPreservePrivateIPs: (enabled) => set({ preservePrivateIPs: enabled }),
 
   addCustomRule: (rule) => {
     const { customRules } = get()
@@ -734,7 +738,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isProcessing: true, processingProgress: 0, canCancel: true, analysisReplacements: [], analysisStats: {}, analysisCompleted: false })
 
     try {
-      const { rules, customRules, plainTextPatterns, consistencyMode, timeShift, labelFormat, globalTemplate, fileName } = get()
+      const { rules, customRules, plainTextPatterns, consistencyMode, preservePrivateIPs, timeShift, labelFormat, globalTemplate, fileName } = get()
       const enabledRules = Object.entries(rules)
         .filter(([, rule]) => rule.enabled)
         .map(([id, rule]) => ({ id, strategy: rule.strategy, template: rule.template }))
@@ -775,6 +779,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             customRules: enabledCustomRules,
             plainTextPatterns: enabledPlainTextPatterns,
             consistencyMode,
+            preservePrivateIPs,
             timeShift: timeShift.enabled ? timeShift : null,
             labelFormat,
             globalTemplate,
@@ -816,7 +821,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [], contextMatches: [], syntaxError: null, syntaxValidFormat: null })
 
     try {
-      const { rules, customRules, plainTextPatterns, consistencyMode, labelFormat, globalTemplate, fileName } = get()
+      const { rules, customRules, plainTextPatterns, consistencyMode, preservePrivateIPs, labelFormat, globalTemplate, fileName } = get()
 
       const allRules = Object.entries(rules)
         .map(([id, rule]) => ({ id, strategy: rule.strategy, template: rule.template }))
@@ -852,7 +857,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         w.addEventListener('message', handler)
         w.postMessage({
           type: 'process',
-          payload: { text, rules: allRules, customRules: allCustomRules, plainTextPatterns: allPlainTextPatterns, consistencyMode, labelFormat, globalTemplate, fileName }
+          payload: { text, rules: allRules, customRules: allCustomRules, plainTextPatterns: allPlainTextPatterns, consistencyMode, preservePrivateIPs, labelFormat, globalTemplate, fileName }
         })
       })
 

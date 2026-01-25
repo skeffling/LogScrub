@@ -621,6 +621,7 @@
           <a href="#custom-rules">Custom Rules</a>
           <a href="#plain-text-patterns">Plain Text Patterns</a>
           <a href="#presets">Presets</a>
+          <a href="#multi-file">Multi-File Upload</a>
         </div>
 
         <div class="nav-section">
@@ -1159,6 +1160,67 @@ User [EMAIL-3] logged in</div>
 
           <h3>Import/Export</h3>
           <p>Share configurations between computers or team members using JSON export/import.</p>
+        </section>
+
+        <section id="multi-file">
+          <h2>Multi-File Upload</h2>
+          <p>Process multiple log files at once with batch operations. Upload files individually or as a ZIP archive, analyze and scrub them all together, and export the results as a single ZIP download.</p>
+
+          <h3>Uploading Multiple Files</h3>
+          <p>There are several ways to upload multiple files:</p>
+          <ul>
+            <li><strong>File picker</strong> — Click "Upload" and select multiple files (hold Ctrl/Cmd to select multiple)</li>
+            <li><strong>Drag and drop</strong> — Drag multiple files onto the editor area</li>
+            <li><strong>ZIP archive</strong> — Upload a .zip file containing text files (they will be automatically extracted)</li>
+          </ul>
+          <p>Supported file types: <code>.log</code>, <code>.txt</code>, <code>.json</code>, <code>.xml</code>, <code>.csv</code>, <code>.zip</code></p>
+
+          <h3>Files Tab</h3>
+          <p>When you upload multiple files, a "Files" tab appears in the sidebar alongside "Detection Rules":</p>
+          <ul>
+            <li><strong>File list</strong> — Shows all uploaded files with their names, sizes, and status</li>
+            <li><strong>Status badges</strong> — Pending, Analyzing, Analyzed, Processing, Done, or Error</li>
+            <li><strong>Detection count</strong> — Shows how many PII items were found in each file</li>
+            <li><strong>File selection</strong> — Click a file to view it in the editor</li>
+            <li><strong>Remove files</strong> — Click the X button to remove individual files, or "Clear All" to start over</li>
+          </ul>
+
+          <h3>Batch Operations</h3>
+          <p>Process all files at once using the batch buttons at the top of the Files tab:</p>
+          <ul>
+            <li><strong>Analyze All</strong> — Run detection on all files to see what PII will be found (preview mode)</li>
+            <li><strong>Scrub All</strong> — Process all files with your current rule settings</li>
+            <li><strong>Export ZIP</strong> — Download all scrubbed files as a single ZIP archive</li>
+          </ul>
+          <p>A progress bar shows which file is currently being processed during batch operations.</p>
+
+          <h3>File Navigation</h3>
+          <p>When in multi-file mode, a navigation bar appears above the editor showing:</p>
+          <ul>
+            <li>Current file name</li>
+            <li>Position indicator (e.g., "2 of 5")</li>
+            <li>Previous/Next buttons to quickly switch between files</li>
+          </ul>
+
+          <h3>Combined Statistics</h3>
+          <p>The Statistics view includes a toggle to show stats for either:</p>
+          <ul>
+            <li><strong>Current File</strong> — Detection counts for the currently selected file</li>
+            <li><strong>All Files</strong> — Combined totals across all uploaded files</li>
+          </ul>
+
+          <h3>Cross-File Consistency</h3>
+          <p>When Consistency Mode is enabled, the same PII value will receive the same replacement across ALL files in the batch. For example, if <code>john@example.com</code> appears in multiple files, it will always be replaced with <code>[EMAIL-1]</code> in every file.</p>
+
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>For large batches, consider using "Analyze All" first to review what will be detected before running "Scrub All".</p>
+          </div>
+
+          <div class="warning">
+            <div class="callout-title">Limits</div>
+            <p>Maximum 50 files per batch. Maximum 100MB total combined size.</p>
+          </div>
         </section>
 
         <section id="organizing-rules">

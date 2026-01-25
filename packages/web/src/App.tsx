@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Header } from './components/Header'
 import { Editor } from './components/Editor'
-import { RulePanel } from './components/RulePanel'
+import { SidebarPanel } from './components/SidebarPanel'
 import { AboutModal } from './components/AboutModal'
 import { DmesgTimestampModal } from './components/DmesgTimestampModal'
 import { SipTraceModal } from './components/SipTraceModal'
@@ -859,7 +859,7 @@ function App() {
                 .rule-panel-aside { width: 100%; }
                 @media (min-width: 1024px) { .rule-panel-aside { width: ${rulePanelWidth}px; } }
               `}</style>
-              <RulePanel />
+              <SidebarPanel />
               {/* Resize handle */}
               <div
                 className="hidden lg:block absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors"

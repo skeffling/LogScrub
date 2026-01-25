@@ -372,6 +372,44 @@ pub fn compress_zip(text: &str, filename: &str) -> Result<Vec<u8>, JsValue> {
     Ok(buffer.into_inner())
 }
 
+#[derive(Debug, Deserialize)]
+struct ZipFileEntry {
+    name: String,
+    content: String,
+}
+
+/// Create a ZIP archive containing multiple files
+/// files_json should be a JSON array of objects: [{name: "file.txt", content: "text"}]
+#[wasm_bindgen]
+pub fn create_multi_zip(files_json: &str) -> Result<Vec<u8>, JsValue> {
+    let files: Vec<ZipFileEntry> = serde_json::from_str(files_json)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse files JSON: {}", e)))?;
+
+    if files.is_empty() {
+        return Err(JsValue::from_str("No files to compress"));
+    }
+
+    let mut buffer = Cursor::new(Vec::new());
+    {
+        let mut zip = zip::ZipWriter::new(&mut buffer);
+        let options = FileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated)
+            .unix_permissions(0o644);
+
+        for file in &files {
+            zip.start_file(&file.name, options)
+                .map_err(|e| JsValue::from_str(&format!("Failed to start file '{}': {}", file.name, e)))?;
+            zip.write_all(file.content.as_bytes())
+                .map_err(|e| JsValue::from_str(&format!("Failed to write file '{}': {}", file.name, e)))?;
+        }
+
+        zip.finish()
+            .map_err(|e| JsValue::from_str(&format!("Failed to finish zip: {}", e)))?;
+    }
+
+    Ok(buffer.into_inner())
+}
+
 /// Repackage a ZIP archive with one file's content replaced
 /// Used for modifying DOCX/XLSX files while preserving other files
 #[wasm_bindgen]

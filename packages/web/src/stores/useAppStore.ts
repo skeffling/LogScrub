@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import type { ContextMatch } from '../utils/contextAwareDetector'
+import type { FileEntry, AggregatedStats, BatchProgress } from '../types/multiFile'
+import { createEmptyFileEntry, MAX_FILES, MAX_TOTAL_SIZE } from '../types/multiFile'
 
 export type ReplacementStrategy = 'label' | 'fake' | 'redact' | 'template'
 export type ThemeMode = 'light' | 'dark' | 'auto'
@@ -166,6 +168,27 @@ interface AppState {
   addContextMatchAsPattern: (match: ContextMatch) => void
   setSyntaxError: (error: SyntaxError | null) => void
   setSyntaxValidFormat: (format: ValidatedFormat) => void
+
+  // Multi-file state
+  files: FileEntry[]
+  selectedFileId: string | null
+  isMultiFileMode: boolean
+  aggregatedStats: AggregatedStats | null
+  isBatchAnalyzing: boolean
+  isBatchProcessing: boolean
+  batchProgress: BatchProgress
+
+  // Multi-file actions
+  addFiles: (files: File[]) => Promise<void>
+  addFilesFromZip: (data: Uint8Array, fileName: string) => Promise<void>
+  removeFile: (fileId: string) => void
+  clearAllFiles: () => void
+  selectFile: (fileId: string) => void
+  analyzeAllFiles: () => Promise<void>
+  processAllFiles: () => Promise<void>
+  computeAggregatedStats: () => void
+  updateFileResult: (fileId: string, result: Partial<FileEntry>) => void
+  exportAllAsZip: () => Promise<void>
 }
 
 export type { ContextMatch }
@@ -486,6 +509,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   documentType: null,
   syntaxError: null,
   syntaxValidFormat: null,
+
+  // Multi-file state
+  files: [],
+  selectedFileId: null,
+  isMultiFileMode: false,
+  aggregatedStats: null,
+  isBatchAnalyzing: false,
+  isBatchProcessing: false,
+  batchProgress: { current: 0, total: 0, currentFileName: '' },
 
   setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [], contextMatches: [], syntaxError: null, syntaxValidFormat: null }),
   setOutput: (output) => set({ output }),
@@ -1179,5 +1211,465 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setSyntaxError: (error) => set({ syntaxError: error }),
 
-  setSyntaxValidFormat: (format) => set({ syntaxValidFormat: format })
+  setSyntaxValidFormat: (format) => set({ syntaxValidFormat: format }),
+
+  // Multi-file actions
+  addFiles: async (fileList) => {
+    const { files: existingFiles } = get()
+
+    // Check file count limit
+    if (existingFiles.length + fileList.length > MAX_FILES) {
+      throw new Error(`Maximum ${MAX_FILES} files allowed`)
+    }
+
+    // Read files and check size
+    const newEntries: FileEntry[] = []
+    let totalSize = existingFiles.reduce((sum, f) => sum + f.size, 0)
+
+    for (const file of fileList) {
+      totalSize += file.size
+      if (totalSize > MAX_TOTAL_SIZE) {
+        throw new Error(`Total file size exceeds ${MAX_TOTAL_SIZE / (1024 * 1024)}MB limit`)
+      }
+
+      const text = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => resolve(e.target?.result as string)
+        reader.onerror = () => reject(new Error(`Failed to read ${file.name}`))
+        reader.readAsText(file)
+      })
+
+      newEntries.push(createEmptyFileEntry(file.name, file.size, text))
+    }
+
+    const allFiles = [...existingFiles, ...newEntries]
+    const isMultiFileMode = allFiles.length > 1
+
+    // If first file, auto-select it and sync with input
+    const firstNewFile = newEntries[0]
+    const selectedFileId = existingFiles.length === 0 && firstNewFile
+      ? firstNewFile.id
+      : get().selectedFileId
+
+    set({
+      files: allFiles,
+      isMultiFileMode,
+      selectedFileId,
+      // Sync with single-file mode state
+      input: selectedFileId === firstNewFile?.id ? firstNewFile.content : get().input,
+      fileName: selectedFileId === firstNewFile?.id ? firstNewFile.name : get().fileName,
+      output: '',
+      stats: {},
+      matches: {},
+      replacements: [],
+      analysisReplacements: [],
+      analysisStats: {},
+      analysisMatches: {},
+      analysisCompleted: false
+    })
+  },
+
+  addFilesFromZip: async (data, zipFileName) => {
+    // Extract the first text file from the ZIP using WASM decompress_zip
+    const { files: existingFiles } = get()
+    const { decompress_zip } = await import('../wasm-core/wasm_core')
+
+    try {
+      const content = decompress_zip(data)
+      // Use the ZIP filename as base, assuming single file extraction
+      const baseName = zipFileName.replace(/\.zip$/i, '')
+      const entry = createEmptyFileEntry(baseName + '.txt', content.length, content)
+
+      const allFiles = [...existingFiles, entry]
+      const isMultiFileMode = allFiles.length > 1
+
+      set({
+        files: allFiles,
+        isMultiFileMode,
+        selectedFileId: existingFiles.length === 0 ? entry.id : get().selectedFileId,
+        input: existingFiles.length === 0 ? content : get().input,
+        fileName: existingFiles.length === 0 ? entry.name : get().fileName
+      })
+    } catch {
+      throw new Error('Failed to extract ZIP contents')
+    }
+  },
+
+  removeFile: (fileId) => {
+    const { files, selectedFileId } = get()
+    const newFiles = files.filter(f => f.id !== fileId)
+    const isMultiFileMode = newFiles.length > 1
+
+    // If we removed the selected file, select another one
+    let newSelectedFileId = selectedFileId
+    if (selectedFileId === fileId) {
+      newSelectedFileId = newFiles.length > 0 ? newFiles[0].id : null
+    }
+
+    // Sync with single-file state
+    const selectedFile = newFiles.find(f => f.id === newSelectedFileId)
+
+    set({
+      files: newFiles,
+      isMultiFileMode,
+      selectedFileId: newSelectedFileId,
+      input: selectedFile?.content || '',
+      fileName: selectedFile?.name || null,
+      output: selectedFile?.scrubbedContent || '',
+      stats: selectedFile?.stats || {},
+      matches: selectedFile?.matches || {},
+      replacements: selectedFile?.replacements || [],
+      analysisStats: selectedFile?.analysisStats || {},
+      analysisMatches: selectedFile?.analysisMatches || {},
+      analysisReplacements: selectedFile?.analysisReplacements || []
+    })
+
+    // Recompute aggregated stats
+    if (newFiles.length > 0) {
+      get().computeAggregatedStats()
+    } else {
+      set({ aggregatedStats: null })
+    }
+  },
+
+  clearAllFiles: () => {
+    set({
+      files: [],
+      selectedFileId: null,
+      isMultiFileMode: false,
+      aggregatedStats: null,
+      isBatchAnalyzing: false,
+      isBatchProcessing: false,
+      batchProgress: { current: 0, total: 0, currentFileName: '' },
+      input: '',
+      output: '',
+      fileName: null,
+      stats: {},
+      matches: {},
+      replacements: [],
+      analysisStats: {},
+      analysisMatches: {},
+      analysisReplacements: [],
+      analysisCompleted: false
+    })
+  },
+
+  selectFile: (fileId) => {
+    const { files } = get()
+    const file = files.find(f => f.id === fileId)
+    if (!file) return
+
+    set({
+      selectedFileId: fileId,
+      input: file.content,
+      fileName: file.name,
+      output: file.scrubbedContent || '',
+      stats: file.stats,
+      matches: file.matches,
+      replacements: file.replacements,
+      analysisStats: file.analysisStats,
+      analysisMatches: file.analysisMatches,
+      analysisReplacements: file.analysisReplacements,
+      analysisCompleted: Object.keys(file.analysisStats).length > 0 || Object.keys(file.stats).length > 0
+    })
+  },
+
+  analyzeAllFiles: async () => {
+    const { files, rules, customRules, plainTextPatterns, consistencyMode, preservePrivateIPs, labelFormat, globalTemplate } = get()
+    if (files.length === 0) return
+
+    set({
+      isBatchAnalyzing: true,
+      batchProgress: { current: 0, total: files.length, currentFileName: '' }
+    })
+
+    const w = getWorker()
+
+    // Shared consistency map for cross-file consistency
+    const allRules = Object.entries(rules)
+      .map(([id, rule]) => ({ id, strategy: rule.strategy, template: rule.template }))
+    const allCustomRules = customRules
+      .map(rule => ({ id: rule.id, strategy: rule.strategy, pattern: rule.pattern, isCustom: true }))
+    const allPlainTextPatterns = plainTextPatterns
+      .map(p => ({ id: p.id, strategy: p.strategy, text: p.text, label: p.label }))
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+
+      set({
+        batchProgress: { current: i + 1, total: files.length, currentFileName: file.name }
+      })
+
+      try {
+        // Update file status
+        get().updateFileResult(file.id, { status: 'analyzing' })
+
+        const result = await new Promise<{ output: string; stats: DetectionStats; matches: DetectionMatches; replacements: ReplacementInfo[] }>((resolve, reject) => {
+          const handler = (e: MessageEvent) => {
+            if (e.data.type === 'result') {
+              w.removeEventListener('message', handler)
+              resolve(e.data.payload)
+            } else if (e.data.type === 'error') {
+              w.removeEventListener('message', handler)
+              reject(new Error(e.data.payload))
+            }
+          }
+
+          w.addEventListener('message', handler)
+          w.postMessage({
+            type: 'process',
+            payload: {
+              text: file.content,
+              rules: allRules,
+              customRules: allCustomRules,
+              plainTextPatterns: allPlainTextPatterns,
+              consistencyMode,
+              preservePrivateIPs,
+              labelFormat,
+              globalTemplate,
+              fileName: file.name
+            }
+          })
+        })
+
+        // Filter to enabled rules only for analysis display
+        const enabledStats: DetectionStats = {}
+        const enabledMatches: DetectionMatches = {}
+        const enabledReplacements: ReplacementInfo[] = []
+
+        Object.entries(result.stats).forEach(([id, count]) => {
+          const rule = rules[id]
+          const customRule = customRules.find(r => r.id === id)
+          const plainText = plainTextPatterns.find(p => p.id === id)
+          if ((rule?.enabled) || (customRule?.enabled) || (plainText?.enabled)) {
+            enabledStats[id] = count
+            if (result.matches[id]) {
+              enabledMatches[id] = result.matches[id]
+            }
+          }
+        })
+
+        result.replacements?.forEach(r => {
+          const rule = rules[r.pii_type]
+          const customRule = customRules.find(cr => cr.id === r.pii_type)
+          const plainText = plainTextPatterns.find(p => p.id === r.pii_type)
+          if ((rule?.enabled) || (customRule?.enabled) || (plainText?.enabled)) {
+            enabledReplacements.push(r)
+          }
+        })
+
+        get().updateFileResult(file.id, {
+          status: 'analyzed',
+          analysisStats: enabledStats,
+          analysisMatches: enabledMatches,
+          analysisReplacements: enabledReplacements
+        })
+      } catch (err) {
+        get().updateFileResult(file.id, {
+          status: 'error',
+          error: err instanceof Error ? err.message : 'Analysis failed'
+        })
+      }
+    }
+
+    // Compute aggregated stats
+    get().computeAggregatedStats()
+
+    // Update selected file's state in main store
+    const { selectedFileId, files: updatedFiles } = get()
+    const selectedFile = updatedFiles.find(f => f.id === selectedFileId)
+    if (selectedFile) {
+      set({
+        analysisStats: selectedFile.analysisStats,
+        analysisMatches: selectedFile.analysisMatches,
+        analysisReplacements: selectedFile.analysisReplacements,
+        analysisCompleted: true
+      })
+    }
+
+    set({
+      isBatchAnalyzing: false,
+      batchProgress: { current: 0, total: 0, currentFileName: '' }
+    })
+  },
+
+  processAllFiles: async () => {
+    const { files, rules, customRules, plainTextPatterns, consistencyMode, preservePrivateIPs, timeShift, labelFormat, globalTemplate } = get()
+    if (files.length === 0) return
+
+    set({
+      isBatchProcessing: true,
+      batchProgress: { current: 0, total: files.length, currentFileName: '' }
+    })
+
+    const w = getWorker()
+
+    const enabledRules = Object.entries(rules)
+      .filter(([, rule]) => rule.enabled)
+      .map(([id, rule]) => ({ id, strategy: rule.strategy, template: rule.template }))
+    const enabledCustomRules = customRules
+      .filter(rule => rule.enabled)
+      .map(rule => ({ id: rule.id, strategy: rule.strategy, pattern: rule.pattern, isCustom: true }))
+    const enabledPlainTextPatterns = plainTextPatterns
+      .filter(p => p.enabled)
+      .map(p => ({ id: p.id, strategy: p.strategy, text: p.text, label: p.label }))
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+
+      set({
+        batchProgress: { current: i + 1, total: files.length, currentFileName: file.name }
+      })
+
+      try {
+        get().updateFileResult(file.id, { status: 'processing' })
+
+        const result = await new Promise<{ output: string; stats: DetectionStats; matches: DetectionMatches; replacements: ReplacementInfo[] }>((resolve, reject) => {
+          const handler = (e: MessageEvent) => {
+            if (e.data.type === 'result') {
+              w.removeEventListener('message', handler)
+              resolve(e.data.payload)
+            } else if (e.data.type === 'error') {
+              w.removeEventListener('message', handler)
+              reject(new Error(e.data.payload))
+            }
+          }
+
+          w.addEventListener('message', handler)
+          w.postMessage({
+            type: 'process',
+            payload: {
+              text: file.content,
+              rules: enabledRules,
+              customRules: enabledCustomRules,
+              plainTextPatterns: enabledPlainTextPatterns,
+              consistencyMode,
+              preservePrivateIPs,
+              timeShift: timeShift.enabled ? timeShift : null,
+              labelFormat,
+              globalTemplate,
+              fileName: file.name
+            }
+          })
+        })
+
+        get().updateFileResult(file.id, {
+          status: 'processed',
+          scrubbedContent: result.output,
+          stats: result.stats,
+          matches: result.matches || {},
+          replacements: result.replacements || []
+        })
+      } catch (err) {
+        get().updateFileResult(file.id, {
+          status: 'error',
+          error: err instanceof Error ? err.message : 'Processing failed'
+        })
+      }
+    }
+
+    // Compute aggregated stats
+    get().computeAggregatedStats()
+
+    // Update selected file's state in main store
+    const { selectedFileId, files: updatedFiles } = get()
+    const selectedFile = updatedFiles.find(f => f.id === selectedFileId)
+    if (selectedFile) {
+      set({
+        output: selectedFile.scrubbedContent || '',
+        stats: selectedFile.stats,
+        matches: selectedFile.matches,
+        replacements: selectedFile.replacements
+      })
+    }
+
+    set({
+      isBatchProcessing: false,
+      batchProgress: { current: 0, total: 0, currentFileName: '' }
+    })
+  },
+
+  computeAggregatedStats: () => {
+    const { files } = get()
+    if (files.length === 0) {
+      set({ aggregatedStats: null })
+      return
+    }
+
+    const byType: DetectionStats = {}
+    const byFile: Record<string, number> = {}
+    const allMatches: DetectionMatches = {}
+    const allReplacements: ReplacementInfo[] = []
+
+    for (const file of files) {
+      // Use processed stats if available, otherwise analysis stats
+      const fileStats = Object.keys(file.stats).length > 0 ? file.stats : file.analysisStats
+      const fileMatches = Object.keys(file.matches).length > 0 ? file.matches : file.analysisMatches
+      const fileReplacements = file.replacements.length > 0 ? file.replacements : file.analysisReplacements
+
+      let fileTotal = 0
+      for (const [type, count] of Object.entries(fileStats)) {
+        byType[type] = (byType[type] || 0) + count
+        fileTotal += count
+
+        if (fileMatches[type]) {
+          allMatches[type] = [...(allMatches[type] || []), ...fileMatches[type]]
+        }
+      }
+      byFile[file.id] = fileTotal
+      allReplacements.push(...fileReplacements)
+    }
+
+    const totalDetections = Object.values(byType).reduce((sum, count) => sum + count, 0)
+
+    set({
+      aggregatedStats: {
+        totalDetections,
+        byType,
+        byFile,
+        allMatches,
+        allReplacements
+      }
+    })
+  },
+
+  updateFileResult: (fileId, result) => {
+    const { files } = get()
+    const updatedFiles = files.map(f =>
+      f.id === fileId ? { ...f, ...result } : f
+    )
+    set({ files: updatedFiles })
+  },
+
+  exportAllAsZip: async () => {
+    const { files } = get()
+    const processedFiles = files.filter(f => f.scrubbedContent !== null)
+
+    if (processedFiles.length === 0) {
+      throw new Error('No processed files to export')
+    }
+
+    // Import WASM create_multi_zip
+    const { create_multi_zip } = await import('../wasm-core/wasm_core')
+
+    // Prepare files for ZIP
+    const zipFiles = processedFiles.map(f => ({
+      name: `scrubbed_${f.name}`,
+      content: f.scrubbedContent || ''
+    }))
+
+    // Create ZIP
+    const zipData = create_multi_zip(JSON.stringify(zipFiles))
+
+    // Download the ZIP
+    const blob = new Blob([zipData], { type: 'application/zip' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'scrubbed_files.zip'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 }))

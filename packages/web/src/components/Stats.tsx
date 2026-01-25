@@ -273,7 +273,7 @@ function buildMappingTable(replacements: ReplacementInfo[], inputText: string): 
 }
 
 export function Stats() {
-  const { stats, matches, fileName, analysisStats, analysisMatches, replacements, analysisReplacements, input } = useAppStore()
+  const { stats, matches, fileName, analysisStats, analysisMatches, replacements, analysisReplacements, input, files, isMultiFileMode, aggregatedStats, selectedFileId } = useAppStore()
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [showAuditReport, setShowAuditReport] = useState(false)
   const [activeTab, setActiveTab] = useState<'stats' | 'mapping'>('stats')
@@ -281,10 +281,30 @@ export function Stats() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [mappingSearch, setMappingSearch] = useState('')
   const [showMappingExport, setShowMappingExport] = useState(false)
+  const [statsScope, setStatsScope] = useState<'all' | 'current'>('current')
 
-  const displayStats = Object.keys(stats).length > 0 ? stats : analysisStats
-  const displayMatches = Object.keys(matches).length > 0 ? matches : analysisMatches
-  const displayReplacements = replacements.length > 0 ? replacements : analysisReplacements
+  // For multi-file mode, determine which stats to display
+  const currentFile = files.find(f => f.id === selectedFileId)
+  const currentFileStats = currentFile
+    ? (Object.keys(currentFile.stats).length > 0 ? currentFile.stats : currentFile.analysisStats)
+    : {}
+  const currentFileMatches = currentFile
+    ? (Object.keys(currentFile.matches).length > 0 ? currentFile.matches : currentFile.analysisMatches)
+    : {}
+  const currentFileReplacements = currentFile
+    ? (currentFile.replacements.length > 0 ? currentFile.replacements : currentFile.analysisReplacements)
+    : []
+
+  // Decide which stats to display based on scope
+  const displayStats = isMultiFileMode && statsScope === 'all' && aggregatedStats
+    ? aggregatedStats.byType
+    : (Object.keys(stats).length > 0 ? stats : (isMultiFileMode ? currentFileStats : analysisStats))
+  const displayMatches = isMultiFileMode && statsScope === 'all' && aggregatedStats
+    ? aggregatedStats.allMatches
+    : (Object.keys(matches).length > 0 ? matches : (isMultiFileMode ? currentFileMatches : analysisMatches))
+  const displayReplacements = isMultiFileMode && statsScope === 'all' && aggregatedStats
+    ? aggregatedStats.allReplacements
+    : (replacements.length > 0 ? replacements : (isMultiFileMode ? currentFileReplacements : analysisReplacements))
   const isPreview = Object.keys(stats).length === 0 && Object.keys(analysisStats).length > 0
 
   const total = Object.values(displayStats).reduce((sum, count) => sum + count, 0)
@@ -486,6 +506,35 @@ ${entries.map(([type]) => {
   return (
     <>
       <div>
+        {/* Multi-file scope toggle */}
+        {isMultiFileMode && (
+          <div className="flex items-center gap-2 mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <span className="text-xs text-blue-700 dark:text-blue-300">Show stats for:</span>
+            <div className="flex rounded-lg overflow-hidden border border-blue-200 dark:border-blue-700">
+              <button
+                onClick={() => setStatsScope('current')}
+                className={`px-2 py-1 text-xs font-medium transition-colors ${
+                  statsScope === 'current'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+                }`}
+              >
+                Current File
+              </button>
+              <button
+                onClick={() => setStatsScope('all')}
+                className={`px-2 py-1 text-xs font-medium transition-colors ${
+                  statsScope === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+                }`}
+              >
+                All Files ({files.length})
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-1 mb-4 border-b dark:border-gray-700">
           <button
             onClick={() => setActiveTab('stats')}

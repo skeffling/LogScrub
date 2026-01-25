@@ -612,7 +612,7 @@ function dismissDonationForever() {
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, onLeftResize, showLeftHandle = false, gpxTransposedContinent, syntaxValidFormat }, ref) {
-  const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType } = useAppStore()
+  const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType, files, selectedFileId, isMultiFileMode, selectFile } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showAIExplain, setShowAIExplain] = useState(false)
   const [splitRatio, setSplitRatio] = useState(() => loadEditorPreference('splitRatio', 50))
@@ -1982,8 +1982,52 @@ Here are examples of actual replacements made in this ${docTypeShort}:
   // Background color for title tab (matches the textarea/content area)
   const titleBg = paneBg
 
+  // Multi-file navigation helpers
+  const currentFileIndex = files.findIndex(f => f.id === selectedFileId)
+  const prevFile = currentFileIndex > 0 ? files[currentFileIndex - 1] : null
+  const nextFile = currentFileIndex < files.length - 1 ? files[currentFileIndex + 1] : null
+  const currentFile = files.find(f => f.id === selectedFileId)
+
   return (
-    <div ref={editorContainerRef} className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+    <div ref={editorContainerRef} className="flex flex-col gap-0 flex-1 min-h-0">
+      {/* Multi-file indicator bar */}
+      {isMultiFileMode && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 flex-shrink-0">
+          <button
+            onClick={() => prevFile && selectFile(prevFile.id)}
+            disabled={!prevFile}
+            className="p-0.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800 disabled:opacity-30 disabled:cursor-not-allowed"
+            title={prevFile ? `Previous: ${prevFile.name}` : 'No previous file'}
+          >
+            <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <svg className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-100 truncate">
+              {currentFile?.name || 'No file selected'}
+            </span>
+            <span className="text-xs text-blue-600 dark:text-blue-400 flex-shrink-0">
+              ({currentFileIndex + 1} of {files.length})
+            </span>
+          </div>
+          <button
+            onClick={() => nextFile && selectFile(nextFile.id)}
+            disabled={!nextFile}
+            className="p-0.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800 disabled:opacity-30 disabled:cursor-not-allowed"
+            title={nextFile ? `Next: ${nextFile.name}` : 'No next file'}
+          >
+            <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
       <div className="flex flex-col min-h-0 min-w-0 relative w-full md:w-0" style={{ flex: `0 0 ${splitRatio}%` }}>
         {/* Resize handle on left edge of Original panel (controls Rules panel width) */}
         {showLeftHandle && onLeftResize && (
@@ -2446,6 +2490,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
             {renderNonVirtualLines(filteredOutputLines, 'output', replacements, changedLines, filteredLineNumbers)}
           </div>
         )}
+      </div>
       </div>
 
       {showDonationModal && (

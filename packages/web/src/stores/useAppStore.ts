@@ -1314,7 +1314,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (e instanceof Error) {
         throw e
       }
-      throw new Error('Failed to extract ZIP contents')
+      // WASM errors come as strings or JsValue
+      const message = typeof e === 'string' ? e : String(e)
+      throw new Error(message || 'Failed to extract ZIP contents')
     }
   },
 

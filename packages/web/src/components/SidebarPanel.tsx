@@ -13,17 +13,23 @@ interface SidebarPanelProps {
 export function SidebarPanel({ activeTab: controlledTab, onTabChange }: SidebarPanelProps) {
   const { files } = useAppStore()
   const [internalTab, setInternalTab] = useState<SidebarTab>('rules')
+  const [hasAutoSwitched, setHasAutoSwitched] = useState(false)
 
   // Use controlled or internal state
   const activeTab = controlledTab ?? internalTab
   const setActiveTab = onTabChange ?? setInternalTab
 
-  // Auto-switch to files tab when multiple files are added
+  // Auto-switch to files tab once when multiple files are first added
   useEffect(() => {
-    if (files.length > 1 && activeTab === 'rules') {
+    if (files.length > 1 && !hasAutoSwitched) {
       setActiveTab('files')
+      setHasAutoSwitched(true)
     }
-  }, [files.length, activeTab, setActiveTab])
+    // Reset when files are cleared
+    if (files.length === 0) {
+      setHasAutoSwitched(false)
+    }
+  }, [files.length, hasAutoSwitched, setActiveTab])
 
   const showFilesTab = files.length > 0
 

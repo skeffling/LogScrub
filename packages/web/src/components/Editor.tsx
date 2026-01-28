@@ -612,7 +612,7 @@ function dismissDonationForever() {
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, onLeftResize, showLeftHandle = false, gpxTransposedContinent, syntaxValidFormat }, ref) {
-  const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType, files, selectedFileId, isMultiFileMode, selectFile } = useAppStore()
+  const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType, files, selectedFileId, isMultiFileMode, selectFile, addFilesFromZip } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showAIExplain, setShowAIExplain] = useState(false)
   const [splitRatio, setSplitRatio] = useState(() => loadEditorPreference('splitRatio', 50))
@@ -1345,6 +1345,21 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     const file = e.target.files?.[0]
     if (file) {
       try {
+        // Handle ZIP files specially - extract all text files
+        if (file.name.toLowerCase().endsWith('.zip')) {
+          await ensureWasm()
+          const arrayBuffer = await file.arrayBuffer()
+          const data = new Uint8Array(arrayBuffer)
+          await addFilesFromZip(data, file.name)
+          // Reset document-related state
+          setDocumentFile(null)
+          setDocumentType(null)
+          setPreviewPage(0)
+          setStripMetadataPreference(null)
+          setDocumentMetadata(null)
+          return
+        }
+
         const { content, name, docType } = await processCompressedFile(file)
         onInputChange(content)
         setFileName(name)

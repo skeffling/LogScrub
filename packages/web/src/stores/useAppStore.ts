@@ -1269,28 +1269,51 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
 
-  addFilesFromZip: async (data, zipFileName) => {
-    // Extract the first text file from the ZIP using WASM decompress_zip
+  addFilesFromZip: async (data, _zipFileName) => {
+    // Extract all text files from the ZIP using WASM decompress_zip_multi
     const { files: existingFiles } = get()
-    const { decompress_zip } = await import('../wasm-core/wasm_core')
+    const { decompress_zip_multi } = await import('../wasm-core/wasm_core')
 
     try {
-      const content = decompress_zip(data)
-      // Use the ZIP filename as base, assuming single file extraction
-      const baseName = zipFileName.replace(/\.zip$/i, '')
-      const entry = createEmptyFileEntry(baseName + '.txt', content.length, content)
+      const resultJson = decompress_zip_multi(data)
+      const extractedFiles: Array<{ name: string; content: string; size: number }> = JSON.parse(resultJson)
 
-      const allFiles = [...existingFiles, entry]
+      if (extractedFiles.length === 0) {
+        throw new Error('No text files found in ZIP archive')
+      }
+
+      // Check file count limit
+      const totalFileCount = existingFiles.length + extractedFiles.length
+      if (totalFileCount > MAX_FILES) {
+        throw new Error(`Cannot add ${extractedFiles.length} files: would exceed limit of ${MAX_FILES} files (currently have ${existingFiles.length})`)
+      }
+
+      // Check total size limit
+      const existingTotalSize = existingFiles.reduce((sum, f) => sum + f.size, 0)
+      const newTotalSize = extractedFiles.reduce((sum, f) => sum + f.size, 0)
+      if (existingTotalSize + newTotalSize > MAX_TOTAL_SIZE) {
+        throw new Error(`Cannot add files: would exceed total size limit of ${Math.round(MAX_TOTAL_SIZE / 1024 / 1024)}MB`)
+      }
+
+      // Create FileEntry for each extracted file
+      const newEntries = extractedFiles.map(f => createEmptyFileEntry(f.name, f.size, f.content))
+      const allFiles = [...existingFiles, ...newEntries]
       const isMultiFileMode = allFiles.length > 1
+
+      // Select the first new file if no files were previously loaded
+      const firstNewFile = newEntries[0]
 
       set({
         files: allFiles,
         isMultiFileMode,
-        selectedFileId: existingFiles.length === 0 ? entry.id : get().selectedFileId,
-        input: existingFiles.length === 0 ? content : get().input,
-        fileName: existingFiles.length === 0 ? entry.name : get().fileName
+        selectedFileId: existingFiles.length === 0 ? firstNewFile.id : get().selectedFileId,
+        input: existingFiles.length === 0 ? firstNewFile.content : get().input,
+        fileName: existingFiles.length === 0 ? firstNewFile.name : get().fileName
       })
-    } catch {
+    } catch (e) {
+      if (e instanceof Error) {
+        throw e
+      }
       throw new Error('Failed to extract ZIP contents')
     }
   },

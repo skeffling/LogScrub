@@ -65,6 +65,24 @@ function getDetectionCount(file: FileEntry): number {
   return Object.values(stats).reduce((sum, count) => sum + count, 0)
 }
 
+function downloadFile(file: FileEntry) {
+  // Download scrubbed version if processed, original otherwise
+  const content = file.scrubbedContent ?? file.content
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  // Add _scrubbed suffix if downloading processed version
+  const fileName = file.scrubbedContent
+    ? file.name.replace(/(\.[^.]+)$/, '_scrubbed$1')
+    : file.name
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 export function FileList() {
   const {
     files,
@@ -207,6 +225,20 @@ export function FileList() {
                       )}
                     </div>
                   </div>
+
+                  {/* Download button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      downloadFile(file)
+                    }}
+                    className="flex-shrink-0 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title={file.scrubbedContent ? 'Download scrubbed file' : 'Download file'}
+                  >
+                    <svg className="w-4 h-4 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </button>
 
                   {/* Remove button */}
                   <button

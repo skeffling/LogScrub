@@ -330,6 +330,103 @@ pub fn decompress_zip(data: &[u8]) -> Result<String, JsValue> {
     Err(JsValue::from_str("No text files found in zip"))
 }
 
+/// Struct for multi-file extraction results
+#[derive(Debug, Serialize)]
+struct ExtractedFile {
+    name: String,
+    content: String,
+    size: usize,
+}
+
+/// Check if a filename has a text file extension
+fn is_text_extension(filename: &str) -> bool {
+    let text_extensions = [
+        "log", "txt", "json", "xml", "csv", "yaml", "yml", "toml", "md", "conf", "cfg", "ini",
+    ];
+
+    if let Some(ext) = filename.rsplit('.').next() {
+        text_extensions.contains(&ext.to_lowercase().as_str())
+    } else {
+        false
+    }
+}
+
+/// Check if content appears to be binary (contains null bytes)
+fn is_binary_content(content: &[u8]) -> bool {
+    content.iter().take(8192).any(|&b| b == 0)
+}
+
+/// Extract all text files from a ZIP archive
+/// Returns JSON: [{name: "file.txt", content: "...", size: 123}, ...]
+#[wasm_bindgen]
+pub fn decompress_zip_multi(data: &[u8]) -> Result<String, JsValue> {
+    let cursor = Cursor::new(data);
+    let mut archive = ZipArchive::new(cursor)
+        .map_err(|e| JsValue::from_str(&format!("Failed to read zip: {}", e)))?;
+
+    let mut extracted_files: Vec<ExtractedFile> = Vec::new();
+
+    for i in 0..archive.len() {
+        let mut file = archive
+            .by_index(i)
+            .map_err(|e| JsValue::from_str(&format!("Failed to read zip entry: {}", e)))?;
+
+        let name = file.name().to_string();
+
+        // Skip directories
+        if file.is_dir() {
+            continue;
+        }
+
+        // Skip __MACOSX metadata folder
+        if name.starts_with("__MACOSX") || name.contains("/__MACOSX/") {
+            continue;
+        }
+
+        // Skip hidden files (starting with dot)
+        let file_name_only = name.rsplit('/').next().unwrap_or(&name);
+        if file_name_only.starts_with('.') {
+            continue;
+        }
+
+        // Skip non-text extensions
+        if !is_text_extension(&name) {
+            continue;
+        }
+
+        // Read file contents as bytes first to check for binary content
+        let mut contents_bytes = Vec::new();
+        if file.read_to_end(&mut contents_bytes).is_err() {
+            continue;
+        }
+
+        // Skip binary files (contain null bytes)
+        if is_binary_content(&contents_bytes) {
+            continue;
+        }
+
+        // Convert to string
+        match String::from_utf8(contents_bytes) {
+            Ok(contents) => {
+                let size = contents.len();
+                extracted_files.push(ExtractedFile {
+                    name,
+                    content: contents,
+                    size,
+                });
+            }
+            Err(_) => continue, // Skip non-UTF8 files
+        }
+    }
+
+    if extracted_files.is_empty() {
+        return Err(JsValue::from_str("No text files found in zip"));
+    }
+
+    serde_json::to_string(&extracted_files)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize results: {}", e)))
+}
+
 #[wasm_bindgen]
 pub fn decompress_zip_file(data: &[u8], target_filename: &str) -> Result<String, JsValue> {
     let cursor = Cursor::new(data);

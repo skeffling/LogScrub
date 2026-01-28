@@ -342,6 +342,8 @@ struct ExtractedFile {
 fn is_text_extension(filename: &str) -> bool {
     let text_extensions = [
         "log", "txt", "json", "xml", "csv", "yaml", "yml", "toml", "md", "conf", "cfg", "ini",
+        "html", "htm", "css", "js", "ts", "jsx", "tsx", "svg", "sql", "sh", "bash", "py", "rb",
+        "java", "c", "cpp", "h", "hpp", "go", "rs", "php", "pl", "swift", "kt", "scala",
     ];
 
     if let Some(ext) = filename.rsplit('.').next() {

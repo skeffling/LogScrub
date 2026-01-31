@@ -861,3 +861,12 @@ pub fn fit_to_json(data: &[u8]) -> Result<String, JsValue> {
     fit::fit_to_json(data)
         .map_err(|e| JsValue::from_str(&e))
 }
+
+/// Convert FIT file to GPX format
+/// Exports GPS track, elevation, timestamps, and sensor data (HR, cadence, power, temp)
+/// The resulting GPX can be anonymized using standard XML/text processing
+#[wasm_bindgen]
+pub fn fit_to_gpx(data: &[u8]) -> Result<String, JsValue> {
+    fit::fit_to_gpx(data)
+        .map_err(|e| JsValue::from_str(&e))
+}

@@ -802,3 +802,14 @@ pub fn analyze_pcap(data: &[u8], config_json: &str) -> Result<String, JsValue> {
         Err(e) => Err(JsValue::from_str(&e)),
     }
 }
+
+/// Pre-analyze a PCAP file to get protocol distribution and statistics
+/// Returns detailed analysis without modifying the file
+#[wasm_bindgen]
+pub fn pre_analyze_pcap(data: &[u8]) -> Result<String, JsValue> {
+    match pcap::pre_analyze_pcap(data) {
+        Ok(report) => serde_json::to_string(&report)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e))),
+        Err(e) => Err(JsValue::from_str(&e)),
+    }
+}

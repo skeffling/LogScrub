@@ -3,8 +3,75 @@ use pcap_file::pcap::{PcapPacket, PcapReader, PcapWriter};
 use pcap_file::pcapng::{Block, PcapNgReader, PcapNgWriter};
 use std::time::Duration;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
+
+/// Pre-anonymization analysis of a PCAP file
+#[derive(Debug, Serialize, Default)]
+pub struct PcapAnalysisReport {
+    /// Total packet count
+    pub total_packets: usize,
+    /// Total bytes
+    pub total_bytes: usize,
+    /// Protocol distribution
+    pub protocols: ProtocolStats,
+    /// Unique IPv4 addresses found
+    pub unique_ipv4: Vec<String>,
+    /// Unique IPv6 addresses found
+    pub unique_ipv6: Vec<String>,
+    /// Unique MAC addresses found
+    pub unique_mac: Vec<String>,
+    /// Port usage statistics
+    pub port_stats: PortStats,
+    /// Potential sensitive data indicators
+    pub sensitive_indicators: Vec<String>,
+}
+
+/// Protocol distribution statistics
+#[derive(Debug, Serialize, Default)]
+pub struct ProtocolStats {
+    /// Ethernet frames
+    pub ethernet: usize,
+    /// ARP packets
+    pub arp: usize,
+    /// IPv4 packets
+    pub ipv4: usize,
+    /// IPv6 packets
+    pub ipv6: usize,
+    /// TCP segments
+    pub tcp: usize,
+    /// UDP datagrams
+    pub udp: usize,
+    /// ICMP packets
+    pub icmp: usize,
+    /// ICMPv6 packets
+    pub icmpv6: usize,
+    /// DNS packets (port 53)
+    pub dns: usize,
+    /// HTTP packets (port 80)
+    pub http: usize,
+    /// HTTPS packets (port 443)
+    pub https: usize,
+    /// FTP packets (port 21)
+    pub ftp: usize,
+    /// SSH packets (port 22)
+    pub ssh: usize,
+    /// Telnet packets (port 23)
+    pub telnet: usize,
+    /// SMTP packets (port 25)
+    pub smtp: usize,
+    /// Other/unknown
+    pub other: usize,
+}
+
+/// Port usage statistics
+#[derive(Debug, Serialize, Default)]
+pub struct PortStats {
+    /// Top source ports
+    pub top_src_ports: Vec<(u16, usize)>,
+    /// Top destination ports
+    pub top_dst_ports: Vec<(u16, usize)>,
+}
 
 /// Statistics about what was anonymized in the PCAP
 #[derive(Debug, Serialize, Default)]
@@ -1767,4 +1834,199 @@ pub fn anonymize_pcap(data: &[u8], config: PcapConfig) -> Result<PcapResult, Str
     } else {
         anonymize_pcap_legacy(data, config)
     }
+}
+
+/// Pre-analyze a PCAP file without modifying it
+/// Returns statistics about protocols, addresses, and potential sensitive data
+pub fn pre_analyze_pcap(data: &[u8]) -> Result<PcapAnalysisReport, String> {
+    let mut report = PcapAnalysisReport::default();
+    let mut ipv4_set: HashSet<String> = HashSet::new();
+    let mut ipv6_set: HashSet<String> = HashSet::new();
+    let mut mac_set: HashSet<String> = HashSet::new();
+    let mut src_port_counts: HashMap<u16, usize> = HashMap::new();
+    let mut dst_port_counts: HashMap<u16, usize> = HashMap::new();
+
+    // Collect packet data
+    let packets: Vec<Vec<u8>> = if is_pcapng(data) {
+        let cursor = Cursor::new(data);
+        let mut reader = PcapNgReader::new(cursor)
+            .map_err(|e| format!("Failed to read PCAPNG: {}", e))?;
+
+        let mut pkts = Vec::new();
+        while let Some(block) = reader.next_block() {
+            if let Ok(block) = block {
+                match block {
+                    Block::EnhancedPacket(epb) => {
+                        report.total_bytes += epb.data.len();
+                        pkts.push(epb.data.to_vec());
+                    }
+                    Block::SimplePacket(spb) => {
+                        report.total_bytes += spb.data.len();
+                        pkts.push(spb.data.to_vec());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        pkts
+    } else {
+        let cursor = Cursor::new(data);
+        let mut reader = PcapReader::new(cursor)
+            .map_err(|e| format!("Failed to read PCAP: {}", e))?;
+
+        let mut pkts = Vec::new();
+        while let Some(pkt) = reader.next_packet() {
+            if let Ok(pkt) = pkt {
+                report.total_bytes += pkt.data.len();
+                pkts.push(pkt.data.to_vec());
+            }
+        }
+        pkts
+    };
+
+    report.total_packets = packets.len();
+
+    // Analyze each packet
+    for pkt_data in &packets {
+        report.protocols.ethernet += 1;
+
+        // Check ethertype
+        if pkt_data.len() >= 14 {
+            let ethertype = u16::from_be_bytes([pkt_data[12], pkt_data[13]]);
+
+            // Collect MAC addresses
+            let src_mac = format!(
+                "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+                pkt_data[6], pkt_data[7], pkt_data[8], pkt_data[9], pkt_data[10], pkt_data[11]
+            );
+            let dst_mac = format!(
+                "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+                pkt_data[0], pkt_data[1], pkt_data[2], pkt_data[3], pkt_data[4], pkt_data[5]
+            );
+            mac_set.insert(src_mac);
+            mac_set.insert(dst_mac);
+
+            if ethertype == 0x0806 {
+                report.protocols.arp += 1;
+                continue;
+            }
+        }
+
+        // Parse with etherparse for detailed analysis
+        if let Ok(parsed) = SlicedPacket::from_ethernet(pkt_data) {
+            match &parsed.net {
+                Some(NetSlice::Ipv4(ipv4)) => {
+                    report.protocols.ipv4 += 1;
+                    let header = ipv4.header();
+
+                    // Collect IPs
+                    let src = header.source();
+                    let dst = header.destination();
+                    ipv4_set.insert(format!("{}.{}.{}.{}", src[0], src[1], src[2], src[3]));
+                    ipv4_set.insert(format!("{}.{}.{}.{}", dst[0], dst[1], dst[2], dst[3]));
+
+                    // Check IP protocol
+                    let proto = header.protocol().0;
+                    match proto {
+                        1 => report.protocols.icmp += 1,
+                        6 => report.protocols.tcp += 1,
+                        17 => report.protocols.udp += 1,
+                        _ => report.protocols.other += 1,
+                    }
+                }
+                Some(NetSlice::Ipv6(ipv6)) => {
+                    report.protocols.ipv6 += 1;
+                    let header = ipv6.header();
+
+                    // Collect IPs
+                    ipv6_set.insert(format_ipv6(&header.source()));
+                    ipv6_set.insert(format_ipv6(&header.destination()));
+
+                    // Check next header
+                    let proto = header.next_header().0;
+                    match proto {
+                        6 => report.protocols.tcp += 1,
+                        17 => report.protocols.udp += 1,
+                        58 => report.protocols.icmpv6 += 1,
+                        _ => report.protocols.other += 1,
+                    }
+                }
+                None => {
+                    report.protocols.other += 1;
+                }
+            }
+
+            // Analyze transport layer
+            if let Some(transport) = &parsed.transport {
+                let (src_port, dst_port) = match transport {
+                    TransportSlice::Tcp(tcp) => (tcp.source_port(), tcp.destination_port()),
+                    TransportSlice::Udp(udp) => (udp.source_port(), udp.destination_port()),
+                    _ => (0, 0),
+                };
+
+                if src_port > 0 {
+                    *src_port_counts.entry(src_port).or_insert(0) += 1;
+                }
+                if dst_port > 0 {
+                    *dst_port_counts.entry(dst_port).or_insert(0) += 1;
+                }
+
+                // Categorize by well-known ports
+                let ports = [src_port, dst_port];
+                for port in ports {
+                    match port {
+                        53 => report.protocols.dns += 1,
+                        80 => report.protocols.http += 1,
+                        443 => report.protocols.https += 1,
+                        21 => report.protocols.ftp += 1,
+                        22 => report.protocols.ssh += 1,
+                        23 => report.protocols.telnet += 1,
+                        25 => report.protocols.smtp += 1,
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+
+    // Convert sets to sorted vectors
+    let mut ipv4_vec: Vec<String> = ipv4_set.into_iter().collect();
+    ipv4_vec.sort();
+    report.unique_ipv4 = ipv4_vec;
+
+    let mut ipv6_vec: Vec<String> = ipv6_set.into_iter().collect();
+    ipv6_vec.sort();
+    report.unique_ipv6 = ipv6_vec;
+
+    let mut mac_vec: Vec<String> = mac_set.into_iter().collect();
+    mac_vec.sort();
+    report.unique_mac = mac_vec;
+
+    // Get top ports
+    let mut src_ports: Vec<(u16, usize)> = src_port_counts.into_iter().collect();
+    src_ports.sort_by(|a, b| b.1.cmp(&a.1));
+    report.port_stats.top_src_ports = src_ports.into_iter().take(10).collect();
+
+    let mut dst_ports: Vec<(u16, usize)> = dst_port_counts.into_iter().collect();
+    dst_ports.sort_by(|a, b| b.1.cmp(&a.1));
+    report.port_stats.top_dst_ports = dst_ports.into_iter().take(10).collect();
+
+    // Check for sensitive indicators
+    if report.protocols.ftp > 0 {
+        report.sensitive_indicators.push("FTP traffic detected (credentials may be in cleartext)".to_string());
+    }
+    if report.protocols.telnet > 0 {
+        report.sensitive_indicators.push("Telnet traffic detected (credentials in cleartext)".to_string());
+    }
+    if report.protocols.http > 0 {
+        report.sensitive_indicators.push("HTTP traffic detected (may contain sensitive data)".to_string());
+    }
+    if report.protocols.smtp > 0 {
+        report.sensitive_indicators.push("SMTP traffic detected (may contain email content)".to_string());
+    }
+    if report.protocols.dns > 0 {
+        report.sensitive_indicators.push("DNS traffic detected (reveals browsing activity)".to_string());
+    }
+
+    Ok(report)
 }

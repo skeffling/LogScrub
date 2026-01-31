@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '../stores/useAppStore'
-import init, { analyze_pcap, anonymize_pcap_bytes } from '../wasm-core/wasm_core'
+import init, { analyze_pcap, anonymize_pcap_bytes, pre_analyze_pcap } from '../wasm-core/wasm_core'
 
 let wasmReady: Promise<unknown> | null = null
 async function ensureWasm(): Promise<void> {
@@ -38,6 +38,41 @@ interface PcapMappings {
 interface PcapAnalysis {
   stats: PcapStats
   mappings: PcapMappings
+}
+
+interface ProtocolStats {
+  ethernet: number
+  arp: number
+  ipv4: number
+  ipv6: number
+  tcp: number
+  udp: number
+  icmp: number
+  icmpv6: number
+  dns: number
+  http: number
+  https: number
+  ftp: number
+  ssh: number
+  telnet: number
+  smtp: number
+  other: number
+}
+
+interface PortStats {
+  top_src_ports: [number, number][]
+  top_dst_ports: [number, number][]
+}
+
+interface PcapPreAnalysis {
+  total_packets: number
+  total_bytes: number
+  protocols: ProtocolStats
+  unique_ipv4: string[]
+  unique_ipv6: string[]
+  unique_mac: string[]
+  port_stats: PortStats
+  sensitive_indicators: string[]
 }
 
 interface PortFilter {
@@ -92,8 +127,9 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [analysis, setAnalysis] = useState<PcapAnalysis | null>(null)
+  const [preAnalysis, setPreAnalysis] = useState<PcapPreAnalysis | null>(null)
   const [fileData, setFileData] = useState<Uint8Array | null>(null)
-  const [activeTab, setActiveTab] = useState<'anonymize' | 'filter'>('anonymize')
+  const [activeTab, setActiveTab] = useState<'analysis' | 'anonymize' | 'filter'>('analysis')
 
   // Anonymization options
   const [anonymizeIpv4, setAnonymizeIpv4] = useState(true)
@@ -203,6 +239,12 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
         const data = new Uint8Array(arrayBuffer)
         setFileData(data)
 
+        // Run pre-analysis for protocol stats
+        const preAnalysisJson = pre_analyze_pcap(data)
+        const preAnalysisResult: PcapPreAnalysis = JSON.parse(preAnalysisJson)
+        setPreAnalysis(preAnalysisResult)
+
+        // Run anonymization analysis
         const config = JSON.stringify(buildConfig())
         const resultJson = analyze_pcap(data, config)
         const result: PcapAnalysis = JSON.parse(resultJson)
@@ -403,6 +445,16 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
         <div className="border-b border-gray-200 dark:border-gray-700">
           <div className="flex px-6">
             <button
+              onClick={() => setActiveTab('analysis')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                activeTab === 'analysis'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              }`}
+            >
+              Analysis
+            </button>
+            <button
               onClick={() => setActiveTab('anonymize')}
               className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
                 activeTab === 'anonymize'
@@ -446,6 +498,262 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
             </div>
           ) : analysis ? (
             <div className="space-y-6">
+              {/* Analysis Tab */}
+              {activeTab === 'analysis' && preAnalysis && (
+                <>
+                  {/* Overview Stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        {preAnalysis.total_packets.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Total Packets</div>
+                    </div>
+                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        {(preAnalysis.total_bytes / 1024).toFixed(1)} KB
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Total Size</div>
+                    </div>
+                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                        {preAnalysis.unique_ipv4.length + preAnalysis.unique_ipv6.length}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Unique IPs</div>
+                    </div>
+                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                        {preAnalysis.unique_mac.length}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Unique MACs</div>
+                    </div>
+                  </div>
+
+                  {/* Sensitive Data Warnings */}
+                  {preAnalysis.sensitive_indicators.length > 0 && (
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2 flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Sensitive Data Indicators
+                      </h4>
+                      <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+                        {preAnalysis.sensitive_indicators.map((indicator, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-yellow-500">•</span>
+                            {indicator}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Protocol Distribution */}
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Protocol Distribution</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {/* Network Layer */}
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Network</div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">IPv4</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.ipv4}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">IPv6</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.ipv6}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">ARP</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.arp}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Transport Layer */}
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Transport</div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">TCP</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.tcp}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">UDP</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.udp}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">ICMP</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.icmp + preAnalysis.protocols.icmpv6}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Application - DNS/Web */}
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Web/DNS</div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">HTTP</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.http}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">HTTPS</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.https}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">DNS</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.dns}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Application - Mail/Remote */}
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Services</div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">SSH</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.ssh}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">FTP</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.ftp}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">SMTP</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.smtp}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Telnet/Other */}
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Other</div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">Telnet</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.telnet}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">Other</span>
+                            <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.other}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Top Ports */}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {/* Top Source Ports */}
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                      <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Top Source Ports
+                      </div>
+                      <div className="max-h-40 overflow-auto">
+                        {preAnalysis.port_stats.top_src_ports.length === 0 ? (
+                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">None</div>
+                        ) : (
+                          <table className="w-full text-sm">
+                            <tbody>
+                              {preAnalysis.port_stats.top_src_ports.map(([port, count]) => (
+                                <tr key={port} className="border-t border-gray-100 dark:border-gray-700">
+                                  <td className="px-3 py-1 font-mono text-gray-900 dark:text-gray-100">{port}</td>
+                                  <td className="px-3 py-1 text-gray-500 dark:text-gray-400 text-right">{count} pkts</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Top Destination Ports */}
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                      <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Top Destination Ports
+                      </div>
+                      <div className="max-h-40 overflow-auto">
+                        {preAnalysis.port_stats.top_dst_ports.length === 0 ? (
+                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">None</div>
+                        ) : (
+                          <table className="w-full text-sm">
+                            <tbody>
+                              {preAnalysis.port_stats.top_dst_ports.map(([port, count]) => (
+                                <tr key={port} className="border-t border-gray-100 dark:border-gray-700">
+                                  <td className="px-3 py-1 font-mono text-gray-900 dark:text-gray-100">{port}</td>
+                                  <td className="px-3 py-1 text-gray-500 dark:text-gray-400 text-right">{count} pkts</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Unique Addresses */}
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {/* IPv4 Addresses */}
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                      <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        IPv4 Addresses ({preAnalysis.unique_ipv4.length})
+                      </div>
+                      <div className="max-h-32 overflow-auto">
+                        {preAnalysis.unique_ipv4.length === 0 ? (
+                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">None</div>
+                        ) : (
+                          <div className="p-2 text-xs font-mono text-gray-700 dark:text-gray-300 space-y-0.5">
+                            {preAnalysis.unique_ipv4.map(ip => (
+                              <div key={ip}>{ip}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* IPv6 Addresses */}
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                      <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        IPv6 Addresses ({preAnalysis.unique_ipv6.length})
+                      </div>
+                      <div className="max-h-32 overflow-auto">
+                        {preAnalysis.unique_ipv6.length === 0 ? (
+                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">None</div>
+                        ) : (
+                          <div className="p-2 text-xs font-mono text-gray-700 dark:text-gray-300 space-y-0.5 break-all">
+                            {preAnalysis.unique_ipv6.map(ip => (
+                              <div key={ip}>{ip}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* MAC Addresses */}
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                      <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        MAC Addresses ({preAnalysis.unique_mac.length})
+                      </div>
+                      <div className="max-h-32 overflow-auto">
+                        {preAnalysis.unique_mac.length === 0 ? (
+                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">None</div>
+                        ) : (
+                          <div className="p-2 text-xs font-mono text-gray-700 dark:text-gray-300 space-y-0.5">
+                            {preAnalysis.unique_mac.map(mac => (
+                              <div key={mac}>{mac}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
               {/* Anonymization Tab */}
               {activeTab === 'anonymize' && (
                 <>

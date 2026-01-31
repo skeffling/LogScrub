@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPS & Activity File Anonymizer - GPX & FIT Privacy | LogScrub</title>
+  <meta name="description" content="Free GPS anonymization tool for GPX and FIT files. Remove or shift coordinates from Garmin, Strava, and fitness activities. Protect your home location. Browser-based, no upload.">
+  <meta name="keywords" content="GPX anonymizer, FIT file privacy, GPS track anonymization, Garmin activity privacy, Strava location removal, fitness data anonymizer, coordinate shifting, location privacy">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    h1 { margin-bottom: 0.5rem; color: #667eea; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+    h2 { margin-top: 2.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+    h3 { color: #667eea; margin-top: 2rem; }
+
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .format-badges { display: flex; gap: 1rem; margin: 1.5rem 0; flex-wrap: wrap; }
+    .format-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .example {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+    .example-header {
+      background: #667eea;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .example-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    .example-before, .example-after { padding: 1rem; }
+    .example-before {
+      border-right: 1px solid #e0e0e0;
+      background: #fff5f5;
+    }
+    .example-after { background: #f0fff4; }
+    .example-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #888;
+    }
+    .example pre { margin: 0; background: transparent; padding: 0; }
+
+    .feature-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .screenshot-placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 3rem;
+      text-align: center;
+      color: #888;
+      margin: 1.5rem 0;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .warning {
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1.5rem 0;
+    }
+    .warning-title { font-weight: 600; margin-bottom: 0.5rem; }
+
+    .note {
+      background: #e0f2fe;
+      border: 1px solid #7dd3fc;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1.5rem 0;
+    }
+    .note-title { font-weight: 600; margin-bottom: 0.5rem; }
+
+    .method-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .method-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+    .method-card h4 { margin: 0 0 0.5rem; color: #667eea; }
+    .method-card p { margin: 0; font-size: 0.9rem; color: #666; }
+
+    .workflow {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin: 1rem 0;
+      font-size: 0.95rem;
+    }
+    .workflow-step {
+      background: #f8f9fa;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+    .workflow-arrow { color: #667eea; font-weight: bold; }
+
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #e0e0e0; }
+    th { background: #f8f9fa; font-weight: 600; }
+
+    @media (max-width: 600px) {
+      .example-content { grid-template-columns: 1fr; }
+    }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      .subtitle { color: #aaa; }
+      code, pre { background: #2d2d44; }
+      .format-badge { background: #252540; }
+      .example { background: #252540; border-color: #3d3d5c; }
+      .example-before { background: #2d2020; border-color: #3d3d5c; }
+      .example-after { background: #1a2d1a; }
+      .feature-box { background: #252540; }
+      .screenshot-placeholder { background: #3d3d5c; border-color: #555; }
+      .cta { background: #252540; }
+      .warning { background: #78350f; border-color: #d97706; }
+      .note { background: #1e3a5f; border-color: #3b82f6; }
+      .method-card { border-color: #3d3d5c; background: #252540; }
+      .method-card p { color: #aaa; }
+      .workflow-step { background: #252540; }
+      th { background: #252540; }
+      th, td { border-color: #3d3d5c; }
+    }
+  </style>
+</head>
+<body>
+  <a href="logscrub-features.html" class="back">&larr; Back to Features</a>
+
+  <h1>GPS & Activity File Anonymizer</h1>
+  <p class="subtitle">Protect your location privacy in fitness and GPS files</p>
+
+  <div class="format-badges">
+    <div class="format-badge">
+      <span>GPX</span>
+      <span style="font-weight:normal;color:#666">(GPS Exchange)</span>
+    </div>
+    <div class="format-badge">
+      <span>FIT</span>
+      <span style="font-weight:normal;color:#666">(Garmin/ANT+)</span>
+    </div>
+  </div>
+
+  <p>GPS tracks from fitness apps, sports watches, and bike computers contain precise location data that can reveal where you live, work, and travel. LogScrub helps you anonymize this data before sharing activities or uploading to third-party services.</p>
+
+  <div class="screenshot-placeholder">
+    Screenshot placeholder: GPS file with coordinate anonymization options
+  </div>
+
+  <div class="warning">
+    <div class="warning-title">Why GPS Privacy Matters</div>
+    <p style="margin:0">GPS tracks can reveal your home address (where runs start/end), workplace location, daily routines, and travel patterns. Even "public" activity sharing can expose sensitive location data.</p>
+  </div>
+
+  <h2>Supported Formats</h2>
+
+  <table>
+    <tr>
+      <th>Format</th>
+      <th>Sources</th>
+      <th>Processing</th>
+    </tr>
+    <tr>
+      <td><strong>GPX</strong></td>
+      <td>Strava, Komoot, AllTrails, most GPS apps</td>
+      <td>Direct anonymization (XML-based)</td>
+    </tr>
+    <tr>
+      <td><strong>FIT</strong></td>
+      <td>Garmin, Wahoo, Zwift, bike computers</td>
+      <td>Converted to GPX, then anonymized</td>
+    </tr>
+  </table>
+
+  <div class="note">
+    <div class="note-title">FIT File Processing</div>
+    <p style="margin:0">FIT files are Garmin's binary format. LogScrub converts them to GPX format for anonymization. The GPX output includes GPS track, elevation, timestamps, heart rate, cadence, power, and temperature data. You can then anonymize the GPX and download the result.</p>
+  </div>
+
+  <h3>FIT to GPX Workflow</h3>
+  <div class="workflow">
+    <span class="workflow-step">FIT file</span>
+    <span class="workflow-arrow">&rarr;</span>
+    <span class="workflow-step">Convert to GPX</span>
+    <span class="workflow-arrow">&rarr;</span>
+    <span class="workflow-step">Anonymize coordinates</span>
+    <span class="workflow-arrow">&rarr;</span>
+    <span class="workflow-step">Download GPX</span>
+  </div>
+
+  <h2>Anonymization Methods</h2>
+
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>Coordinate Shifting</h4>
+      <p>Offset all coordinates by a random amount. The track shape is preserved but moved to a different location.</p>
+    </div>
+    <div class="method-card">
+      <h4>Precision Reduction</h4>
+      <p>Reduce GPS decimal precision. Full precision (6 decimals) = ~10cm accuracy. Reduced (3 decimals) = ~100m accuracy.</p>
+    </div>
+    <div class="method-card">
+      <h4>Start/End Trimming</h4>
+      <p>Remove the first and last N points to hide where the activity started and ended (typically home/work).</p>
+    </div>
+    <div class="method-card">
+      <h4>Timestamp Shifting</h4>
+      <p>Offset all timestamps to obscure when the activity occurred, hiding your daily schedule.</p>
+    </div>
+  </div>
+
+  <h2>Before & After Examples</h2>
+
+  <h3>Coordinate Shifting</h3>
+  <p>All coordinates are offset by the same amount, preserving the track shape but relocating it.</p>
+
+  <div class="example">
+    <div class="example-header">GPS Track Points (Shifted +0.1 degrees)</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>&lt;trkpt lat="37.7749" lon="-122.4194"&gt;
+  &lt;ele&gt;10&lt;/ele&gt;
+  &lt;time&gt;2024-01-15T08:00:00Z&lt;/time&gt;
+&lt;/trkpt&gt;
+&lt;trkpt lat="37.7751" lon="-122.4180"&gt;
+  &lt;ele&gt;12&lt;/ele&gt;
+  &lt;time&gt;2024-01-15T08:01:00Z&lt;/time&gt;
+&lt;/trkpt&gt;</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>&lt;trkpt lat="37.8749" lon="-122.3194"&gt;
+  &lt;ele&gt;10&lt;/ele&gt;
+  &lt;time&gt;2024-01-15T08:00:00Z&lt;/time&gt;
+&lt;/trkpt&gt;
+&lt;trkpt lat="37.8751" lon="-122.3180"&gt;
+  &lt;ele&gt;12&lt;/ele&gt;
+  &lt;time&gt;2024-01-15T08:01:00Z&lt;/time&gt;
+&lt;/trkpt&gt;</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Precision Reduction</h3>
+  <p>Reducing decimal places makes it harder to pinpoint exact locations.</p>
+
+  <div class="example">
+    <div class="example-header">Coordinate Precision (6 to 3 decimals)</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before (~10cm accuracy)</div>
+        <pre>lat="37.774929" lon="-122.419416"
+lat="37.775103" lon="-122.418892"</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After (~100m accuracy)</div>
+        <pre>lat="37.775" lon="-122.419"
+lat="37.775" lon="-122.419"</pre>
+      </div>
+    </div>
+  </div>
+
+  <h2>What Gets Detected</h2>
+
+  <div class="feature-box">
+    <ul style="margin:0">
+      <li><strong>Track coordinates</strong> - Latitude/longitude in track points</li>
+      <li><strong>Waypoints</strong> - Named locations (often home/work)</li>
+      <li><strong>Timestamps</strong> - Date/time information revealing schedules</li>
+      <li><strong>User profile</strong> - Name, weight, age (FIT files)</li>
+      <li><strong>Device info</strong> - Serial numbers, manufacturer (FIT files)</li>
+      <li><strong>Sensor data</strong> - Heart rate, power, cadence (preserved in export)</li>
+    </ul>
+  </div>
+
+  <h2>FIT File Data Preserved in GPX Export</h2>
+
+  <p>When converting FIT to GPX, the following data is included:</p>
+
+  <table>
+    <tr>
+      <th>Data Type</th>
+      <th>GPX Element</th>
+    </tr>
+    <tr>
+      <td>GPS position</td>
+      <td><code>&lt;trkpt lat="..." lon="..."&gt;</code></td>
+    </tr>
+    <tr>
+      <td>Elevation</td>
+      <td><code>&lt;ele&gt;</code></td>
+    </tr>
+    <tr>
+      <td>Timestamp</td>
+      <td><code>&lt;time&gt;</code></td>
+    </tr>
+    <tr>
+      <td>Heart rate</td>
+      <td><code>&lt;gpxtpx:hr&gt;</code> (Garmin extension)</td>
+    </tr>
+    <tr>
+      <td>Cadence</td>
+      <td><code>&lt;gpxtpx:cad&gt;</code></td>
+    </tr>
+    <tr>
+      <td>Power</td>
+      <td><code>&lt;gpxtpx:power&gt;</code></td>
+    </tr>
+    <tr>
+      <td>Temperature</td>
+      <td><code>&lt;gpxtpx:atemp&gt;</code></td>
+    </tr>
+  </table>
+
+  <h2>Common Use Cases</h2>
+
+  <ul>
+    <li><strong>Sharing fitness activities</strong> - Post runs/rides without revealing home location</li>
+    <li><strong>Route sharing</strong> - Share hiking trails without exposing parking spots</li>
+    <li><strong>Bug reports</strong> - Report GPS/app issues without disclosing location</li>
+    <li><strong>Training data</strong> - Share workouts with coaches privately</li>
+    <li><strong>Public datasets</strong> - Contribute to research anonymously</li>
+  </ul>
+
+  <h2>Compatible Sources</h2>
+
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>Fitness Platforms</h4>
+      <p>Strava, Garmin Connect, Wahoo, Komoot, TrainingPeaks, Zwift</p>
+    </div>
+    <div class="method-card">
+      <h4>Devices</h4>
+      <p>Garmin watches, Wahoo bike computers, Polar, Suunto, Coros</p>
+    </div>
+    <div class="method-card">
+      <h4>Apps</h4>
+      <p>AllTrails, Gaia GPS, Ride with GPS, MapMyRun, smartphone GPS apps</p>
+    </div>
+  </div>
+
+  <div class="cta">
+    <h3>Ready to protect your location privacy?</h3>
+    <p>Drop your GPX or FIT file into LogScrub to anonymize your GPS tracks.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

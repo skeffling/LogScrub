@@ -17,18 +17,8 @@
       background: #fff;
       color: #333;
     }
-    @media (prefers-color-scheme: dark) {
-      body { background: #1a1a2e; color: #eee; }
-      a { color: #6eb5ff; }
-      code { background: #2d2d44; }
-      .card { background: #252540; border-color: #3d3d5c; }
-      .card:hover { border-color: #6eb5ff; }
-      .hero { background: linear-gradient(135deg, #1e3a5f 0%, #2d1b4e 100%); }
-      .tag { background: #3d3d5c; }
-    }
     h1 { margin-bottom: 0.5rem; }
     .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
-    @media (prefers-color-scheme: dark) { .subtitle { color: #aaa; } }
     a.back { display: inline-block; margin-bottom: 1rem; }
 
     .hero {
@@ -69,7 +59,6 @@
       gap: 0.5rem;
     }
     .card p { margin: 0; color: #666; font-size: 0.95rem; }
-    @media (prefers-color-scheme: dark) { .card p { color: #aaa; } }
     .card .icon { font-size: 1.5rem; }
 
     .tag {
@@ -110,7 +99,6 @@
       border-radius: 12px;
       margin: 3rem 0;
     }
-    @media (prefers-color-scheme: dark) { .cta { background: #252540; } }
     .cta a {
       display: inline-block;
       background: #667eea;
@@ -122,6 +110,20 @@
       margin-top: 1rem;
     }
     .cta a:hover { background: #5a6fd6; }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      code { background: #2d2d44; }
+      .subtitle { color: #aaa; }
+      .hero { background: linear-gradient(135deg, #1e3a5f 0%, #2d1b4e 100%); }
+      .card { background: #252540; border-color: #3d3d5c; }
+      .card:hover { border-color: #6eb5ff; }
+      .card p { color: #aaa; }
+      .tag { background: #3d3d5c; color: #ccc; }
+      .cta { background: #252540; }
+    }
   </style>
 </head>
 <body>
@@ -172,14 +174,9 @@
       <p>Anonymize Excel and LibreOffice Calc spreadsheets. Process multiple sheets with cell-level precision.</p>
     </a>
 
-    <a href="scrub-gpx-location-privacy.html" class="card">
-      <h3>GPX Files <span class="tag">GPS</span></h3>
-      <p>Remove location data from GPS tracks. Shift coordinates, truncate precision, or remove waypoints.</p>
-    </a>
-
-    <a href="scrub-fit-activity-anonymizer.html" class="card">
-      <h3>FIT Files <span class="tag">Fitness</span></h3>
-      <p>Analyze Garmin, Wahoo, and fitness device files. Export activity data to JSON for anonymization.</p>
+    <a href="scrub-gps-location-anonymizer.html" class="card">
+      <h3>GPS &amp; Fitness Files <span class="tag">GPX/FIT</span></h3>
+      <p>Anonymize GPS tracks from fitness apps and devices. Remove or shift coordinates, protect your home location.</p>
     </a>
   </div>
 

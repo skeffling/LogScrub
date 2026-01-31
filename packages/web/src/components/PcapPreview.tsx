@@ -133,8 +133,8 @@ interface PacketComparison {
   modified_ascii: string
   changed: boolean
   summary: string
-  original_parsed: ParsedPacket
-  modified_parsed: ParsedPacket
+  original_parsed?: ParsedPacket
+  modified_parsed?: ParsedPacket
 }
 
 interface SearchResult {
@@ -1728,7 +1728,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                               #{pkt.index + 1}
                             </span>
                             <span className="text-xs text-gray-500 dark:text-gray-400 flex-1">
-                              {pkt.original_parsed.total_length} bytes • {pkt.summary}
+                              {pkt.original_parsed?.total_length ?? 0} bytes • {pkt.summary}
                             </span>
                             {pkt.changed && (
                               <span className="px-2 py-0.5 text-xs font-medium bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded">
@@ -1742,7 +1742,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                               <div className="text-xs font-medium text-red-600 dark:text-red-400 mb-2">Original</div>
 
                               {/* Ethernet Layer */}
-                              {pkt.original_parsed.ethernet && (
+                              {pkt.original_parsed?.ethernet && (
                                 <details open className="text-xs">
                                   <summary className="font-medium text-purple-700 dark:text-purple-400 cursor-pointer">
                                     Ethernet II ({pkt.original_parsed.ethernet.ethertype})
@@ -1756,7 +1756,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                               )}
 
                               {/* IP Layer */}
-                              {pkt.original_parsed.ip && (
+                              {pkt.original_parsed?.ip && (
                                 <details open className="text-xs">
                                   <summary className="font-medium text-blue-700 dark:text-blue-400 cursor-pointer">
                                     {pkt.original_parsed.ip.version === 4 ? 'IPv4' : 'IPv6'} ({pkt.original_parsed.ip.protocol})
@@ -1770,7 +1770,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                               )}
 
                               {/* Transport Layer */}
-                              {pkt.original_parsed.transport && (
+                              {pkt.original_parsed?.transport && (
                                 <details open className="text-xs">
                                   <summary className="font-medium text-green-700 dark:text-green-400 cursor-pointer">
                                     {pkt.original_parsed.transport.protocol}
@@ -1790,7 +1790,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                               )}
 
                               {/* Application Layer */}
-                              {pkt.original_parsed.application && (
+                              {pkt.original_parsed?.application && (
                                 <details open className="text-xs">
                                   <summary className="font-medium text-orange-700 dark:text-orange-400 cursor-pointer">
                                     {pkt.original_parsed.application.protocol}
@@ -1804,7 +1804,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                               )}
 
                               {/* Payload Preview */}
-                              {pkt.original_parsed.payload_preview && (
+                              {pkt.original_parsed?.payload_preview && (
                                 <details className="text-xs">
                                   <summary className="font-medium text-gray-500 dark:text-gray-500 cursor-pointer">
                                     Payload Preview
@@ -1821,42 +1821,42 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                               <div className="text-xs font-medium text-green-600 dark:text-green-400 mb-2">Anonymized</div>
 
                               {/* Ethernet Layer */}
-                              {pkt.modified_parsed.ethernet && (
+                              {pkt.modified_parsed?.ethernet && (
                                 <details open className="text-xs">
                                   <summary className="font-medium text-purple-700 dark:text-purple-400 cursor-pointer">
                                     Ethernet II ({pkt.modified_parsed.ethernet.ethertype})
                                   </summary>
                                   <div className="ml-4 mt-1 space-y-0.5 font-mono text-gray-600 dark:text-gray-400">
-                                    <div>Src: <span className={pkt.original_parsed.ethernet?.src_mac !== pkt.modified_parsed.ethernet.src_mac ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ethernet.src_mac}</span></div>
-                                    <div>Dst: <span className={pkt.original_parsed.ethernet?.dst_mac !== pkt.modified_parsed.ethernet.dst_mac ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ethernet.dst_mac}</span></div>
+                                    <div>Src: <span className={pkt.original_parsed?.ethernet?.src_mac !== pkt.modified_parsed.ethernet.src_mac ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ethernet.src_mac}</span></div>
+                                    <div>Dst: <span className={pkt.original_parsed?.ethernet?.dst_mac !== pkt.modified_parsed.ethernet.dst_mac ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ethernet.dst_mac}</span></div>
                                     <div>Type: <span className="text-gray-900 dark:text-gray-100">{pkt.modified_parsed.ethernet.ethertype}</span></div>
                                   </div>
                                 </details>
                               )}
 
                               {/* IP Layer */}
-                              {pkt.modified_parsed.ip && (
+                              {pkt.modified_parsed?.ip && (
                                 <details open className="text-xs">
                                   <summary className="font-medium text-blue-700 dark:text-blue-400 cursor-pointer">
                                     {pkt.modified_parsed.ip.version === 4 ? 'IPv4' : 'IPv6'} ({pkt.modified_parsed.ip.protocol})
                                   </summary>
                                   <div className="ml-4 mt-1 space-y-0.5 font-mono text-gray-600 dark:text-gray-400">
-                                    <div>Src: <span className={pkt.original_parsed.ip?.src_ip !== pkt.modified_parsed.ip.src_ip ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ip.src_ip}</span></div>
-                                    <div>Dst: <span className={pkt.original_parsed.ip?.dst_ip !== pkt.modified_parsed.ip.dst_ip ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ip.dst_ip}</span></div>
+                                    <div>Src: <span className={pkt.original_parsed?.ip?.src_ip !== pkt.modified_parsed.ip.src_ip ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ip.src_ip}</span></div>
+                                    <div>Dst: <span className={pkt.original_parsed?.ip?.dst_ip !== pkt.modified_parsed.ip.dst_ip ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ip.dst_ip}</span></div>
                                     <div>TTL: <span className="text-gray-900 dark:text-gray-100">{pkt.modified_parsed.ip.ttl}</span>, Len: <span className="text-gray-900 dark:text-gray-100">{pkt.modified_parsed.ip.length}</span></div>
                                   </div>
                                 </details>
                               )}
 
                               {/* Transport Layer */}
-                              {pkt.modified_parsed.transport && (
+                              {pkt.modified_parsed?.transport && (
                                 <details open className="text-xs">
                                   <summary className="font-medium text-green-700 dark:text-green-400 cursor-pointer">
                                     {pkt.modified_parsed.transport.protocol}
                                   </summary>
                                   <div className="ml-4 mt-1 space-y-0.5 font-mono text-gray-600 dark:text-gray-400">
-                                    <div>Src Port: <span className={pkt.original_parsed.transport?.src_port !== pkt.modified_parsed.transport.src_port ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.transport.src_port}</span></div>
-                                    <div>Dst Port: <span className={pkt.original_parsed.transport?.dst_port !== pkt.modified_parsed.transport.dst_port ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.transport.dst_port}</span></div>
+                                    <div>Src Port: <span className={pkt.original_parsed?.transport?.src_port !== pkt.modified_parsed.transport.src_port ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.transport.src_port}</span></div>
+                                    <div>Dst Port: <span className={pkt.original_parsed?.transport?.dst_port !== pkt.modified_parsed.transport.dst_port ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.transport.dst_port}</span></div>
                                     {pkt.modified_parsed.transport.flags && (
                                       <div>Flags: <span className="text-gray-900 dark:text-gray-100">[{pkt.modified_parsed.transport.flags}]</span></div>
                                     )}
@@ -1869,21 +1869,21 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                               )}
 
                               {/* Application Layer */}
-                              {pkt.modified_parsed.application && (
+                              {pkt.modified_parsed?.application && (
                                 <details open className="text-xs">
                                   <summary className="font-medium text-orange-700 dark:text-orange-400 cursor-pointer">
                                     {pkt.modified_parsed.application.protocol}
                                   </summary>
                                   <div className="ml-4 mt-1 font-mono text-gray-600 dark:text-gray-400">
                                     {pkt.modified_parsed.application.info && (
-                                      <div className={pkt.original_parsed.application?.info !== pkt.modified_parsed.application.info ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.application.info}</div>
+                                      <div className={pkt.original_parsed?.application?.info !== pkt.modified_parsed.application.info ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.application.info}</div>
                                     )}
                                   </div>
                                 </details>
                               )}
 
                               {/* Payload Preview */}
-                              {pkt.modified_parsed.payload_preview && (
+                              {pkt.modified_parsed?.payload_preview && (
                                 <details className="text-xs">
                                   <summary className="font-medium text-gray-500 dark:text-gray-500 cursor-pointer">
                                     Payload Preview

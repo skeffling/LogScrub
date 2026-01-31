@@ -185,6 +185,8 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
   const [filterProtocols, setFilterProtocols] = useState<string[]>([])
   const [removeNonIp, setRemoveNonIp] = useState(false)
   const [invertFilter, setInvertFilter] = useState(false)
+  const [wiresharkFilter, setWiresharkFilter] = useState('')
+  const [wiresharkFilterError, setWiresharkFilterError] = useState<string | null>(null)
 
   // Mapping import/export
   const [importedMappings, setImportedMappings] = useState<PcapMappings | null>(null)
@@ -497,7 +499,97 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
     )
   }
 
-  const hasFilters = filterPorts.trim() || filterIps.trim() || filterProtocols.length > 0 || removeNonIp
+  // Parse Wireshark display filter syntax
+  const parseWiresharkFilter = useCallback((filter: string) => {
+    const trimmed = filter.trim().toLowerCase()
+    if (!trimmed) {
+      setWiresharkFilterError(null)
+      return
+    }
+
+    const newPorts: string[] = []
+    const newIps: string[] = []
+    const newProtocols: string[] = []
+    let shouldInvert = false
+    let shouldRemoveNonIp = false
+
+    // Split by "and" or "or" (simple parser - doesn't handle complex boolean logic)
+    const parts = trimmed.split(/\s+(?:and|or|\&\&|\|\|)\s+/)
+
+    for (const part of parts) {
+      const expr = part.trim()
+      if (!expr) continue
+
+      // Check for "not" prefix
+      if (expr.startsWith('not ') || expr.startsWith('!')) {
+        shouldInvert = true
+      }
+      const cleanExpr = expr.replace(/^(not\s+|!)/, '')
+
+      // Protocol-only filters (tcp, udp, icmp, etc.)
+      if (/^(tcp|udp|icmp|gre|esp|arp)$/i.test(cleanExpr)) {
+        const proto = cleanExpr.toUpperCase()
+        if (proto === 'ARP') {
+          shouldRemoveNonIp = true
+        } else {
+          newProtocols.push(proto.toLowerCase())
+        }
+        continue
+      }
+
+      // ip, ipv6, http, dns, etc. (protocol filters)
+      if (/^(ip|ipv6|http|https|dns|ftp|ssh|smtp|telnet)$/i.test(cleanExpr)) {
+        // These are informational - map to best effort
+        if (cleanExpr === 'ip' || cleanExpr === 'ipv6') {
+          shouldRemoveNonIp = true
+        }
+        continue
+      }
+
+      // ip.addr == X.X.X.X or ip.src == X.X.X.X or ip.dst == X.X.X.X
+      const ipMatch = cleanExpr.match(/ip(?:v6)?\.(?:addr|src|dst)\s*[=!]+\s*([0-9a-f:./]+)/i)
+      if (ipMatch) {
+        newIps.push(ipMatch[1])
+        continue
+      }
+
+      // tcp.port == X or udp.port == X or port == X
+      const portMatch = cleanExpr.match(/(?:tcp|udp)?\.?port\s*[=!]+\s*(\d+)/i)
+      if (portMatch) {
+        newPorts.push(portMatch[1])
+        continue
+      }
+
+      // tcp.srcport, tcp.dstport
+      const srcDstPortMatch = cleanExpr.match(/(?:tcp|udp)\.(src|dst)port\s*[=!]+\s*(\d+)/i)
+      if (srcDstPortMatch) {
+        newPorts.push(srcDstPortMatch[2])
+        continue
+      }
+
+      // Port range: tcp.port >= 1024 and tcp.port <= 65535
+      const portRangeMatch = cleanExpr.match(/port\s*(>=?|<=?)\s*(\d+)/i)
+      if (portRangeMatch) {
+        // Simplified - just add the port number
+        newPorts.push(portRangeMatch[2])
+        continue
+      }
+
+      // Unrecognized expression
+      setWiresharkFilterError(`Unrecognized filter: "${cleanExpr}"`)
+      return
+    }
+
+    // Apply parsed values
+    setWiresharkFilterError(null)
+    if (newPorts.length > 0) setFilterPorts(newPorts.join(', '))
+    if (newIps.length > 0) setFilterIps(newIps.join(', '))
+    if (newProtocols.length > 0) setFilterProtocols(newProtocols)
+    if (shouldInvert) setInvertFilter(true)
+    if (shouldRemoveNonIp) setRemoveNonIp(true)
+  }, [])
+
+  const hasFilters = filterPorts.trim() || filterIps.trim() || filterProtocols.length > 0 || removeNonIp || wiresharkFilter.trim()
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1365,6 +1457,43 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                       (e.g., authentication, personal communications) before sharing the capture.
                     </p>
                   </div>
+
+                  {/* Wireshark Display Filter */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Wireshark Display Filter
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={wiresharkFilter}
+                        onChange={(e) => setWiresharkFilter(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && parseWiresharkFilter(wiresharkFilter)}
+                        placeholder="e.g., tcp.port == 443 and ip.addr == 192.168.1.1"
+                        className={`flex-1 px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm font-mono ${
+                          wiresharkFilterError
+                            ? 'border-red-300 dark:border-red-700'
+                            : 'border-gray-300 dark:border-gray-600'
+                        }`}
+                      />
+                      <button
+                        onClick={() => parseWiresharkFilter(wiresharkFilter)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                        title="Parse Wireshark filter and apply to fields below"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    {wiresharkFilterError ? (
+                      <p className="text-xs text-red-600 dark:text-red-400">{wiresharkFilterError}</p>
+                    ) : (
+                      <p className="text-xs text-gray-500">
+                        Supports: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">tcp</code>, <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">udp</code>, <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">ip.addr == X</code>, <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">tcp.port == X</code>, <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">and</code>/<code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">or</code>
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="border-t border-gray-200 dark:border-gray-700" />
 
                   {/* Port Filter */}
                   <div className="space-y-2">

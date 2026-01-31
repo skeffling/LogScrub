@@ -646,6 +646,28 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     stripElevation: false,
     stripTimestamps: false,
   })
+
+  // Helper for privacy option checkbox changes
+  const handlePrivacyOptionChange = (option: keyof typeof gpxPrivacyOptions) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setGpxPrivacyOptions(prev => ({ ...prev, [option]: e.target.checked }))
+
+  // Helper for FIT file upload handling (used by both file picker and drag-and-drop)
+  const handleFitFileUpload = async (file: File) => {
+    await ensureWasm()
+    const arrayBuffer = await file.arrayBuffer()
+    const data = new Uint8Array(arrayBuffer)
+    setPendingFitData({ data, fileName: file.name })
+    setShowGpxPrivacyDialog(true)
+    // Reset document-related state
+    setDocumentFile(null)
+    setDocumentType(null)
+    setPreviewPage(0)
+    setStripMetadataPreference(null)
+    setDocumentMetadata(null)
+    setPcapFile(null)
+  }
+
   const originalPreviewRef = useRef<HTMLDivElement>(null)
   const scrubbedPreviewRef = useRef<HTMLDivElement>(null)
 
@@ -1382,19 +1404,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
 
         // Handle FIT files specially - show privacy options then convert to GPX
         if (lowerName.endsWith('.fit')) {
-          await ensureWasm()
-          const arrayBuffer = await file.arrayBuffer()
-          const data = new Uint8Array(arrayBuffer)
-          // Store the data and show privacy options dialog
-          setPendingFitData({ data, fileName: file.name })
-          setShowGpxPrivacyDialog(true)
-          // Reset document-related state
-          setDocumentFile(null)
-          setDocumentType(null)
-          setPreviewPage(0)
-          setStripMetadataPreference(null)
-          setDocumentMetadata(null)
-          setPcapFile(null)
+          await handleFitFileUpload(file)
           return
         }
 
@@ -1991,19 +2001,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
 
         // Handle FIT files specially - show privacy options then convert to GPX
         if (lowerName.endsWith('.fit')) {
-          await ensureWasm()
-          const arrayBuffer = await file.arrayBuffer()
-          const data = new Uint8Array(arrayBuffer)
-          // Store the data and show privacy options dialog
-          setPendingFitData({ data, fileName: file.name })
-          setShowGpxPrivacyDialog(true)
-          // Reset document-related state
-          setDocumentFile(null)
-          setDocumentType(null)
-          setPreviewPage(0)
-          setStripMetadataPreference(null)
-          setDocumentMetadata(null)
-          setPcapFile(null)
+          await handleFitFileUpload(file)
           return
         }
 
@@ -2779,7 +2777,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                 <input
                   type="checkbox"
                   checked={gpxPrivacyOptions.stripHeartRate}
-                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripHeartRate: e.target.checked }))}
+                  onChange={handlePrivacyOptionChange('stripHeartRate')}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span>Strip heart rate data</span>
@@ -2788,7 +2786,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                 <input
                   type="checkbox"
                   checked={gpxPrivacyOptions.stripCadence}
-                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripCadence: e.target.checked }))}
+                  onChange={handlePrivacyOptionChange('stripCadence')}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span>Strip cadence data</span>
@@ -2797,7 +2795,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                 <input
                   type="checkbox"
                   checked={gpxPrivacyOptions.stripPower}
-                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripPower: e.target.checked }))}
+                  onChange={handlePrivacyOptionChange('stripPower')}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span>Strip power data</span>
@@ -2806,7 +2804,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                 <input
                   type="checkbox"
                   checked={gpxPrivacyOptions.stripTemperature}
-                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripTemperature: e.target.checked }))}
+                  onChange={handlePrivacyOptionChange('stripTemperature')}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span>Strip temperature data</span>
@@ -2817,7 +2815,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                 <input
                   type="checkbox"
                   checked={gpxPrivacyOptions.stripElevation}
-                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripElevation: e.target.checked }))}
+                  onChange={handlePrivacyOptionChange('stripElevation')}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span>Strip elevation data</span>
@@ -2826,7 +2824,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                 <input
                   type="checkbox"
                   checked={gpxPrivacyOptions.stripTimestamps}
-                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripTimestamps: e.target.checked }))}
+                  onChange={handlePrivacyOptionChange('stripTimestamps')}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span>Strip timestamps</span>

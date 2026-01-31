@@ -488,6 +488,18 @@ pub fn strip_gpx_personal_data(gpx_content: &str, config: &GpxConfig) -> String 
     use quick_xml::{Reader, Writer};
     use std::io::Cursor;
 
+    fn should_skip_element(name: &str, config: &GpxConfig) -> bool {
+        match name {
+            "ele" => config.strip_elevation,
+            "time" => config.strip_timestamps,
+            "gpxtpx:hr" | "hr" => config.strip_heart_rate,
+            "gpxtpx:cad" | "cad" => config.strip_cadence,
+            "gpxtpx:power" | "power" => config.strip_power,
+            "gpxtpx:atemp" | "atemp" => config.strip_temperature,
+            _ => false,
+        }
+    }
+
     let mut reader = Reader::from_str(gpx_content);
 
     let mut writer = Writer::new(Cursor::new(Vec::new()));
@@ -499,18 +511,7 @@ pub fn strip_gpx_personal_data(gpx_content: &str, config: &GpxConfig) -> String 
             Ok(Event::Start(ref e)) => {
                 let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
 
-                // Check if we should skip this element
-                let should_skip = match name.as_str() {
-                    "ele" => config.strip_elevation,
-                    "time" => config.strip_timestamps,
-                    "gpxtpx:hr" | "hr" => config.strip_heart_rate,
-                    "gpxtpx:cad" | "cad" => config.strip_cadence,
-                    "gpxtpx:power" | "power" => config.strip_power,
-                    "gpxtpx:atemp" | "atemp" => config.strip_temperature,
-                    _ => false,
-                };
-
-                if should_skip {
+                if should_skip_element(&name, config) {
                     skip_depth = 1;
                 } else if skip_depth == 0 {
                     writer.write_event(Event::Start(e.clone())).ok();
@@ -526,17 +527,7 @@ pub fn strip_gpx_personal_data(gpx_content: &str, config: &GpxConfig) -> String 
             Ok(Event::Empty(ref e)) => {
                 let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
 
-                let should_skip = match name.as_str() {
-                    "ele" => config.strip_elevation,
-                    "time" => config.strip_timestamps,
-                    "gpxtpx:hr" | "hr" => config.strip_heart_rate,
-                    "gpxtpx:cad" | "cad" => config.strip_cadence,
-                    "gpxtpx:power" | "power" => config.strip_power,
-                    "gpxtpx:atemp" | "atemp" => config.strip_temperature,
-                    _ => false,
-                };
-
-                if !should_skip && skip_depth == 0 {
+                if !should_skip_element(&name, config) && skip_depth == 0 {
                     writer.write_event(Event::Empty(e.clone())).ok();
                 }
             }

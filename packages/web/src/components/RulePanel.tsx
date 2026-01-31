@@ -473,6 +473,7 @@ export function RulePanel() {
   const [showGlobalTemplateConfig, setShowGlobalTemplateConfig] = useState(false)
   const [editingGlobalTemplate, setEditingGlobalTemplate] = useState('')
   const [showPrivateIPPrompt, setShowPrivateIPPrompt] = useState(false)
+  const [extrasExpanded, setExtrasExpanded] = useState(false)
   const [pendingIPToggle, setPendingIPToggle] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -1272,134 +1273,155 @@ export function RulePanel() {
 
         <hr className="my-3 dark:border-gray-700 flex-shrink-0" />
 
-        <div className="flex-shrink-0 space-y-3">
-          {/* ML Name Detection */}
-          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
-            <div className="flex items-center justify-between gap-2">
-              <label className="flex items-center gap-2 cursor-pointer flex-1" title="Use machine learning to detect person names, locations, and organizations">
-                <input
-                  type="checkbox"
-                  checked={mlNameDetectionEnabled}
-                  onChange={(e) => setMlNameDetection(e.target.checked)}
-                  disabled={mlLoadingState === 'loading'}
-                  className="rounded border-purple-300 dark:border-purple-600 text-purple-600 focus:ring-purple-500 bg-white dark:bg-gray-700"
-                />
-                <span className="text-sm font-medium text-purple-800 dark:text-purple-200">
-                  Enable ML Name Detection
-                </span>
-              </label>
-              {mlLoadingState === 'ready' && (
-                <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-full">
-                  Ready
-                </span>
-              )}
-            </div>
+        {/* Collapsible Extras section */}
+        <div className="flex-shrink-0">
+          <button
+            onClick={() => setExtrasExpanded(!extrasExpanded)}
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors w-full"
+          >
+            <Icon
+              name={extrasExpanded ? 'chevron-down' : 'chevron-right'}
+              size="sm"
+              className="transition-transform"
+            />
+            Extras
+            {(mlNameDetectionEnabled || consistencyMode || preservePrivateIPs) && (
+              <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500 dark:text-gray-400">
+                {[mlNameDetectionEnabled, consistencyMode, preservePrivateIPs].filter(Boolean).length} active
+              </span>
+            )}
+          </button>
 
-            <p className="text-xs text-purple-700 dark:text-purple-300 mt-2 ml-6">
-              Detect names, locations, and organizations using AI. Processing happens entirely in your browser.
-            </p>
-
-            {mlNameDetectionEnabled && (
-              <div className="mt-3 ml-6 space-y-2">
-                <div>
-                  <label className="block text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
-                    Model
+          {extrasExpanded && (
+            <div className="mt-3 space-y-3 pl-5 border-l-2 border-gray-200 dark:border-gray-700 ml-1">
+              {/* ML Name Detection */}
+              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer flex-1" title="Use machine learning to detect person names, locations, and organizations">
+                    <input
+                      type="checkbox"
+                      checked={mlNameDetectionEnabled}
+                      onChange={(e) => setMlNameDetection(e.target.checked)}
+                      disabled={mlLoadingState === 'loading'}
+                      className="rounded border-purple-300 dark:border-purple-600 text-purple-600 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                    />
+                    <span className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                      ML Name Detection
+                    </span>
                   </label>
-                  <select
-                    value={mlModelId}
-                    onChange={(e) => setMlModelId(e.target.value)}
-                    disabled={mlLoadingState === 'loading'}
-                    className="w-full text-sm border border-purple-300 dark:border-purple-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
-                  >
-                    {AVAILABLE_MODELS.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.name} ({model.size})
-                      </option>
-                    ))}
-                  </select>
-                  {AVAILABLE_MODELS.find(m => m.id === mlModelId) && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {AVAILABLE_MODELS.find(m => m.id === mlModelId)?.description}
-                    </p>
+                  {mlLoadingState === 'ready' && (
+                    <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-full">
+                      Ready
+                    </span>
                   )}
                 </div>
 
-                {mlLoadingState === 'idle' && (
-                  <button
-                    onClick={() => loadMlModel()}
-                    className="w-full px-3 py-1.5 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
-                  >
-                    Download Model
-                  </button>
-                )}
+                <p className="text-xs text-purple-700 dark:text-purple-300 mt-2 ml-6">
+                  Detect names, locations, and organizations using AI. Processing happens entirely in your browser.
+                </p>
 
-                {mlLoadingState === 'loading' && (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs text-purple-700 dark:text-purple-300">
-                      <span>Downloading model...</span>
-                      <span>{Math.round(mlLoadProgress)}%</span>
+                {mlNameDetectionEnabled && (
+                  <div className="mt-3 ml-6 space-y-2">
+                    <div>
+                      <label className="block text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
+                        Model
+                      </label>
+                      <select
+                        value={mlModelId}
+                        onChange={(e) => setMlModelId(e.target.value)}
+                        disabled={mlLoadingState === 'loading'}
+                        className="w-full text-sm border border-purple-300 dark:border-purple-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                      >
+                        {AVAILABLE_MODELS.map((model) => (
+                          <option key={model.id} value={model.id}>
+                            {model.name} ({model.size})
+                          </option>
+                        ))}
+                      </select>
+                      {AVAILABLE_MODELS.find(m => m.id === mlModelId) && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {AVAILABLE_MODELS.find(m => m.id === mlModelId)?.description}
+                        </p>
+                      )}
                     </div>
-                    <div className="w-full bg-purple-200 dark:bg-purple-900 rounded-full h-2">
-                      <div
-                        className="bg-purple-600 dark:bg-purple-400 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${mlLoadProgress}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Model is cached in your browser after first download
-                    </p>
-                  </div>
-                )}
 
-                {mlLoadingState === 'error' && mlError && (
-                  <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-2">
-                    {mlError}
-                    <button
-                      onClick={() => loadMlModel()}
-                      className="ml-2 underline hover:no-underline"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                )}
+                    {mlLoadingState === 'idle' && (
+                      <button
+                        onClick={() => loadMlModel()}
+                        className="w-full px-3 py-1.5 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                      >
+                        Download Model
+                      </button>
+                    )}
 
-                {mlLoadingState === 'ready' && (
-                  <p className="text-xs text-green-600 dark:text-green-400">
-                    Model loaded and ready for detection
-                  </p>
+                    {mlLoadingState === 'loading' && (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs text-purple-700 dark:text-purple-300">
+                          <span>Downloading model...</span>
+                          <span>{Math.round(mlLoadProgress)}%</span>
+                        </div>
+                        <div className="w-full bg-purple-200 dark:bg-purple-900 rounded-full h-2">
+                          <div
+                            className="bg-purple-600 dark:bg-purple-400 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${mlLoadProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Model is cached in your browser after first download
+                        </p>
+                      </div>
+                    )}
+
+                    {mlLoadingState === 'error' && mlError && (
+                      <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-2">
+                        {mlError}
+                        <button
+                          onClick={() => loadMlModel()}
+                          className="ml-2 underline hover:no-underline"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+
+                    {mlLoadingState === 'ready' && (
+                      <p className="text-xs text-green-600 dark:text-green-400">
+                        Model loaded and ready for detection
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer" title="When enabled, identical PII values will always be replaced with the same replacement value">
-              <input
-                type="checkbox"
-                checked={consistencyMode}
-                onChange={(e) => setConsistencyMode(e.target.checked)}
-                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Consistency Mode</span>
-            </label>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
-              Same input → same replacement
-            </p>
-          </div>
-          {(rules.ipv4?.enabled || rules.ipv6?.enabled) && (
-            <div>
-              <label className="flex items-center gap-2 cursor-pointer" title="When enabled, private/internal IP addresses (RFC1918, loopback, link-local) are not scrubbed">
-                <input
-                  type="checkbox"
-                  checked={preservePrivateIPs}
-                  onChange={(e) => setPreservePrivateIPs(e.target.checked)}
-                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Preserve Private IPs</span>
-              </label>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
-                Keep 10.x, 192.168.x, etc. intact
-              </p>
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer" title="When enabled, identical PII values will always be replaced with the same replacement value">
+                  <input
+                    type="checkbox"
+                    checked={consistencyMode}
+                    onChange={(e) => setConsistencyMode(e.target.checked)}
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Consistency Mode</span>
+                </label>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
+                  Same input → same replacement
+                </p>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer" title="When enabled, private/internal IP addresses (RFC1918, loopback, link-local) are not scrubbed">
+                  <input
+                    type="checkbox"
+                    checked={preservePrivateIPs}
+                    onChange={(e) => setPreservePrivateIPs(e.target.checked)}
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Preserve Private IPs</span>
+                </label>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
+                  Keep 10.x, 192.168.x, etc. intact
+                </p>
+              </div>
             </div>
           )}
         </div>

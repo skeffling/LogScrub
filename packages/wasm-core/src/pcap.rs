@@ -87,6 +87,9 @@ pub struct PcapStats {
     pub payloads_truncated: usize,
     pub timestamps_shifted: usize,
     pub dns_names_anonymized: usize,
+    pub tls_sni_scrubbed: usize,
+    pub http_headers_scrubbed: usize,
+    pub dhcp_options_anonymized: usize,
     pub errors: Vec<String>,
     // Filter breakdown
     pub filtered_by_port: usize,
@@ -414,6 +417,18 @@ pub struct PcapConfig {
     /// Import existing mappings for consistent anonymization across files
     #[serde(default)]
     pub import_mappings: Option<PcapMappings>,
+    /// Scrub TLS SNI (Server Name Indication) in ClientHello
+    #[serde(default)]
+    pub scrub_tls_sni: bool,
+    /// Scrub HTTP headers (Cookie, Authorization, Host, etc.)
+    #[serde(default)]
+    pub scrub_http_headers: bool,
+    /// Anonymize DHCP hostnames and client identifiers
+    #[serde(default)]
+    pub anonymize_dhcp: bool,
+    /// Intentionally break checksums (some tools expect this for anonymized data)
+    #[serde(default)]
+    pub break_checksums: bool,
 }
 
 fn default_true() -> bool {
@@ -971,6 +986,313 @@ impl PcapAnonymizer {
         was_modified
     }
 
+    /// Scrub TLS SNI (Server Name Indication) from ClientHello
+    /// TLS record: type (1) + version (2) + length (2) + data
+    /// Handshake: type (1) + length (3) + data
+    /// ClientHello: version (2) + random (32) + session_id (1+var) + cipher_suites (2+var) + compression (1+var) + extensions
+    fn scrub_tls_sni(&mut self, payload: &[u8]) -> (Vec<u8>, usize) {
+        let mut modified = payload.to_vec();
+        let mut scrubbed = 0;
+
+        // Need at least TLS record header (5) + handshake header (4) + ClientHello basics
+        if payload.len() < 50 {
+            return (modified, 0);
+        }
+
+        // Check for TLS Handshake record (type 0x16)
+        if payload[0] != 0x16 {
+            return (modified, 0);
+        }
+
+        let record_len = u16::from_be_bytes([payload[3], payload[4]]) as usize;
+        if payload.len() < 5 + record_len {
+            return (modified, 0);
+        }
+
+        // Check for ClientHello (type 0x01)
+        if payload[5] != 0x01 {
+            return (modified, 0);
+        }
+
+        // Parse ClientHello to find extensions
+        let mut offset = 5 + 4; // Skip record header + handshake header
+
+        // Skip version (2)
+        offset += 2;
+        if offset + 32 > payload.len() {
+            return (modified, 0);
+        }
+
+        // Skip random (32)
+        offset += 32;
+        if offset >= payload.len() {
+            return (modified, 0);
+        }
+
+        // Skip session_id
+        let session_id_len = payload[offset] as usize;
+        offset += 1 + session_id_len;
+        if offset + 2 > payload.len() {
+            return (modified, 0);
+        }
+
+        // Skip cipher_suites
+        let cipher_suites_len = u16::from_be_bytes([payload[offset], payload[offset + 1]]) as usize;
+        offset += 2 + cipher_suites_len;
+        if offset >= payload.len() {
+            return (modified, 0);
+        }
+
+        // Skip compression methods
+        let compression_len = payload[offset] as usize;
+        offset += 1 + compression_len;
+        if offset + 2 > payload.len() {
+            return (modified, 0);
+        }
+
+        // Extensions length
+        let extensions_len = u16::from_be_bytes([payload[offset], payload[offset + 1]]) as usize;
+        offset += 2;
+        let extensions_end = offset + extensions_len;
+
+        // Parse extensions looking for SNI (type 0x0000)
+        while offset + 4 <= extensions_end && offset + 4 <= payload.len() {
+            let ext_type = u16::from_be_bytes([payload[offset], payload[offset + 1]]);
+            let ext_len = u16::from_be_bytes([payload[offset + 2], payload[offset + 3]]) as usize;
+
+            if ext_type == 0x0000 && ext_len > 0 {
+                // SNI extension found
+                // Format: list_len (2) + name_type (1) + name_len (2) + name
+                let sni_start = offset + 4;
+                if sni_start + 5 <= payload.len() && sni_start + 5 <= extensions_end {
+                    let name_len = u16::from_be_bytes([payload[sni_start + 3], payload[sni_start + 4]]) as usize;
+                    let name_start = sni_start + 5;
+                    if name_start + name_len <= payload.len() {
+                        // Get the original SNI
+                        if let Ok(original_sni) = std::str::from_utf8(&payload[name_start..name_start + name_len]) {
+                            // Get anonymized domain name
+                            let anon_sni = self.get_anon_domain(original_sni);
+
+                            // If the lengths match, we can do in-place replacement
+                            if anon_sni.len() == name_len {
+                                modified[name_start..name_start + name_len].copy_from_slice(anon_sni.as_bytes());
+                                scrubbed += 1;
+                            }
+                            // If lengths don't match, we'd need to rebuild the packet which is complex
+                            // For now, just zero out the SNI
+                            else {
+                                for i in name_start..name_start + name_len {
+                                    modified[i] = b'x';
+                                }
+                                scrubbed += 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            offset += 4 + ext_len;
+        }
+
+        (modified, scrubbed)
+    }
+
+    /// Scrub sensitive HTTP headers
+    /// Returns (modified_payload, headers_scrubbed_count)
+    fn scrub_http_headers(&mut self, payload: &[u8]) -> (Vec<u8>, usize) {
+        // Try to parse as UTF-8 text
+        let text = match std::str::from_utf8(payload) {
+            Ok(t) => t,
+            Err(_) => return (payload.to_vec(), 0),
+        };
+
+        // Check if it looks like HTTP
+        if !text.starts_with("GET ") && !text.starts_with("POST ") && !text.starts_with("PUT ")
+            && !text.starts_with("DELETE ") && !text.starts_with("HEAD ") && !text.starts_with("OPTIONS ")
+            && !text.starts_with("HTTP/") {
+            return (payload.to_vec(), 0);
+        }
+
+        let mut scrubbed = 0;
+        let mut result = String::with_capacity(text.len());
+
+        // Sensitive headers to scrub
+        let sensitive_headers = [
+            "cookie:", "set-cookie:", "authorization:", "proxy-authorization:",
+            "x-api-key:", "x-auth-token:", "x-csrf-token:",
+        ];
+
+        // Headers to anonymize (replace value with placeholder)
+        let anonymize_headers = ["host:", "referer:", "origin:", "x-forwarded-for:"];
+
+        for line in text.split("\r\n") {
+            let lower = line.to_lowercase();
+
+            let mut handled = false;
+
+            // Check sensitive headers - replace value with [REDACTED]
+            for header in &sensitive_headers {
+                if lower.starts_with(header) {
+                    if let Some(colon_pos) = line.find(':') {
+                        result.push_str(&line[..colon_pos + 1]);
+                        result.push_str(" [REDACTED]");
+                        scrubbed += 1;
+                        handled = true;
+                        break;
+                    }
+                }
+            }
+
+            // Check headers to anonymize with consistent mapping
+            if !handled {
+                for header in &anonymize_headers {
+                    if lower.starts_with(header) {
+                        if let Some(colon_pos) = line.find(':') {
+                            let value = line[colon_pos + 1..].trim();
+                            // For Host/Origin, anonymize the domain
+                            let anon_value = if lower.starts_with("host:") || lower.starts_with("origin:") {
+                                // Extract domain from potential URL
+                                let domain = value.split('/').next().unwrap_or(value);
+                                let domain = domain.split(':').next().unwrap_or(domain); // Remove port
+                                self.get_anon_domain(domain)
+                            } else if lower.starts_with("x-forwarded-for:") {
+                                // Anonymize IPs
+                                "[ANONYMIZED-IP]".to_string()
+                            } else {
+                                self.get_anon_domain(value)
+                            };
+                            result.push_str(&line[..colon_pos + 1]);
+                            result.push(' ');
+                            result.push_str(&anon_value);
+                            scrubbed += 1;
+                            handled = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if !handled {
+                result.push_str(line);
+            }
+            result.push_str("\r\n");
+        }
+
+        // Remove trailing \r\n if original didn't have it
+        if !text.ends_with("\r\n") && result.ends_with("\r\n") {
+            result.truncate(result.len() - 2);
+        }
+
+        (result.into_bytes(), scrubbed)
+    }
+
+    /// Anonymize DHCP options (hostname, client identifier)
+    /// DHCP is UDP port 67/68, options start after fixed header
+    fn anonymize_dhcp_options(&mut self, payload: &[u8]) -> (Vec<u8>, usize) {
+        // DHCP header is 236 bytes minimum + magic cookie (4) + options
+        if payload.len() < 240 {
+            return (payload.to_vec(), 0);
+        }
+
+        // Check DHCP magic cookie (99.130.83.99)
+        if payload[236..240] != [99, 130, 83, 99] {
+            return (payload.to_vec(), 0);
+        }
+
+        let mut modified = payload.to_vec();
+        let mut anonymized = 0;
+        let mut offset = 240; // Start of options
+
+        while offset < modified.len() {
+            let option_type = modified[offset];
+
+            // End option
+            if option_type == 255 {
+                break;
+            }
+
+            // Pad option
+            if option_type == 0 {
+                offset += 1;
+                continue;
+            }
+
+            if offset + 1 >= modified.len() {
+                break;
+            }
+
+            let option_len = modified[offset + 1] as usize;
+            let option_data_start = offset + 2;
+
+            if option_data_start + option_len > modified.len() {
+                break;
+            }
+
+            match option_type {
+                // Option 12: Hostname
+                12 => {
+                    if option_len > 0 {
+                        // Extract hostname first to avoid borrow issues
+                        let hostname_bytes = modified[option_data_start..option_data_start + option_len].to_vec();
+                        if let Ok(hostname) = std::str::from_utf8(&hostname_bytes) {
+                            let hostname_owned = hostname.to_string();
+                            let anon_hostname = format!("host{:05}", self.domain_counter);
+                            self.domain_counter += 1;
+
+                            // If it fits, replace in place
+                            let replacement = if anon_hostname.len() <= option_len {
+                                let mut padded = anon_hostname.clone().into_bytes();
+                                padded.resize(option_len, 0); // Pad with nulls
+                                padded
+                            } else {
+                                // Truncate if necessary
+                                anon_hostname[..option_len].as_bytes().to_vec()
+                            };
+
+                            modified[option_data_start..option_data_start + option_len].copy_from_slice(&replacement);
+                            let anon_str = std::str::from_utf8(&replacement).unwrap_or("").trim_end_matches('\0').to_string();
+                            self.domain_map.insert(hostname_owned, anon_str);
+                            anonymized += 1;
+                        }
+                    }
+                }
+                // Option 61: Client Identifier
+                61 => {
+                    if option_len > 1 {
+                        let hw_type = modified[option_data_start];
+                        // If it's a MAC address (type 1), anonymize it
+                        if hw_type == 1 && option_len >= 7 {
+                            let mac: [u8; 6] = modified[option_data_start + 1..option_data_start + 7].try_into().unwrap_or([0; 6]);
+                            let anon_mac = self.get_anon_mac(mac);
+                            modified[option_data_start + 1..option_data_start + 7].copy_from_slice(&anon_mac);
+                            anonymized += 1;
+                        }
+                    }
+                }
+                // Option 81: Client FQDN
+                81 => {
+                    if option_len > 3 {
+                        // Flags (1) + RCODE1 (1) + RCODE2 (1) + domain name
+                        let domain_start = option_data_start + 3;
+                        let domain_len = option_len - 3;
+                        if domain_len > 0 {
+                            // Zero out the domain name
+                            for i in domain_start..domain_start + domain_len {
+                                modified[i] = b'x';
+                            }
+                            anonymized += 1;
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            offset += 2 + option_len;
+        }
+
+        (modified, anonymized)
+    }
+
     /// Anonymize a single packet's data, returning modified data
     pub fn anonymize_packet(&mut self, data: &[u8], stats: &mut PcapStats) -> Vec<u8> {
         let mut modified = data.to_vec();
@@ -1225,6 +1547,137 @@ impl PcapAnonymizer {
                     }
                 }
 
+                // TLS SNI scrubbing (port 443)
+                if self.config.scrub_tls_sni {
+                    if let Some(transport) = &parsed.transport {
+                        let (src_port, dst_port) = match transport {
+                            TransportSlice::Tcp(tcp) => (tcp.source_port(), tcp.destination_port()),
+                            _ => (0, 0),
+                        };
+
+                        if src_port == 443 || dst_port == 443 {
+                            if let Some(ip_off) = ip_offset {
+                                let transport_offset = if is_ipv6 {
+                                    ip_off + 40
+                                } else {
+                                    let ihl = (modified[ip_off] & 0x0f) as usize * 4;
+                                    ip_off + ihl
+                                };
+
+                                let payload_start = match transport {
+                                    TransportSlice::Tcp(tcp) => {
+                                        transport_offset + tcp.data_offset() as usize * 4
+                                    }
+                                    _ => 0,
+                                };
+
+                                if payload_start > 0 && payload_start < modified.len() {
+                                    let tls_payload = modified[payload_start..].to_vec();
+                                    let (anon_payload, count) = self.scrub_tls_sni(&tls_payload);
+
+                                    if count > 0 {
+                                        modified.truncate(payload_start);
+                                        modified.extend_from_slice(&anon_payload);
+                                        was_modified = true;
+                                        needs_checksum_recalc = true;
+                                        stats.tls_sni_scrubbed += count;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // HTTP header scrubbing (port 80)
+                if self.config.scrub_http_headers {
+                    if let Some(transport) = &parsed.transport {
+                        let (src_port, dst_port) = match transport {
+                            TransportSlice::Tcp(tcp) => (tcp.source_port(), tcp.destination_port()),
+                            _ => (0, 0),
+                        };
+
+                        // Common HTTP ports
+                        if src_port == 80 || dst_port == 80 || src_port == 8080 || dst_port == 8080 {
+                            if let Some(ip_off) = ip_offset {
+                                let transport_offset = if is_ipv6 {
+                                    ip_off + 40
+                                } else {
+                                    let ihl = (modified[ip_off] & 0x0f) as usize * 4;
+                                    ip_off + ihl
+                                };
+
+                                let payload_start = match transport {
+                                    TransportSlice::Tcp(tcp) => {
+                                        transport_offset + tcp.data_offset() as usize * 4
+                                    }
+                                    _ => 0,
+                                };
+
+                                if payload_start > 0 && payload_start < modified.len() {
+                                    let http_payload = modified[payload_start..].to_vec();
+                                    let (anon_payload, count) = self.scrub_http_headers(&http_payload);
+
+                                    if count > 0 {
+                                        // Replace payload
+                                        modified.truncate(payload_start);
+                                        modified.extend_from_slice(&anon_payload);
+                                        was_modified = true;
+                                        needs_checksum_recalc = true;
+                                        stats.http_headers_scrubbed += count;
+
+                                        // Update IP total length if size changed
+                                        if !is_ipv6 {
+                                            let new_total_len = (modified.len() - ip_off) as u16;
+                                            modified[ip_off + 2..ip_off + 4]
+                                                .copy_from_slice(&new_total_len.to_be_bytes());
+                                        } else {
+                                            let new_payload_len = (modified.len() - ip_off - 40) as u16;
+                                            modified[ip_off + 4..ip_off + 6]
+                                                .copy_from_slice(&new_payload_len.to_be_bytes());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // DHCP option anonymization (ports 67/68)
+                if self.config.anonymize_dhcp {
+                    if let Some(transport) = &parsed.transport {
+                        let (src_port, dst_port) = match transport {
+                            TransportSlice::Udp(udp) => (udp.source_port(), udp.destination_port()),
+                            _ => (0, 0),
+                        };
+
+                        if src_port == 67 || dst_port == 67 || src_port == 68 || dst_port == 68 {
+                            if let Some(ip_off) = ip_offset {
+                                let transport_offset = if is_ipv6 {
+                                    ip_off + 40
+                                } else {
+                                    let ihl = (modified[ip_off] & 0x0f) as usize * 4;
+                                    ip_off + ihl
+                                };
+
+                                let payload_start = transport_offset + 8; // UDP header is 8 bytes
+
+                                if payload_start < modified.len() {
+                                    let dhcp_payload = modified[payload_start..].to_vec();
+                                    let (anon_payload, count) = self.anonymize_dhcp_options(&dhcp_payload);
+
+                                    if count > 0 {
+                                        modified.truncate(payload_start);
+                                        modified.extend_from_slice(&anon_payload);
+                                        was_modified = true;
+                                        needs_checksum_recalc = true;
+                                        stats.dhcp_options_anonymized += count;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Payload truncation
                 if self.config.payload_max_bytes > 0 {
                     if let (Some(ip_off), Some(transport)) = (ip_offset, &parsed.transport) {
@@ -1271,14 +1724,44 @@ impl PcapAnonymizer {
                     }
                 }
 
-                // Recalculate checksums if needed
+                // Handle checksums
                 if needs_checksum_recalc {
-                    if let Some(ip_off) = ip_offset {
-                        if !is_ipv6 {
-                            recalculate_ipv4_checksum(&mut modified, ip_off);
+                    if self.config.break_checksums {
+                        // Intentionally corrupt checksums (some tools expect this for anonymized data)
+                        if let Some(ip_off) = ip_offset {
+                            if !is_ipv6 {
+                                // Set IP checksum to 0xFFFF (invalid but obvious)
+                                modified[ip_off + 10..ip_off + 12].copy_from_slice(&[0xFF, 0xFF]);
+                            }
+                            if let Some(transport) = &parsed.transport {
+                                let transport_offset = if is_ipv6 {
+                                    ip_off + 40
+                                } else {
+                                    let ihl = (modified[ip_off] & 0x0f) as usize * 4;
+                                    ip_off + ihl
+                                };
+                                match transport {
+                                    TransportSlice::Tcp(_) if modified.len() >= transport_offset + 18 => {
+                                        // TCP checksum at offset 16
+                                        modified[transport_offset + 16..transport_offset + 18].copy_from_slice(&[0xFF, 0xFF]);
+                                    }
+                                    TransportSlice::Udp(_) if modified.len() >= transport_offset + 8 => {
+                                        // UDP checksum at offset 6
+                                        modified[transport_offset + 6..transport_offset + 8].copy_from_slice(&[0xFF, 0xFF]);
+                                    }
+                                    _ => {}
+                                }
+                            }
                         }
-                        if let Some(transport) = &parsed.transport {
-                            recalculate_transport_checksum(&mut modified, ip_off, transport, is_ipv6);
+                    } else {
+                        // Recalculate checksums normally
+                        if let Some(ip_off) = ip_offset {
+                            if !is_ipv6 {
+                                recalculate_ipv4_checksum(&mut modified, ip_off);
+                            }
+                            if let Some(transport) = &parsed.transport {
+                                recalculate_transport_checksum(&mut modified, ip_off, transport, is_ipv6);
+                            }
                         }
                     }
                 }

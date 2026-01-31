@@ -22,6 +22,9 @@ interface PcapStats {
   payloads_truncated: number
   timestamps_shifted: number
   dns_names_anonymized: number
+  tls_sni_scrubbed: number
+  http_headers_scrubbed: number
+  dhcp_options_anonymized: number
   filtered_by_port: number
   filtered_by_ip: number
   filtered_by_protocol: number
@@ -144,6 +147,12 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
   const [timestampShift, setTimestampShift] = useState(0)
   const [payloadMaxBytes, setPayloadMaxBytes] = useState(0)
 
+  // Protocol scrubbing options
+  const [scrubTlsSni, setScrubTlsSni] = useState(false)
+  const [scrubHttpHeaders, setScrubHttpHeaders] = useState(false)
+  const [anonymizeDhcp, setAnonymizeDhcp] = useState(false)
+  const [breakChecksums, setBreakChecksums] = useState(false)
+
   // Filter options
   const [filterPorts, setFilterPorts] = useState('')
   const [filterIps, setFilterIps] = useState('')
@@ -223,10 +232,14 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       timestamp_shift_secs: timestampShift,
       payload_max_bytes: payloadMaxBytes,
       anonymize_dns: anonymizeDns,
+      scrub_tls_sni: scrubTlsSni,
+      scrub_http_headers: scrubHttpHeaders,
+      anonymize_dhcp: anonymizeDhcp,
+      break_checksums: breakChecksums,
       import_mappings: importedMappings,
       filter: buildFilterConfig()
     }
-  }, [anonymizeIpv4, anonymizeIpv6, anonymizeMac, preservePrivateIPs, anonymizePorts, preserveWellKnownPorts, timestampShift, payloadMaxBytes, anonymizeDns, importedMappings, buildFilterConfig])
+  }, [anonymizeIpv4, anonymizeIpv6, anonymizeMac, preservePrivateIPs, anonymizePorts, preserveWellKnownPorts, timestampShift, payloadMaxBytes, anonymizeDns, scrubTlsSni, scrubHttpHeaders, anonymizeDhcp, breakChecksums, importedMappings, buildFilterConfig])
 
   // Load and analyze the file
   useEffect(() => {
@@ -333,6 +346,9 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       `Payloads truncated: ${analysis.stats.payloads_truncated}`,
       `Timestamps shifted: ${analysis.stats.timestamps_shifted}`,
       `DNS names anonymized: ${analysis.stats.dns_names_anonymized}`,
+      `TLS SNI scrubbed: ${analysis.stats.tls_sni_scrubbed}`,
+      `HTTP headers scrubbed: ${analysis.stats.http_headers_scrubbed}`,
+      `DHCP options anonymized: ${analysis.stats.dhcp_options_anonymized}`,
       ``,
       `## IPv4 Mappings`,
       ...Object.entries(analysis.mappings.ipv4).map(([orig, anon]) => `${orig} -> ${anon}`),
@@ -885,7 +901,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                       </div>
 
                       {/* Timestamp Shift */}
-                      <div className="space-y-2 md:col-span-2">
+                      <div className="space-y-2">
                         <label className="block text-sm text-gray-700 dark:text-gray-300">
                           Timestamp Shift (seconds)
                         </label>
@@ -900,7 +916,81 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                           placeholder="0 = no shift"
                           className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100"
                         />
-                        <p className="text-xs text-gray-500">Shift all timestamps by N seconds (negative to shift earlier)</p>
+                        <p className="text-xs text-gray-500">Shift all timestamps by N seconds</p>
+                      </div>
+
+                      {/* Break Checksums */}
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer" title="Set all checksums to 0xFFFF instead of recalculating them">
+                          <input
+                            type="checkbox"
+                            checked={breakChecksums}
+                            onChange={(e) => {
+                              setBreakChecksums(e.target.checked)
+                              setTimeout(reanalyze, 0)
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Break Checksums</span>
+                        </label>
+                        <p className="text-xs text-gray-500 ml-6">Some tools expect invalid checksums for anonymized data</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Protocol Scrubbing */}
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Protocol Scrubbing</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* TLS SNI */}
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer" title="Anonymize Server Name Indication in TLS ClientHello (reveals visited domains)">
+                          <input
+                            type="checkbox"
+                            checked={scrubTlsSni}
+                            onChange={(e) => {
+                              setScrubTlsSni(e.target.checked)
+                              setTimeout(reanalyze, 0)
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Scrub TLS SNI</span>
+                        </label>
+                        <p className="text-xs text-gray-500 ml-6">Anonymize server names in HTTPS</p>
+                      </div>
+
+                      {/* HTTP Headers */}
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer" title="Redact Cookie, Authorization, Host, Referer headers">
+                          <input
+                            type="checkbox"
+                            checked={scrubHttpHeaders}
+                            onChange={(e) => {
+                              setScrubHttpHeaders(e.target.checked)
+                              setTimeout(reanalyze, 0)
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Scrub HTTP Headers</span>
+                        </label>
+                        <p className="text-xs text-gray-500 ml-6">Redact cookies, auth, host</p>
+                      </div>
+
+                      {/* DHCP */}
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer" title="Anonymize DHCP hostname options and client identifiers">
+                          <input
+                            type="checkbox"
+                            checked={anonymizeDhcp}
+                            onChange={(e) => {
+                              setAnonymizeDhcp(e.target.checked)
+                              setTimeout(reanalyze, 0)
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Anonymize DHCP</span>
+                        </label>
+                        <p className="text-xs text-gray-500 ml-6">Hostnames, client identifiers</p>
                       </div>
                     </div>
                   </div>
@@ -983,6 +1073,30 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                           {analysis.stats.dns_names_anonymized}
                         </div>
                         <div className="text-xs text-gray-600 dark:text-gray-400">DNS Names</div>
+                      </div>
+                    )}
+                    {analysis.stats.tls_sni_scrubbed > 0 && (
+                      <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                          {analysis.stats.tls_sni_scrubbed}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">TLS SNI</div>
+                      </div>
+                    )}
+                    {analysis.stats.http_headers_scrubbed > 0 && (
+                      <div className="bg-sky-50 dark:bg-sky-900/20 rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-sky-600 dark:text-sky-400">
+                          {analysis.stats.http_headers_scrubbed}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">HTTP Headers</div>
+                      </div>
+                    )}
+                    {analysis.stats.dhcp_options_anonymized > 0 && (
+                      <div className="bg-lime-50 dark:bg-lime-900/20 rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-lime-600 dark:text-lime-400">
+                          {analysis.stats.dhcp_options_anonymized}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">DHCP</div>
                       </div>
                     )}
                   </div>
@@ -1254,6 +1368,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
               onClick={handleDownloadMapping}
               disabled={!analysis || isProcessing}
               className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Download a human-readable text report with all statistics and address mappings"
             >
               Export Report
             </button>
@@ -1261,11 +1376,14 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
               onClick={handleExportMappingsJson}
               disabled={!analysis || isProcessing}
               className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Export mappings as JSON for use with other files"
+              title="Export address mappings as JSON - use this to apply the same anonymization to related PCAP files"
             >
               Export JSON
             </button>
-            <label className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer">
+            <label
+              className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer"
+              title="Import a previously exported JSON mapping file to apply consistent anonymization across files"
+            >
               Import JSON
               <input
                 type="file"
@@ -1278,7 +1396,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
               <button
                 onClick={handleClearMappings}
                 className="px-3 py-2 text-sm font-medium text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/30 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50"
-                title="Clear imported mappings"
+                title="Remove imported mappings and use fresh anonymization"
               >
                 Clear Import
               </button>
@@ -1288,6 +1406,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+              title="Close without downloading"
             >
               Cancel
             </button>
@@ -1295,6 +1414,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
               onClick={handleDownload}
               disabled={!analysis || isProcessing}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Apply all selected anonymization options and download the modified PCAP file"
             >
               {isProcessing && (
                 <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">

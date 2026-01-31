@@ -35,12 +35,17 @@ pub struct PcapResult {
 }
 
 /// Mappings of original values to anonymized values
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct PcapMappings {
+    #[serde(default)]
     pub ipv4: HashMap<String, String>,
+    #[serde(default)]
     pub ipv6: HashMap<String, String>,
+    #[serde(default)]
     pub mac: HashMap<String, String>,
+    #[serde(default)]
     pub ports: HashMap<u16, u16>,
+    #[serde(default)]
     pub domains: HashMap<String, String>,
 }
 
@@ -338,6 +343,9 @@ pub struct PcapConfig {
     /// Anonymize DNS domain names in queries and responses
     #[serde(default)]
     pub anonymize_dns: bool,
+    /// Import existing mappings for consistent anonymization across files
+    #[serde(default)]
+    pub import_mappings: Option<PcapMappings>,
 }
 
 fn default_true() -> bool {
@@ -361,20 +369,92 @@ pub struct PcapAnonymizer {
 
 impl PcapAnonymizer {
     pub fn new(config: PcapConfig) -> Self {
+        let mut ipv4_map: HashMap<[u8; 4], [u8; 4]> = HashMap::new();
+        let mut ipv6_map: HashMap<[u8; 16], [u8; 16]> = HashMap::new();
+        let mut mac_map: HashMap<[u8; 6], [u8; 6]> = HashMap::new();
+        let mut port_map: HashMap<u16, u16> = HashMap::new();
+        let mut domain_map: HashMap<String, String> = HashMap::new();
+
+        // Start counters at 1 to avoid 0.0.0.0
+        let mut ipv4_counter: u32 = 1;
+        let mut ipv6_counter: u128 = 1;
+        let mut mac_counter: u64 = 1;
+        let mut port_counter: u16 = 49152;
+        let mut domain_counter: u32 = 1;
+
+        // Import existing mappings if provided
+        if let Some(ref imported) = config.import_mappings {
+            // Import IPv4 mappings
+            for (orig_str, anon_str) in &imported.ipv4 {
+                if let (Some(orig), Some(anon)) = (parse_ipv4_str(orig_str), parse_ipv4_str(anon_str)) {
+                    ipv4_map.insert(orig, anon);
+                    // Update counter based on anon IP (extract last octet from 192.0.2.X format)
+                    if anon[0] == 192 && anon[1] == 0 && anon[2] == 2 {
+                        ipv4_counter = ipv4_counter.max(anon[3] as u32 + 1);
+                    } else if anon[0] == 198 && anon[1] == 51 && anon[2] == 100 {
+                        ipv4_counter = ipv4_counter.max(254 + anon[3] as u32 + 1);
+                    } else if anon[0] == 203 && anon[1] == 0 && anon[2] == 113 {
+                        ipv4_counter = ipv4_counter.max(508 + anon[3] as u32 + 1);
+                    }
+                }
+            }
+
+            // Import IPv6 mappings
+            for (orig_str, anon_str) in &imported.ipv6 {
+                if let (Some(orig), Some(anon)) = (parse_ipv6_str(orig_str), parse_ipv6_str(anon_str)) {
+                    ipv6_map.insert(orig, anon);
+                    // Extract counter from last 8 bytes
+                    let counter_bytes: [u8; 8] = anon[8..16].try_into().unwrap_or([0; 8]);
+                    let counter = u64::from_be_bytes(counter_bytes) as u128;
+                    ipv6_counter = ipv6_counter.max(counter + 1);
+                }
+            }
+
+            // Import MAC mappings
+            for (orig_str, anon_str) in &imported.mac {
+                if let (Some(orig), Some(anon)) = (parse_mac_str(orig_str), parse_mac_str(anon_str)) {
+                    mac_map.insert(orig, anon);
+                    // Extract counter from last 3 bytes
+                    let counter = ((anon[3] as u64) << 16) | ((anon[4] as u64) << 8) | (anon[5] as u64);
+                    mac_counter = mac_counter.max(counter + 1);
+                }
+            }
+
+            // Import port mappings
+            for (orig, anon) in &imported.ports {
+                port_map.insert(*orig, *anon);
+                if *anon >= 49152 {
+                    port_counter = port_counter.max(anon.wrapping_add(1));
+                    if port_counter < 49152 {
+                        port_counter = 49152;
+                    }
+                }
+            }
+
+            // Import domain mappings
+            for (orig, anon) in &imported.domains {
+                domain_map.insert(orig.clone(), anon.clone());
+                // Extract counter from anonXXXXX.example.com format
+                if let Some(num_str) = anon.strip_prefix("anon").and_then(|s| s.strip_suffix(".example.com")) {
+                    if let Ok(num) = num_str.parse::<u32>() {
+                        domain_counter = domain_counter.max(num + 1);
+                    }
+                }
+            }
+        }
+
         Self {
             config,
-            ipv4_map: HashMap::new(),
-            ipv6_map: HashMap::new(),
-            mac_map: HashMap::new(),
-            port_map: HashMap::new(),
-            domain_map: HashMap::new(),
-            // Start counters at 1 to avoid 0.0.0.0
-            ipv4_counter: 1,
-            ipv6_counter: 1,
-            mac_counter: 1,
-            // Start port counter at 49152 (ephemeral port range)
-            port_counter: 49152,
-            domain_counter: 1,
+            ipv4_map,
+            ipv6_map,
+            mac_map,
+            port_map,
+            domain_map,
+            ipv4_counter,
+            ipv6_counter,
+            mac_counter,
+            port_counter,
+            domain_counter,
         }
     }
 
@@ -1395,6 +1475,78 @@ fn format_ipv6(ip: &[u8; 16]) -> String {
         "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
         words[0], words[1], words[2], words[3], words[4], words[5], words[6], words[7]
     )
+}
+
+/// Parse IPv4 string (e.g., "192.0.2.1") to bytes
+fn parse_ipv4_str(s: &str) -> Option<[u8; 4]> {
+    let octets: Vec<u8> = s.split('.').filter_map(|p| p.parse().ok()).collect();
+    if octets.len() == 4 {
+        Some([octets[0], octets[1], octets[2], octets[3]])
+    } else {
+        None
+    }
+}
+
+/// Parse IPv6 string to bytes
+fn parse_ipv6_str(s: &str) -> Option<[u8; 16]> {
+    let mut result = [0u8; 16];
+
+    // Handle :: expansion
+    if s.contains("::") {
+        let parts: Vec<&str> = s.split("::").collect();
+        let left: Vec<u16> = parts[0]
+            .split(':')
+            .filter(|p| !p.is_empty())
+            .filter_map(|p| u16::from_str_radix(p, 16).ok())
+            .collect();
+        let right: Vec<u16> = if parts.len() > 1 {
+            parts[1]
+                .split(':')
+                .filter(|p| !p.is_empty())
+                .filter_map(|p| u16::from_str_radix(p, 16).ok())
+                .collect()
+        } else {
+            vec![]
+        };
+
+        let zeros_needed = 8 - left.len() - right.len();
+        let mut full: Vec<u16> = left;
+        full.extend(vec![0u16; zeros_needed]);
+        full.extend(right);
+
+        for (i, seg) in full.iter().enumerate() {
+            result[i * 2] = (*seg >> 8) as u8;
+            result[i * 2 + 1] = (*seg & 0xff) as u8;
+        }
+    } else {
+        let segments: Vec<&str> = s.split(':').collect();
+        if segments.len() != 8 {
+            return None;
+        }
+        for (i, seg) in segments.iter().enumerate() {
+            if let Ok(val) = u16::from_str_radix(seg, 16) {
+                result[i * 2] = (val >> 8) as u8;
+                result[i * 2 + 1] = (val & 0xff) as u8;
+            } else {
+                return None;
+            }
+        }
+    }
+
+    Some(result)
+}
+
+/// Parse MAC address string (e.g., "02:00:00:00:00:01") to bytes
+fn parse_mac_str(s: &str) -> Option<[u8; 6]> {
+    let parts: Vec<u8> = s
+        .split(':')
+        .filter_map(|p| u8::from_str_radix(p, 16).ok())
+        .collect();
+    if parts.len() == 6 {
+        Some([parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]])
+    } else {
+        None
+    }
 }
 
 /// Detect if data is PCAPNG format (magic number check)

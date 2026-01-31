@@ -114,6 +114,9 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
   const [removeNonIp, setRemoveNonIp] = useState(false)
   const [invertFilter, setInvertFilter] = useState(false)
 
+  // Mapping import/export
+  const [importedMappings, setImportedMappings] = useState<PcapMappings | null>(null)
+
   // Build filter config from UI state
   const buildFilterConfig = useCallback((): PacketFilter => {
     const filter: PacketFilter = { ...EMPTY_FILTER }
@@ -183,9 +186,10 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       timestamp_shift_secs: timestampShift,
       payload_max_bytes: payloadMaxBytes,
       anonymize_dns: anonymizeDns,
+      import_mappings: importedMappings,
       filter: buildFilterConfig()
     }
-  }, [anonymizeIpv4, anonymizeIpv6, anonymizeMac, preservePrivateIPs, anonymizePorts, preserveWellKnownPorts, timestampShift, payloadMaxBytes, anonymizeDns, buildFilterConfig])
+  }, [anonymizeIpv4, anonymizeIpv6, anonymizeMac, preservePrivateIPs, anonymizePorts, preserveWellKnownPorts, timestampShift, payloadMaxBytes, anonymizeDns, importedMappings, buildFilterConfig])
 
   // Load and analyze the file
   useEffect(() => {
@@ -313,6 +317,50 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
     URL.revokeObjectURL(url)
   }, [analysis, file.name])
 
+  // Export mappings as JSON (for import into other files)
+  const handleExportMappingsJson = useCallback(() => {
+    if (!analysis) return
+
+    const json = JSON.stringify(analysis.mappings, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${file.name}_mappings.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [analysis, file.name])
+
+  // Import mappings from JSON file
+  const handleImportMappings = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const json = event.target?.result as string
+        const mappings = JSON.parse(json) as PcapMappings
+        setImportedMappings(mappings)
+        // Re-analyze with imported mappings
+        setTimeout(reanalyze, 0)
+      } catch (err) {
+        setError('Failed to parse mappings JSON file')
+      }
+    }
+    reader.readAsText(file)
+    // Reset input
+    e.target.value = ''
+  }, [reanalyze])
+
+  // Clear imported mappings
+  const handleClearMappings = useCallback(() => {
+    setImportedMappings(null)
+    setTimeout(reanalyze, 0)
+  }, [reanalyze])
+
   const toggleProtocol = (proto: string) => {
     setFilterProtocols(prev =>
       prev.includes(proto) ? prev.filter(p => p !== proto) : [...prev, proto]
@@ -327,9 +375,16 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              PCAP Anonymizer
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                PCAP Anonymizer
+              </h2>
+              {importedMappings && (
+                <span className="px-2 py-0.5 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                  Mappings Imported
+                </span>
+              )}
+            </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {file.name} ({(file.size / 1024).toFixed(1)} KB)
             </p>
@@ -875,15 +930,43 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between">
-          <button
-            onClick={handleDownloadMapping}
-            disabled={!analysis || isProcessing}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Download Mapping
-          </button>
-          <div className="flex gap-3">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2 justify-between">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleDownloadMapping}
+              disabled={!analysis || isProcessing}
+              className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Export Report
+            </button>
+            <button
+              onClick={handleExportMappingsJson}
+              disabled={!analysis || isProcessing}
+              className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Export mappings as JSON for use with other files"
+            >
+              Export JSON
+            </button>
+            <label className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer">
+              Import JSON
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportMappings}
+                className="hidden"
+              />
+            </label>
+            {importedMappings && (
+              <button
+                onClick={handleClearMappings}
+                className="px-3 py-2 text-sm font-medium text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/30 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50"
+                title="Clear imported mappings"
+              >
+                Clear Import
+              </button>
+            )}
+          </div>
+          <div className="flex gap-2">
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"

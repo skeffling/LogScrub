@@ -211,6 +211,11 @@ interface AppState {
 export type { ContextMatch }
 
 const DEFAULT_RULES: Record<string, Rule> = {
+  // ML-detected entities (requires model to be loaded)
+  ml_person_name: { label: 'Person Names (ML)', enabled: false, strategy: 'label' },
+  ml_location: { label: 'Locations (ML)', enabled: false, strategy: 'label' },
+  ml_organization: { label: 'Organizations (ML)', enabled: false, strategy: 'label' },
+  // Pattern-based rules
   email: { label: 'Emails', enabled: true, strategy: 'label' },
   email_message_id: { label: 'Email Message-ID', enabled: false, strategy: 'label' },
   ipv4: { label: 'IPv4 Addresses', enabled: true, strategy: 'label' },
@@ -939,9 +944,82 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       if (!cancelRequested) {
         const suggestions: RuleSuggestion[] = []
-        const matches = result.matches || {}
-        const stats = result.stats || {}
-        const allReplacements = result.replacements || []
+        let matches = result.matches || {}
+        let stats = result.stats || {}
+        let allReplacements = result.replacements || []
+
+        // Run ML NER if enabled and model is ready
+        const { mlNameDetectionEnabled, mlLoadingState } = get()
+        if (mlNameDetectionEnabled && mlLoadingState === 'ready') {
+          try {
+            const { runNER } = await import('../utils/nerDetection')
+            const nerResult = await runNER(text)
+
+            // Group entities by type
+            const mlMatches: DetectionMatches = {
+              ml_person_name: [],
+              ml_location: [],
+              ml_organization: []
+            }
+            const mlReplacements: ReplacementInfo[] = []
+
+            // Track unique values to avoid duplicates
+            const seenValues = new Set<string>()
+
+            for (const entity of nerResult.entities) {
+              // Skip low-confidence detections
+              if (entity.score < 0.85) continue
+
+              // Skip if we've already seen this exact value at this position
+              const key = `${entity.word}-${entity.start}-${entity.end}`
+              if (seenValues.has(key)) continue
+              seenValues.add(key)
+
+              let piiType: string
+              switch (entity.entityGroup) {
+                case 'PER':
+                  piiType = 'ml_person_name'
+                  break
+                case 'LOC':
+                  piiType = 'ml_location'
+                  break
+                case 'ORG':
+                  piiType = 'ml_organization'
+                  break
+                default:
+                  continue // Skip MISC
+              }
+
+              // Add to matches
+              if (!mlMatches[piiType].includes(entity.word)) {
+                mlMatches[piiType].push(entity.word)
+              }
+
+              // Add to replacements
+              mlReplacements.push({
+                start: entity.start,
+                end: entity.end,
+                original: entity.word,
+                replacement: `[${piiType.toUpperCase().replace('ML_', '')}-${mlMatches[piiType].length}]`,
+                pii_type: piiType
+              })
+            }
+
+            // Merge ML results with WASM results
+            for (const [type, values] of Object.entries(mlMatches)) {
+              if (values.length > 0) {
+                matches = { ...matches, [type]: values }
+                stats = { ...stats, [type]: values.length }
+              }
+            }
+
+            // Merge replacements (sort by position to handle overlaps)
+            allReplacements = [...allReplacements, ...mlReplacements].sort((a, b) => a.start - b.start)
+          } catch (err) {
+            console.warn('ML NER failed:', err)
+            // Continue with WASM-only results
+          }
+        }
         
         const extractSamplesWithContext = (piiType: string, maxSamples: number): SampleSnippet[] => {
           const typeReplacements = allReplacements.filter(r => r.pii_type === piiType).slice(0, maxSamples)

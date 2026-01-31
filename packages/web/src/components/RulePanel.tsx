@@ -76,6 +76,7 @@ const STRATEGY_OPTIONS: { value: ReplacementStrategy; label: string }[] = [
 ]
 
 const CATEGORIES: Record<string, string[]> = {
+  'ML Detection': ['ml_person_name', 'ml_location', 'ml_organization'],
   'Contact': ['email', 'phone_us', 'phone_uk', 'phone_intl'],
   'Network': ['ipv4', 'ipv6', 'mac_address', 'hostname', 'url', 'url_params'],
   'Identity (US)': ['ssn', 'us_itin', 'passport', 'drivers_license'],
@@ -1154,6 +1155,16 @@ export function RulePanel() {
                   onEnableAll={() => toggleAllInCategory(category, true)}
                   onDisableAll={() => toggleAllInCategory(category, false)}
                 >
+                  {/* ML Detection category warning */}
+                  {category === 'ML Detection' && mlLoadingState !== 'ready' && (
+                    <div className="mb-2 ml-4 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-700 dark:text-amber-300">
+                      {mlLoadingState === 'loading' ? (
+                        <span>Model is downloading...</span>
+                      ) : (
+                        <span>Enable ML Name Detection below and download a model to use these rules.</span>
+                      )}
+                    </div>
+                  )}
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}

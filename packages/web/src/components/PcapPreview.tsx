@@ -17,6 +17,7 @@ interface PcapStats {
   ipv4_replaced: number
   ipv6_replaced: number
   mac_replaced: number
+  arp_packets_anonymized: number
   ports_anonymized: number
   payloads_truncated: number
   timestamps_shifted: number
@@ -327,6 +328,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       `IPv4 addresses replaced: ${analysis.stats.ipv4_replaced}`,
       `IPv6 addresses replaced: ${analysis.stats.ipv6_replaced}`,
       `MAC addresses replaced: ${analysis.stats.mac_replaced}`,
+      `ARP packets anonymized: ${analysis.stats.arp_packets_anonymized}`,
       `Ports anonymized: ${analysis.stats.ports_anonymized}`,
       `Payloads truncated: ${analysis.stats.payloads_truncated}`,
       `Timestamps shifted: ${analysis.stats.timestamps_shifted}`,
@@ -943,6 +945,14 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                       </div>
                       <div className="text-xs text-gray-600 dark:text-gray-400">MAC</div>
                     </div>
+                    {analysis.stats.arp_packets_anonymized > 0 && (
+                      <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
+                          {analysis.stats.arp_packets_anonymized}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">ARP</div>
+                      </div>
+                    )}
                     {analysis.stats.ports_anonymized > 0 && (
                       <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded-lg p-3 text-center">
                         <div className="text-xl font-bold text-cyan-600 dark:text-cyan-400">

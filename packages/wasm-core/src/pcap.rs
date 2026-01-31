@@ -82,6 +82,7 @@ pub struct PcapStats {
     pub ipv4_replaced: usize,
     pub ipv6_replaced: usize,
     pub mac_replaced: usize,
+    pub arp_packets_anonymized: usize,
     pub ports_anonymized: usize,
     pub payloads_truncated: usize,
     pub timestamps_shifted: usize,
@@ -888,13 +889,134 @@ impl PcapAnonymizer {
         Some(result)
     }
 
+    /// Anonymize ARP packet payload
+    /// ARP structure after Ethernet header (14 bytes):
+    /// - Hardware type: 2 bytes
+    /// - Protocol type: 2 bytes
+    /// - Hardware addr len: 1 byte (6 for MAC)
+    /// - Protocol addr len: 1 byte (4 for IPv4)
+    /// - Operation: 2 bytes
+    /// - Sender hardware addr: 6 bytes (MAC)
+    /// - Sender protocol addr: 4 bytes (IPv4)
+    /// - Target hardware addr: 6 bytes (MAC)
+    /// - Target protocol addr: 4 bytes (IPv4)
+    fn anonymize_arp(&mut self, data: &mut [u8], stats: &mut PcapStats) -> bool {
+        // Minimum ARP packet: 14 (eth) + 28 (arp) = 42 bytes
+        if data.len() < 42 {
+            return false;
+        }
+
+        // Check ethertype is ARP (0x0806)
+        let ethertype = u16::from_be_bytes([data[12], data[13]]);
+        if ethertype != 0x0806 {
+            return false;
+        }
+
+        // Verify this is Ethernet (1) + IPv4 (0x0800) ARP
+        let hw_type = u16::from_be_bytes([data[14], data[15]]);
+        let proto_type = u16::from_be_bytes([data[16], data[17]]);
+        let hw_len = data[18];
+        let proto_len = data[19];
+
+        if hw_type != 1 || proto_type != 0x0800 || hw_len != 6 || proto_len != 4 {
+            return false; // Not standard Ethernet/IPv4 ARP
+        }
+
+        let mut was_modified = false;
+
+        // Anonymize sender hardware address (MAC) at offset 22-27
+        if self.config.anonymize_mac {
+            let sender_mac: [u8; 6] = data[22..28].try_into().unwrap();
+            let anon_mac = self.get_anon_mac(sender_mac);
+            if anon_mac != sender_mac {
+                data[22..28].copy_from_slice(&anon_mac);
+                was_modified = true;
+                stats.mac_replaced += 1;
+            }
+        }
+
+        // Anonymize sender protocol address (IPv4) at offset 28-31
+        if self.config.anonymize_ipv4 {
+            let sender_ip: [u8; 4] = data[28..32].try_into().unwrap();
+            let anon_ip = self.get_anon_ipv4(sender_ip);
+            if anon_ip != sender_ip {
+                data[28..32].copy_from_slice(&anon_ip);
+                was_modified = true;
+                stats.ipv4_replaced += 1;
+            }
+        }
+
+        // Anonymize target hardware address (MAC) at offset 32-37
+        if self.config.anonymize_mac {
+            let target_mac: [u8; 6] = data[32..38].try_into().unwrap();
+            let anon_mac = self.get_anon_mac(target_mac);
+            if anon_mac != target_mac {
+                data[32..38].copy_from_slice(&anon_mac);
+                was_modified = true;
+                stats.mac_replaced += 1;
+            }
+        }
+
+        // Anonymize target protocol address (IPv4) at offset 38-41
+        if self.config.anonymize_ipv4 {
+            let target_ip: [u8; 4] = data[38..42].try_into().unwrap();
+            let anon_ip = self.get_anon_ipv4(target_ip);
+            if anon_ip != target_ip {
+                data[38..42].copy_from_slice(&anon_ip);
+                was_modified = true;
+                stats.ipv4_replaced += 1;
+            }
+        }
+
+        was_modified
+    }
+
     /// Anonymize a single packet's data, returning modified data
     pub fn anonymize_packet(&mut self, data: &[u8], stats: &mut PcapStats) -> Vec<u8> {
         let mut modified = data.to_vec();
         let mut was_modified = false;
         let mut needs_checksum_recalc = false;
 
-        // Try to parse the packet
+        // Check for ARP packet first (ethertype 0x0806)
+        if modified.len() >= 14 {
+            let ethertype = u16::from_be_bytes([modified[12], modified[13]]);
+            if ethertype == 0x0806 {
+                // Handle ARP packet separately
+                // Anonymize Ethernet header MACs first
+                if self.config.anonymize_mac {
+                    let dst_mac: [u8; 6] = data[0..6].try_into().unwrap();
+                    let src_mac: [u8; 6] = data[6..12].try_into().unwrap();
+
+                    let anon_dst = self.get_anon_mac(dst_mac);
+                    let anon_src = self.get_anon_mac(src_mac);
+
+                    if anon_dst != dst_mac {
+                        modified[0..6].copy_from_slice(&anon_dst);
+                        was_modified = true;
+                        stats.mac_replaced += 1;
+                    }
+                    if anon_src != src_mac {
+                        modified[6..12].copy_from_slice(&anon_src);
+                        was_modified = true;
+                        stats.mac_replaced += 1;
+                    }
+                }
+
+                // Anonymize ARP payload
+                if self.anonymize_arp(&mut modified, stats) {
+                    was_modified = true;
+                    stats.arp_packets_anonymized += 1;
+                }
+
+                if was_modified {
+                    stats.packets_modified += 1;
+                }
+                stats.packets_processed += 1;
+                return modified;
+            }
+        }
+
+        // Try to parse the packet as IP
         match SlicedPacket::from_ethernet(&data) {
             Ok(parsed) => {
                 // Anonymize Ethernet MACs (first 12 bytes: dst[6] + src[6])

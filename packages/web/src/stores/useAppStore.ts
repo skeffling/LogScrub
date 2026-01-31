@@ -1,11 +1,15 @@
 import { create } from 'zustand'
 import type { ContextMatch } from '../utils/contextAwareDetector'
+
+// Default model ID for ML Name Detection (inlined to avoid static import of the full module)
+const DEFAULT_ML_MODEL_ID = 'Xenova/distilbert-base-NER'
 import type { FileEntry, AggregatedStats, BatchProgress } from '../types/multiFile'
 import { createEmptyFileEntry, MAX_FILES, MAX_TOTAL_SIZE } from '../types/multiFile'
 
 export type ReplacementStrategy = 'label' | 'fake' | 'redact' | 'template'
 export type ThemeMode = 'light' | 'dark' | 'auto'
 export type DocumentType = 'pdf' | 'xlsx' | 'docx' | 'odt' | 'ods' | null
+export type MLLoadingState = 'idle' | 'loading' | 'ready' | 'error'
 
 export type SyntaxFormat = 'json' | 'xml' | 'csv' | 'yaml' | 'toml'
 
@@ -121,6 +125,13 @@ interface AppState {
   syntaxValidFormat: ValidatedFormat
   preservePrivateIPs: boolean
 
+  // ML Name Detection state
+  mlNameDetectionEnabled: boolean
+  mlModelId: string
+  mlLoadingState: MLLoadingState
+  mlLoadProgress: number
+  mlError: string | null
+
   setInput: (input: string) => void
   setOutput: (output: string) => void
   setStats: (stats: DetectionStats) => void
@@ -168,6 +179,12 @@ interface AppState {
   addContextMatchAsPattern: (match: ContextMatch) => void
   setSyntaxError: (error: SyntaxError | null) => void
   setSyntaxValidFormat: (format: ValidatedFormat) => void
+
+  // ML Name Detection actions
+  setMlNameDetection: (enabled: boolean) => void
+  setMlModelId: (modelId: string) => void
+  loadMlModel: () => Promise<void>
+  unloadMlModel: () => void
 
   // Multi-file state
   files: FileEntry[]
@@ -435,6 +452,7 @@ function saveLabelFormatToStorage(format: LabelFormat) {
 }
 
 const GLOBAL_TEMPLATE_STORAGE_KEY = 'logscrub_global_template'
+const ML_SETTINGS_STORAGE_KEY = 'logscrub_ml_settings'
 
 function loadGlobalTemplateFromStorage(): string {
   try {
@@ -448,6 +466,25 @@ function loadGlobalTemplateFromStorage(): string {
 
 function saveGlobalTemplateToStorage(template: string) {
   localStorage.setItem(GLOBAL_TEMPLATE_STORAGE_KEY, JSON.stringify(template))
+}
+
+interface MLSettings {
+  enabled: boolean
+  modelId: string
+}
+
+function loadMLSettingsFromStorage(): MLSettings {
+  try {
+    const stored = localStorage.getItem(ML_SETTINGS_STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch {}
+  return { enabled: false, modelId: DEFAULT_ML_MODEL_ID }
+}
+
+function saveMLSettingsToStorage(settings: MLSettings) {
+  localStorage.setItem(ML_SETTINGS_STORAGE_KEY, JSON.stringify(settings))
 }
 
 let worker: Worker | null = null
@@ -509,6 +546,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   documentType: null,
   syntaxError: null,
   syntaxValidFormat: null,
+
+  // ML Name Detection
+  mlNameDetectionEnabled: loadMLSettingsFromStorage().enabled,
+  mlModelId: loadMLSettingsFromStorage().modelId,
+  mlLoadingState: 'idle',
+  mlLoadProgress: 0,
+  mlError: null,
 
   // Multi-file state
   files: [],
@@ -1212,6 +1256,73 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSyntaxError: (error) => set({ syntaxError: error }),
 
   setSyntaxValidFormat: (format) => set({ syntaxValidFormat: format }),
+
+  // ML Name Detection actions
+  setMlNameDetection: (enabled) => {
+    const { mlModelId } = get()
+    saveMLSettingsToStorage({ enabled, modelId: mlModelId })
+    set({ mlNameDetectionEnabled: enabled })
+
+    // If disabling, unload the model to free memory
+    if (!enabled) {
+      get().unloadMlModel()
+    }
+  },
+
+  setMlModelId: (modelId) => {
+    const { mlNameDetectionEnabled } = get()
+    saveMLSettingsToStorage({ enabled: mlNameDetectionEnabled, modelId })
+    set({ mlModelId: modelId })
+
+    // If a model is currently loaded and we're changing models, unload the old one
+    const { mlLoadingState } = get()
+    if (mlLoadingState === 'ready') {
+      get().unloadMlModel()
+    }
+  },
+
+  loadMlModel: async () => {
+    const { mlModelId, mlLoadingState } = get()
+    if (mlLoadingState === 'loading') return
+    if (mlLoadingState === 'ready') return
+
+    set({ mlLoadingState: 'loading', mlLoadProgress: 0, mlError: null })
+
+    try {
+      // Dynamic import for lazy loading
+      const { loadNERPipeline, onLoadProgress } = await import('../utils/nerDetection')
+
+      // Set up progress tracking
+      const unsubscribe = onLoadProgress((progress) => {
+        set({ mlLoadProgress: progress })
+      })
+
+      await loadNERPipeline(mlModelId)
+      unsubscribe()
+
+      set({ mlLoadingState: 'ready', mlLoadProgress: 100 })
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load ML model'
+      set({
+        mlLoadingState: 'error',
+        mlError: errorMessage,
+        mlLoadProgress: 0
+      })
+    }
+  },
+
+  unloadMlModel: () => {
+    // Dynamic import and unload
+    import('../utils/nerDetection').then(({ unloadNERPipeline }) => {
+      unloadNERPipeline()
+    }).catch(() => {})
+
+    set({
+      mlLoadingState: 'idle',
+      mlLoadProgress: 0,
+      mlError: null
+    })
+  },
 
   // Multi-file actions
   addFiles: async (fileList) => {

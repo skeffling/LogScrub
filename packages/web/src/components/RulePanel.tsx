@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, memo, useEffect, useCallback } from 'react'
 import { useAppStore, type ReplacementStrategy, type RulePreset, type CustomRule, type PlainTextPattern } from '../stores/useAppStore'
+import { AVAILABLE_MODELS } from '../utils/nerModels'
 import { Modal } from './Modal'
 import { BUILTIN_PATTERNS } from '../data/patterns'
 import { BUILTIN_PRESETS, type BuiltinPreset } from '../data/presets'
@@ -399,7 +400,10 @@ export function RulePanel() {
     stats, analysisStats,
     labelFormat, setLabelFormat,
     globalTemplate, setGlobalTemplate,
-    documentType
+    documentType,
+    // ML Name Detection
+    mlNameDetectionEnabled, setMlNameDetection, mlModelId, setMlModelId,
+    mlLoadingState, mlLoadProgress, mlError, loadMlModel
   } = useAppStore()
   
   // Filter strategy options for document types (PDF only supports redact)
@@ -1258,6 +1262,105 @@ export function RulePanel() {
         <hr className="my-3 dark:border-gray-700 flex-shrink-0" />
 
         <div className="flex-shrink-0 space-y-3">
+          {/* ML Name Detection */}
+          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+            <div className="flex items-center justify-between gap-2">
+              <label className="flex items-center gap-2 cursor-pointer flex-1" title="Use machine learning to detect person names, locations, and organizations">
+                <input
+                  type="checkbox"
+                  checked={mlNameDetectionEnabled}
+                  onChange={(e) => setMlNameDetection(e.target.checked)}
+                  disabled={mlLoadingState === 'loading'}
+                  className="rounded border-purple-300 dark:border-purple-600 text-purple-600 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                />
+                <span className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                  Enable ML Name Detection
+                </span>
+              </label>
+              {mlLoadingState === 'ready' && (
+                <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-full">
+                  Ready
+                </span>
+              )}
+            </div>
+
+            <p className="text-xs text-purple-700 dark:text-purple-300 mt-2 ml-6">
+              Detect names, locations, and organizations using AI. Processing happens entirely in your browser.
+            </p>
+
+            {mlNameDetectionEnabled && (
+              <div className="mt-3 ml-6 space-y-2">
+                <div>
+                  <label className="block text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
+                    Model
+                  </label>
+                  <select
+                    value={mlModelId}
+                    onChange={(e) => setMlModelId(e.target.value)}
+                    disabled={mlLoadingState === 'loading'}
+                    className="w-full text-sm border border-purple-300 dark:border-purple-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                  >
+                    {AVAILABLE_MODELS.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name} ({model.size})
+                      </option>
+                    ))}
+                  </select>
+                  {AVAILABLE_MODELS.find(m => m.id === mlModelId) && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {AVAILABLE_MODELS.find(m => m.id === mlModelId)?.description}
+                    </p>
+                  )}
+                </div>
+
+                {mlLoadingState === 'idle' && (
+                  <button
+                    onClick={() => loadMlModel()}
+                    className="w-full px-3 py-1.5 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                  >
+                    Download Model
+                  </button>
+                )}
+
+                {mlLoadingState === 'loading' && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-purple-700 dark:text-purple-300">
+                      <span>Downloading model...</span>
+                      <span>{Math.round(mlLoadProgress)}%</span>
+                    </div>
+                    <div className="w-full bg-purple-200 dark:bg-purple-900 rounded-full h-2">
+                      <div
+                        className="bg-purple-600 dark:bg-purple-400 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${mlLoadProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Model is cached in your browser after first download
+                    </p>
+                  </div>
+                )}
+
+                {mlLoadingState === 'error' && mlError && (
+                  <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-2">
+                    {mlError}
+                    <button
+                      onClick={() => loadMlModel()}
+                      className="ml-2 underline hover:no-underline"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                {mlLoadingState === 'ready' && (
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    Model loaded and ready for detection
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="flex items-center gap-2 cursor-pointer" title="When enabled, identical PII values will always be replaced with the same replacement value">
               <input

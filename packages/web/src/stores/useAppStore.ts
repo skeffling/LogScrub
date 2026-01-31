@@ -870,9 +870,145 @@ export const useAppStore = create<AppState>((set, get) => ({
       })
 
       if (!cancelRequested) {
-        // Validate line count - lines should never be removed during sanitization
+        let finalOutput = result.output
+        let finalStats = result.stats
+        let finalMatches = result.matches || {}
+        let finalReplacements = result.replacements || []
+
+        // Run ML NER if enabled and model is ready
+        const { mlNameDetectionEnabled, mlLoadingState, rules: currentRules, labelFormat: currentLabelFormat } = get()
+        if (mlNameDetectionEnabled && mlLoadingState === 'ready') {
+          try {
+            const { runNER } = await import('../utils/nerDetection')
+            const nerResult = await runNER(text)
+
+            // Collect ML replacements (on original text positions)
+            const mlReplacements: ReplacementInfo[] = []
+            const mlMatches: DetectionMatches = {
+              ml_person_name: [],
+              ml_location: [],
+              ml_organization: []
+            }
+
+            const counters: Record<string, number> = {
+              ml_person_name: 0,
+              ml_location: 0,
+              ml_organization: 0
+            }
+
+            for (const entity of nerResult.entities) {
+              if (entity.score < 0.85) continue
+
+              let piiType: string
+              switch (entity.entityGroup) {
+                case 'PER':
+                  piiType = 'ml_person_name'
+                  break
+                case 'LOC':
+                  piiType = 'ml_location'
+                  break
+                case 'ORG':
+                  piiType = 'ml_organization'
+                  break
+                default:
+                  continue
+              }
+
+              if (!currentRules[piiType]?.enabled) continue
+
+              // Check if this position overlaps with any WASM replacement
+              const overlapsWithWasm = finalReplacements.some(r =>
+                (entity.start >= r.start && entity.start < r.end) ||
+                (entity.end > r.start && entity.end <= r.end) ||
+                (entity.start <= r.start && entity.end >= r.end)
+              )
+              if (overlapsWithWasm) continue // Skip - WASM already handled this region
+
+              counters[piiType]++
+              const strategy = currentRules[piiType]?.strategy || 'label'
+
+              let replacement: string
+              if (strategy === 'redact') {
+                replacement = '█'.repeat(entity.word.length)
+              } else {
+                const typeLabel = piiType.replace('ml_', '').toUpperCase()
+                replacement = `${currentLabelFormat.prefix}${typeLabel}-${counters[piiType]}${currentLabelFormat.suffix}`
+              }
+
+              if (!mlMatches[piiType].includes(entity.word)) {
+                mlMatches[piiType].push(entity.word)
+              }
+
+              mlReplacements.push({
+                start: entity.start,
+                end: entity.end,
+                original: entity.word,
+                replacement,
+                pii_type: piiType
+              })
+            }
+
+            // Apply ML replacements to the WASM output
+            // We need to map original positions to output positions using WASM replacements
+            if (mlReplacements.length > 0) {
+              // Build position offset map from WASM replacements
+              const wasmReplacements = [...finalReplacements].sort((a, b) => a.start - b.start)
+              let offset = 0
+              const offsets: Array<{ originalPos: number; offset: number }> = [{ originalPos: 0, offset: 0 }]
+
+              for (const r of wasmReplacements) {
+                const lengthDiff = r.replacement.length - r.original.length
+                offset += lengthDiff
+                offsets.push({ originalPos: r.end, offset })
+              }
+
+              // Function to map original position to output position
+              const mapPosition = (origPos: number): number => {
+                let currentOffset = 0
+                for (const o of offsets) {
+                  if (origPos >= o.originalPos) {
+                    currentOffset = o.offset
+                  } else {
+                    break
+                  }
+                }
+                return origPos + currentOffset
+              }
+
+              // Apply ML replacements in reverse order (by mapped position)
+              const mappedMlReplacements = mlReplacements.map(r => ({
+                ...r,
+                mappedStart: mapPosition(r.start),
+                mappedEnd: mapPosition(r.end)
+              })).sort((a, b) => b.mappedStart - a.mappedStart)
+
+              let outputChars = [...finalOutput]
+              for (const r of mappedMlReplacements) {
+                // Verify the text at this position matches
+                const textAtPos = outputChars.slice(r.mappedStart, r.mappedEnd).join('')
+                if (textAtPos === r.original) {
+                  outputChars.splice(r.mappedStart, r.mappedEnd - r.mappedStart, ...r.replacement)
+                }
+              }
+              finalOutput = outputChars.join('')
+
+              // Merge stats
+              for (const [type, values] of Object.entries(mlMatches)) {
+                if (values.length > 0) {
+                  finalStats = { ...finalStats, [type]: values.length }
+                  finalMatches = { ...finalMatches, [type]: values }
+                }
+              }
+              finalReplacements = [...finalReplacements, ...mlReplacements]
+            }
+          } catch (err) {
+            console.warn('ML NER failed during processing:', err)
+          }
+        }
+
+        // Validate line count
         const inputLines = text.split('\n').length
-        const outputLines = result.output.split('\n').length
+        const outputLines = finalOutput.split('\n').length
         let lineCountWarning: string | null = null
 
         if (outputLines < inputLines) {
@@ -882,10 +1018,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
 
         set({
-          output: result.output,
-          stats: result.stats,
-          matches: result.matches || {},
-          replacements: result.replacements || [],
+          output: finalOutput,
+          stats: finalStats,
+          matches: finalMatches,
+          replacements: finalReplacements,
           lineCountWarning
         })
       }

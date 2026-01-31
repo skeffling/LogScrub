@@ -56,37 +56,34 @@ export function getLoadingState(): { state: NERLoadingState; error: string | nul
 }
 
 /**
- * Configuration for self-hosted models
+ * Base URL for self-hosted models.
+ * Set to a URL like "/models" or "https://cdn.example.com/models"
+ * Models should be at: {baseUrl}/{modelId}/ (e.g., /models/Xenova/bert-base-NER/)
  */
-export interface ModelHostConfig {
-  /** Base URL where models are hosted (e.g., "https://your-cdn.com/models") */
-  baseUrl: string
-  /** Whether to use the local path format (baseUrl/model-name/) vs HF format */
-  useLocalPathFormat?: boolean
-}
-
-let modelHostConfig: ModelHostConfig | null = null
+let modelHostUrl: string | null = null
 
 /**
  * Configure self-hosted model location.
- * Call this before loadNERPipeline to use your own hosted models.
  *
  * @example
- * // Host models at https://your-cdn.com/models/Xenova/bert-base-NER/
- * setModelHost({ baseUrl: 'https://your-cdn.com/models' })
+ * // Models in public/models/ folder (served at /models/)
+ * setModelHost('/models')
  *
- * // Then load as normal
- * await loadNERPipeline('Xenova/bert-base-NER')
+ * // Models on a CDN
+ * setModelHost('https://cdn.example.com/ml-models')
+ *
+ * // Reset to use Hugging Face Hub
+ * setModelHost(null)
  */
-export function setModelHost(config: ModelHostConfig | null): void {
-  modelHostConfig = config
+export function setModelHost(baseUrl: string | null): void {
+  modelHostUrl = baseUrl
 }
 
 /**
- * Get current model host configuration
+ * Get current model host URL
  */
-export function getModelHost(): ModelHostConfig | null {
-  return modelHostConfig
+export function getModelHost(): string | null {
+  return modelHostUrl
 }
 
 /**
@@ -95,17 +92,18 @@ export function getModelHost(): ModelHostConfig | null {
  *
  * Models can be loaded from:
  * 1. Hugging Face Hub (default) - e.g., "Xenova/bert-base-NER"
- * 2. Self-hosted server - call setModelHost() first
+ * 2. Self-hosted - call setModelHost('/models') first
  *
  * To self-host models:
- * 1. Download model files from https://huggingface.co/Xenova/bert-base-NER/tree/main
- * 2. Host files at: {baseUrl}/Xenova/bert-base-NER/
- *    Required files: config.json, tokenizer.json, tokenizer_config.json, model.onnx (or quantized variants)
- * 3. Enable CORS headers on your server
- * 4. Call setModelHost({ baseUrl: 'https://your-server.com/models' })
+ * 1. Download from: https://huggingface.co/Xenova/bert-base-NER/tree/main
+ * 2. Put files in: public/models/Xenova/bert-base-NER/
+ *    - onnx/model_quantized.onnx (or model.onnx)
+ *    - config.json
+ *    - tokenizer.json
+ *    - tokenizer_config.json
+ * 3. Call setModelHost('/models') before loading
  */
 export async function loadNERPipeline(modelId: string = DEFAULT_MODEL_ID): Promise<void> {
-  // If already loading or ready with the same model, return
   if (loadingState === 'loading') {
     throw new Error('Model is already loading')
   }
@@ -119,22 +117,22 @@ export async function loadNERPipeline(modelId: string = DEFAULT_MODEL_ID): Promi
   currentModelId = modelId
 
   try {
-    // Dynamic import for lazy loading
     const { pipeline: createPipeline, env } = await import('@huggingface/transformers')
 
-    // Configure Transformers.js for browser usage
+    // Configure Transformers.js
     env.useBrowserCache = true
 
-    // Configure for self-hosted models if set
-    if (modelHostConfig) {
+    // Self-hosted models
+    if (modelHostUrl) {
+      env.localModelPath = modelHostUrl
+      env.allowRemoteModels = false
       env.allowLocalModels = true
-      env.remoteHost = modelHostConfig.baseUrl
-      env.remotePathTemplate = '{model}/'  // e.g., baseUrl/Xenova/bert-base-NER/
     } else {
+      env.allowRemoteModels = true
       env.allowLocalModels = false
     }
 
-    // Create the token-classification pipeline with progress tracking
+    // Create pipeline with progress tracking
     pipeline = await createPipeline('token-classification', modelId, {
       progress_callback: (progress: { status: string; progress?: number }) => {
         if (progress.status === 'progress' && progress.progress !== undefined) {

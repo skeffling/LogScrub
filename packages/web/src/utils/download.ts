@@ -1,0 +1,20 @@
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+export function downloadText(content: string, filename: string, mimeType = 'text/plain'): void {
+  const blob = new Blob([content], { type: mimeType })
+  downloadBlob(blob, filename)
+}
+
+export function downloadBinary(data: Uint8Array, filename: string, mimeType: string): void {
+  const blob = new Blob([data], { type: mimeType })
+  downloadBlob(blob, filename)
+}

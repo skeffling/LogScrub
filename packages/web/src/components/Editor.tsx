@@ -1,37 +1,15 @@
 import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import init, { decompress_gzip, decompress_zip, decompress_zip_file, compress_zip, compress_gzip, fit_to_gpx_with_config } from '../wasm-core/wasm_core'
+import { decompress_gzip, decompress_zip, decompress_zip_file, compress_zip, compress_gzip, fit_to_gpx_with_config } from '../wasm-core/wasm_core'
 import { useAppStore, type ReplacementInfo, type DocumentType, type ValidatedFormat } from '../stores/useAppStore'
 import { tokenizeWithPositions } from '../utils/syntaxHighlight'
+import { ensureWasm } from '../utils/wasm'
+import { loadEditorPreference, saveEditorPreference } from '../utils/localStorage'
 import { Modal } from './Modal'
 import { DocumentPreview } from './DocumentPreview'
 import { MetadataDialog, DocumentMetadata } from './MetadataDialog'
 import { PcapPreview } from './PcapPreview'
 import { extractOfficeMetadata, extractOpenDocumentMetadata, extractPdfMetadata, hasMetadata, generateMinimalCoreXml, generateMinimalAppXml, generateMinimalMetaXml } from '../utils/metadataExtractor'
-
-// DocumentType is now imported from store
-
-let wasmReady: Promise<unknown> | null = null
-async function ensureWasm(): Promise<void> {
-  if (!wasmReady) {
-    wasmReady = init()
-  }
-  await wasmReady
-}
-
-function loadEditorPreference<T>(key: string, defaultValue: T): T {
-  try {
-    const stored = localStorage.getItem(`logscrub_editor_${key}`)
-    if (stored !== null) return JSON.parse(stored) as T
-  } catch {}
-  return defaultValue
-}
-
-function saveEditorPreference<T>(key: string, value: T): void {
-  try {
-    localStorage.setItem(`logscrub_editor_${key}`, JSON.stringify(value))
-  } catch {}
-}
 
 type LineFilter = 'all' | 'changed' | 'unchanged'
 

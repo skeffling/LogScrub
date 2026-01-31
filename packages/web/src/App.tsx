@@ -9,6 +9,7 @@ import { SipTraceModal } from './components/SipTraceModal'
 import { EmailHopsModal } from './components/EmailHopsModal'
 import { SpamReportModal, detectSpamReports } from './components/SpamReportModal'
 import { GpxTransposeModal, isGpxFile } from './components/GpxTransposeModal'
+import { DetectionBanner } from './components/DetectionBanner'
 import { BUILTIN_PRESETS } from './data/presets'
 import { Suggestions } from './components/Suggestions'
 import { Stats } from './components/Stats'
@@ -16,15 +17,10 @@ import { Modal } from './components/Modal'
 import { FeatureBanner } from './components/FeatureBanner'
 import { Icon, ToggleButton } from './components/ui'
 import { useAppStore } from './stores/useAppStore'
-import init, { compress_zip, compress_gzip } from './wasm-core/wasm_core'
-
-let wasmReady: Promise<unknown> | null = null
-async function ensureWasm(): Promise<void> {
-  if (!wasmReady) {
-    wasmReady = init()
-  }
-  await wasmReady
-}
+import { compress_zip, compress_gzip } from './wasm-core/wasm_core'
+import { ensureWasm } from './utils/wasm'
+import { loadUiPreference, saveUiPreference } from './utils/localStorage'
+import { downloadText, downloadBinary } from './utils/download'
 
 const LINE_HEIGHT = 20
 
@@ -99,20 +95,6 @@ function FullscreenVirtualList({ lines, lineNumbers, changedLines, highlightLine
   )
 }
 
-function loadUiPreference<T>(key: string, defaultValue: T): T {
-  try {
-    const stored = localStorage.getItem(`logscrub_${key}`)
-    if (stored !== null) return JSON.parse(stored) as T
-  } catch {}
-  return defaultValue
-}
-
-function saveUiPreference<T>(key: string, value: T): void {
-  try {
-    localStorage.setItem(`logscrub_${key}`, JSON.stringify(value))
-  } catch {}
-}
-
 function App() {
   const {
     input, setInput, output, setOutput, isProcessing, processText, setFileName, fileName,
@@ -140,12 +122,10 @@ function App() {
   const [dmesgModalDismissed, setDmesgModalDismissed] = useState(false)
   const [showSipModal, setShowSipModal] = useState(false)
   const [sipModalDismissed, setSipModalDismissed] = useState(false)
-  const [emailBannerDismissed, setEmailBannerDismissed] = useState(false)
-  const [webServerBannerDismissed, setWebServerBannerDismissed] = useState(false)
-  const [awsBannerDismissed, setAwsBannerDismissed] = useState(false)
-  const [authBannerDismissed, setAuthBannerDismissed] = useState(false)
-  const [spamReportBannerDismissed, setSpamReportBannerDismissed] = useState(false)
-  const [gpxBannerDismissed, setGpxBannerDismissed] = useState(false)
+  const [dismissedBanners, setDismissedBanners] = useState<Set<string>>(new Set())
+  const dismissBanner = useCallback((key: string) => {
+    setDismissedBanners(prev => new Set(prev).add(key))
+  }, [])
   const [showEmailHopsModal, setShowEmailHopsModal] = useState(false)
   const [showSpamReportModal, setShowSpamReportModal] = useState(false)
   const [showGpxModal, setShowGpxModal] = useState(false)
@@ -251,15 +231,7 @@ function App() {
 
   const handleDownload = () => {
     if (!output) return
-    const blob = new Blob([output], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = fileName ? `sanitized_${fileName}` : 'sanitized_output.txt'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadText(output, fileName ? `sanitized_${fileName}` : 'sanitized_output.txt')
   }
 
   const handleDownloadZip = async () => {
@@ -267,15 +239,7 @@ function App() {
     await ensureWasm()
     const baseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'sanitized_output'
     const zipData = compress_zip(output, `${baseName}.txt`)
-    const blob = new Blob([zipData], { type: 'application/zip' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${baseName}.zip`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadBinary(zipData, `${baseName}.zip`, 'application/zip')
   }
 
   const handleDownloadGzip = async () => {
@@ -283,15 +247,7 @@ function App() {
     await ensureWasm()
     const baseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'sanitized_output'
     const gzipData = compress_gzip(output)
-    const blob = new Blob([gzipData], { type: 'application/gzip' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${baseName}.txt.gz`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadBinary(gzipData, `${baseName}.txt.gz`, 'application/gzip')
   }
 
   useEffect(() => {
@@ -404,12 +360,7 @@ function App() {
 
   // Reset log format banner dismissed states when input changes
   useEffect(() => {
-    setEmailBannerDismissed(false)
-    setWebServerBannerDismissed(false)
-    setAwsBannerDismissed(false)
-    setAuthBannerDismissed(false)
-    setSpamReportBannerDismissed(false)
-    setGpxBannerDismissed(false)
+    setDismissedBanners(new Set())
   }, [input])
 
   // Detect email headers (multiple Received: headers indicate email)
@@ -1227,156 +1178,68 @@ function App() {
             
             <div className="flex-shrink-0">
               <Suggestions />
-              {emailHeadersDetected && !emailBannerDismissed && (
-                <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-3">
-                  <Icon name="mail" size="lg" className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                  <span className="text-blue-800 dark:text-blue-200 text-sm flex-1">
-                    Email headers detected with routing information.
-                  </span>
-                  <button
-                    onClick={() => setShowEmailHopsModal(true)}
-                    className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-                  >
-                    View Routing
-                  </button>
-                  <button
-                    onClick={() => setEmailBannerDismissed(true)}
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
-                    title="Dismiss"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+              {emailHeadersDetected && !dismissedBanners.has('email') && (
+                <DetectionBanner
+                  icon={<Icon name="mail" size="lg" className="text-blue-600 dark:text-blue-400 flex-shrink-0" />}
+                  colorScheme="blue"
+                  message="Email headers detected with routing information."
+                  actionLabel="View Routing"
+                  onAction={() => setShowEmailHopsModal(true)}
+                  onDismiss={() => dismissBanner('email')}
+                />
               )}
-              {webServerLogsDetected && !webServerBannerDismissed && (
-                <div className="mb-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg flex items-center gap-3">
-                  <svg className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
-                  </svg>
-                  <span className="text-purple-800 dark:text-purple-200 text-sm flex-1">
-                    Apache/Nginx access logs detected.
-                  </span>
-                  <button
-                    onClick={() => { loadPresetById('nginx-apache'); setWebServerBannerDismissed(true) }}
-                    className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
-                  >
-                    Use Web Server Preset
-                  </button>
-                  <button
-                    onClick={() => setWebServerBannerDismissed(true)}
-                    className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200"
-                    title="Dismiss"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+              {webServerLogsDetected && !dismissedBanners.has('webServer') && (
+                <DetectionBanner
+                  icon={<Icon name="server" size="lg" className="text-purple-600 dark:text-purple-400 flex-shrink-0" />}
+                  colorScheme="purple"
+                  message="Apache/Nginx access logs detected."
+                  actionLabel="Use Web Server Preset"
+                  onAction={() => { loadPresetById('nginx-apache'); dismissBanner('webServer') }}
+                  onDismiss={() => dismissBanner('webServer')}
+                />
               )}
-              {awsLogsDetected && !awsBannerDismissed && (
-                <div className="mb-3 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg flex items-center gap-3">
-                  <svg className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-                  </svg>
-                  <span className="text-orange-800 dark:text-orange-200 text-sm flex-1">
-                    AWS CloudTrail/CloudWatch logs detected.
-                  </span>
-                  <button
-                    onClick={() => { loadPresetById('aws-cloudwatch'); setAwsBannerDismissed(true) }}
-                    className="px-3 py-1.5 bg-orange-600 text-white text-sm rounded hover:bg-orange-700"
-                  >
-                    Use AWS Preset
-                  </button>
-                  <button
-                    onClick={() => setAwsBannerDismissed(true)}
-                    className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
-                    title="Dismiss"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+              {awsLogsDetected && !dismissedBanners.has('aws') && (
+                <DetectionBanner
+                  icon={<Icon name="cloud" size="lg" className="text-orange-600 dark:text-orange-400 flex-shrink-0" />}
+                  colorScheme="orange"
+                  message="AWS CloudTrail/CloudWatch logs detected."
+                  actionLabel="Use AWS Preset"
+                  onAction={() => { loadPresetById('aws-cloudwatch'); dismissBanner('aws') }}
+                  onDismiss={() => dismissBanner('aws')}
+                />
               )}
-              {authLogsDetected && !authBannerDismissed && (
-                <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
-                  <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  <span className="text-red-800 dark:text-red-200 text-sm flex-1">
-                    SSH/Auth logs detected with authentication events.
-                  </span>
-                  <button
-                    onClick={() => { loadPresetById('auth-logs'); setAuthBannerDismissed(true) }}
-                    className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                  >
-                    Use Auth Preset
-                  </button>
-                  <button
-                    onClick={() => setAuthBannerDismissed(true)}
-                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
-                    title="Dismiss"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+              {authLogsDetected && !dismissedBanners.has('auth') && (
+                <DetectionBanner
+                  icon={<Icon name="lock" size="lg" className="text-red-600 dark:text-red-400 flex-shrink-0" />}
+                  colorScheme="red"
+                  message="SSH/Auth logs detected with authentication events."
+                  actionLabel="Use Auth Preset"
+                  onAction={() => { loadPresetById('auth-logs'); dismissBanner('auth') }}
+                  onDismiss={() => dismissBanner('auth')}
+                />
               )}
-              {spamReportsDetected.length > 0 && !spamReportBannerDismissed && (
-                <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
-                  <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
-                  </svg>
-                  <span className="text-amber-800 dark:text-amber-200 text-sm flex-1">
-                    {spamReportsDetected.length === 1
-                      ? `${spamReportsDetected[0].type === 'rspamd' ? 'Rspamd' : 'SpamAssassin'} report detected (${spamReportsDetected[0].rules.length} rules, score: ${spamReportsDetected[0].totalScore?.toFixed(1) ?? 'N/A'})`
-                      : `${spamReportsDetected.length} spam reports detected (${spamReportsDetected.map(r => r.type === 'rspamd' ? 'Rspamd' : 'SpamAssassin').join(' + ')})`
-                    }
-                  </span>
-                  <button
-                    onClick={() => setShowSpamReportModal(true)}
-                    className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-700"
-                  >
-                    View {spamReportsDetected.length > 1 ? 'Reports' : 'Report'}
-                  </button>
-                  <button
-                    onClick={() => setSpamReportBannerDismissed(true)}
-                    className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
-                    title="Dismiss"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+              {spamReportsDetected.length > 0 && !dismissedBanners.has('spam') && (
+                <DetectionBanner
+                  icon={<Icon name="mail" size="lg" className="text-amber-600 dark:text-amber-400 flex-shrink-0" />}
+                  colorScheme="amber"
+                  message={spamReportsDetected.length === 1
+                    ? `${spamReportsDetected[0].type === 'rspamd' ? 'Rspamd' : 'SpamAssassin'} report detected (${spamReportsDetected[0].rules.length} rules, score: ${spamReportsDetected[0].totalScore?.toFixed(1) ?? 'N/A'})`
+                    : `${spamReportsDetected.length} spam reports detected (${spamReportsDetected.map(r => r.type === 'rspamd' ? 'Rspamd' : 'SpamAssassin').join(' + ')})`
+                  }
+                  actionLabel={spamReportsDetected.length > 1 ? 'View Reports' : 'View Report'}
+                  onAction={() => setShowSpamReportModal(true)}
+                  onDismiss={() => dismissBanner('spam')}
+                />
               )}
-              {gpxDetected && !gpxBannerDismissed && (
-                <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-3">
-                  <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  </svg>
-                  <span className="text-green-800 dark:text-green-200 text-sm flex-1">
-                    GPX route file detected. You can transpose this route to a different continent to hide your actual location.
-                  </span>
-                  <button
-                    onClick={() => setShowGpxModal(true)}
-                    className="px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                  >
-                    Transpose Route
-                  </button>
-                  <button
-                    onClick={() => setGpxBannerDismissed(true)}
-                    className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
-                    title="Dismiss"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+              {gpxDetected && !dismissedBanners.has('gpx') && (
+                <DetectionBanner
+                  icon={<Icon name="map" size="lg" className="text-green-600 dark:text-green-400 flex-shrink-0" />}
+                  colorScheme="green"
+                  message="GPX route file detected. You can transpose this route to a different continent to hide your actual location."
+                  actionLabel="Transpose Route"
+                  onAction={() => setShowGpxModal(true)}
+                  onDismiss={() => dismissBanner('gpx')}
+                />
               )}
               {analysisCompleted && analysisReplacements.length === 0 && !output && (
                 <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">

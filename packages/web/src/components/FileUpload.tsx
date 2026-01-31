@@ -1,14 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useAppStore } from '../stores/useAppStore'
-import init from '../wasm-core/wasm_core'
-
-let wasmReady: Promise<unknown> | null = null
-async function ensureWasm(): Promise<void> {
-  if (!wasmReady) {
-    wasmReady = init()
-  }
-  await wasmReady
-}
+import { ensureWasm } from '../utils/wasm'
 
 interface FileUploadProps {
   onFilesAdded?: () => void

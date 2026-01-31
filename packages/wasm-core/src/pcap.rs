@@ -62,6 +62,14 @@ pub struct ProtocolStats {
     pub smtp: usize,
     /// Other/unknown
     pub other: usize,
+    /// DHCP packets (ports 67/68)
+    pub dhcp: usize,
+    /// TLS packets with SNI (ClientHello with server_name extension)
+    pub tls_client_hello: usize,
+    /// NetBIOS packets (ports 137-139)
+    pub netbios: usize,
+    /// SMB/CIFS packets (port 445)
+    pub smb: usize,
 }
 
 /// Port usage statistics
@@ -2822,7 +2830,26 @@ pub fn pre_analyze_pcap(data: &[u8]) -> Result<PcapAnalysisReport, String> {
                         22 => report.protocols.ssh += 1,
                         23 => report.protocols.telnet += 1,
                         25 => report.protocols.smtp += 1,
+                        67 | 68 => report.protocols.dhcp += 1,
+                        137 | 138 | 139 => report.protocols.netbios += 1,
+                        445 => report.protocols.smb += 1,
                         _ => {}
+                    }
+                }
+
+                // Check for TLS ClientHello with SNI on HTTPS traffic
+                if src_port == 443 || dst_port == 443 {
+                    let payload = match transport {
+                        TransportSlice::Tcp(tcp) => tcp.payload(),
+                        _ => &[],
+                    };
+
+                    // Check for TLS ClientHello (type 0x16 = handshake, then 0x01 = client_hello)
+                    if payload.len() > 10 && payload[0] == 0x16 {
+                        let record_len = u16::from_be_bytes([payload[3], payload[4]]) as usize;
+                        if payload.len() >= 6 + record_len && record_len > 4 && payload[5] == 0x01 {
+                            report.protocols.tls_client_hello += 1;
+                        }
                     }
                 }
             }
@@ -2929,6 +2956,57 @@ pub fn pre_analyze_pcap(data: &[u8]) -> Result<PcapAnalysisReport, String> {
     Ok(report)
 }
 
+/// Parsed Ethernet layer
+#[derive(Debug, Serialize, Default)]
+pub struct EthernetLayer {
+    pub src_mac: String,
+    pub dst_mac: String,
+    pub ethertype: String,
+    pub ethertype_raw: u16,
+}
+
+/// Parsed IP layer
+#[derive(Debug, Serialize, Default)]
+pub struct IpLayer {
+    pub version: u8,
+    pub src_ip: String,
+    pub dst_ip: String,
+    pub protocol: String,
+    pub protocol_num: u8,
+    pub ttl: u8,
+    pub length: u16,
+}
+
+/// Parsed transport layer
+#[derive(Debug, Serialize, Default)]
+pub struct TransportLayer {
+    pub protocol: String,
+    pub src_port: u16,
+    pub dst_port: u16,
+    pub flags: Option<String>,  // TCP flags
+    pub seq: Option<u32>,
+    pub ack: Option<u32>,
+    pub length: usize,
+}
+
+/// Application layer hints
+#[derive(Debug, Serialize, Default)]
+pub struct ApplicationLayer {
+    pub protocol: String,
+    pub info: String,
+}
+
+/// Parsed packet structure
+#[derive(Debug, Serialize, Default)]
+pub struct ParsedPacket {
+    pub ethernet: Option<EthernetLayer>,
+    pub ip: Option<IpLayer>,
+    pub transport: Option<TransportLayer>,
+    pub application: Option<ApplicationLayer>,
+    pub payload_preview: String,
+    pub total_length: usize,
+}
+
 /// Packet comparison result
 #[derive(Debug, Serialize)]
 pub struct PacketComparison {
@@ -2939,6 +3017,8 @@ pub struct PacketComparison {
     pub modified_ascii: String,
     pub changed: bool,
     pub summary: String,
+    pub original_parsed: ParsedPacket,
+    pub modified_parsed: ParsedPacket,
 }
 
 /// Get packet-level comparison data
@@ -2988,16 +3068,20 @@ pub fn get_packet_comparison(data: &[u8], config: PcapConfig, max_packets: usize
         let modified = anonymizer.anonymize_packet(original, &mut stats);
         let changed = original != &modified;
 
-        // Generate hex dump (first 64 bytes)
-        let orig_hex = bytes_to_hex(&original[..original.len().min(64)]);
-        let mod_hex = bytes_to_hex(&modified[..modified.len().min(64)]);
+        // Generate hex dump (first 128 bytes for better visibility)
+        let orig_hex = bytes_to_hex(&original[..original.len().min(128)]);
+        let mod_hex = bytes_to_hex(&modified[..modified.len().min(128)]);
 
         // Generate ASCII representation
-        let orig_ascii = bytes_to_ascii(&original[..original.len().min(64)]);
-        let mod_ascii = bytes_to_ascii(&modified[..modified.len().min(64)]);
+        let orig_ascii = bytes_to_ascii(&original[..original.len().min(128)]);
+        let mod_ascii = bytes_to_ascii(&modified[..modified.len().min(128)]);
 
         // Generate summary
         let summary = get_packet_summary(original);
+
+        // Parse packets for structured display
+        let original_parsed = parse_packet_layers(original);
+        let modified_parsed = parse_packet_layers(&modified);
 
         comparisons.push(PacketComparison {
             index: i,
@@ -3007,10 +3091,293 @@ pub fn get_packet_comparison(data: &[u8], config: PcapConfig, max_packets: usize
             modified_ascii: mod_ascii,
             changed,
             summary,
+            original_parsed,
+            modified_parsed,
         });
     }
 
     Ok(comparisons)
+}
+
+/// Parse packet into structured layers
+fn parse_packet_layers(data: &[u8]) -> ParsedPacket {
+    let mut parsed = ParsedPacket {
+        total_length: data.len(),
+        ..Default::default()
+    };
+
+    if data.len() < 14 {
+        return parsed;
+    }
+
+    // Parse Ethernet layer
+    let dst_mac = format!(
+        "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+        data[0], data[1], data[2], data[3], data[4], data[5]
+    );
+    let src_mac = format!(
+        "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+        data[6], data[7], data[8], data[9], data[10], data[11]
+    );
+    let ethertype_raw = u16::from_be_bytes([data[12], data[13]]);
+    let ethertype = match ethertype_raw {
+        0x0800 => "IPv4".to_string(),
+        0x0806 => "ARP".to_string(),
+        0x86DD => "IPv6".to_string(),
+        0x8100 => "VLAN".to_string(),
+        _ => format!("0x{:04x}", ethertype_raw),
+    };
+
+    parsed.ethernet = Some(EthernetLayer {
+        src_mac,
+        dst_mac,
+        ethertype,
+        ethertype_raw,
+    });
+
+    // Handle ARP
+    if ethertype_raw == 0x0806 && data.len() >= 42 {
+        let operation = u16::from_be_bytes([data[20], data[21]]);
+        let sender_ip = format!("{}.{}.{}.{}", data[28], data[29], data[30], data[31]);
+        let target_ip = format!("{}.{}.{}.{}", data[38], data[39], data[40], data[41]);
+        let op_str = if operation == 1 { "Request" } else { "Reply" };
+
+        parsed.application = Some(ApplicationLayer {
+            protocol: "ARP".to_string(),
+            info: format!("{}: Who has {}? Tell {}", op_str, target_ip, sender_ip),
+        });
+        return parsed;
+    }
+
+    // Parse IP and above with etherparse
+    if let Ok(sliced) = SlicedPacket::from_ethernet(data) {
+        match &sliced.net {
+            Some(NetSlice::Ipv4(ipv4)) => {
+                let header = ipv4.header();
+                let src = header.source();
+                let dst = header.destination();
+                let proto_num = header.protocol().0;
+                let protocol = match proto_num {
+                    1 => "ICMP",
+                    6 => "TCP",
+                    17 => "UDP",
+                    47 => "GRE",
+                    50 => "ESP",
+                    _ => "Other",
+                }.to_string();
+
+                parsed.ip = Some(IpLayer {
+                    version: 4,
+                    src_ip: format!("{}.{}.{}.{}", src[0], src[1], src[2], src[3]),
+                    dst_ip: format!("{}.{}.{}.{}", dst[0], dst[1], dst[2], dst[3]),
+                    protocol,
+                    protocol_num: proto_num,
+                    ttl: header.ttl(),
+                    length: header.total_len(),
+                });
+            }
+            Some(NetSlice::Ipv6(ipv6)) => {
+                let header = ipv6.header();
+                let proto_num = header.next_header().0;
+                let protocol = match proto_num {
+                    6 => "TCP",
+                    17 => "UDP",
+                    58 => "ICMPv6",
+                    _ => "Other",
+                }.to_string();
+
+                parsed.ip = Some(IpLayer {
+                    version: 6,
+                    src_ip: format_ipv6(&header.source()),
+                    dst_ip: format_ipv6(&header.destination()),
+                    protocol,
+                    protocol_num: proto_num,
+                    ttl: header.hop_limit(),
+                    length: header.payload_length() as u16,
+                });
+            }
+            None => {}
+        }
+
+        // Parse transport layer
+        if let Some(transport) = &sliced.transport {
+            match transport {
+                TransportSlice::Tcp(tcp) => {
+                    let flags = format!(
+                        "{}{}{}{}{}{}",
+                        if tcp.syn() { "SYN " } else { "" },
+                        if tcp.ack() { "ACK " } else { "" },
+                        if tcp.fin() { "FIN " } else { "" },
+                        if tcp.rst() { "RST " } else { "" },
+                        if tcp.psh() { "PSH " } else { "" },
+                        if tcp.urg() { "URG " } else { "" },
+                    ).trim().to_string();
+
+                    parsed.transport = Some(TransportLayer {
+                        protocol: "TCP".to_string(),
+                        src_port: tcp.source_port(),
+                        dst_port: tcp.destination_port(),
+                        flags: Some(flags),
+                        seq: Some(tcp.sequence_number()),
+                        ack: Some(tcp.acknowledgment_number()),
+                        length: tcp.payload().len(),
+                    });
+
+                    // Detect application protocol
+                    let payload = tcp.payload();
+                    let (src_port, dst_port) = (tcp.source_port(), tcp.destination_port());
+                    parsed.application = detect_application_protocol(src_port, dst_port, payload);
+
+                    // Preview payload
+                    if !payload.is_empty() {
+                        parsed.payload_preview = bytes_to_ascii(&payload[..payload.len().min(64)]);
+                    }
+                }
+                TransportSlice::Udp(udp) => {
+                    parsed.transport = Some(TransportLayer {
+                        protocol: "UDP".to_string(),
+                        src_port: udp.source_port(),
+                        dst_port: udp.destination_port(),
+                        flags: None,
+                        seq: None,
+                        ack: None,
+                        length: udp.payload().len(),
+                    });
+
+                    let payload = udp.payload();
+                    let (src_port, dst_port) = (udp.source_port(), udp.destination_port());
+                    parsed.application = detect_application_protocol(src_port, dst_port, payload);
+
+                    if !payload.is_empty() {
+                        parsed.payload_preview = bytes_to_ascii(&payload[..payload.len().min(64)]);
+                    }
+                }
+                TransportSlice::Icmpv4(icmp) => {
+                    let icmp_type = icmp.type_u8();
+                    let type_str = match icmp_type {
+                        0 => "Echo Reply",
+                        8 => "Echo Request",
+                        3 => "Destination Unreachable",
+                        11 => "Time Exceeded",
+                        _ => "Other",
+                    };
+                    parsed.application = Some(ApplicationLayer {
+                        protocol: "ICMP".to_string(),
+                        info: format!("Type {}: {}", icmp_type, type_str),
+                    });
+                }
+                TransportSlice::Icmpv6(icmp) => {
+                    let icmp_type = icmp.type_u8();
+                    let type_str = match icmp_type {
+                        128 => "Echo Request",
+                        129 => "Echo Reply",
+                        133 => "Router Solicitation",
+                        134 => "Router Advertisement",
+                        135 => "Neighbor Solicitation",
+                        136 => "Neighbor Advertisement",
+                        _ => "Other",
+                    };
+                    parsed.application = Some(ApplicationLayer {
+                        protocol: "ICMPv6".to_string(),
+                        info: format!("Type {}: {}", icmp_type, type_str),
+                    });
+                }
+                _ => {}
+            }
+        }
+    }
+
+    parsed
+}
+
+/// Detect application protocol from port and payload
+fn detect_application_protocol(src_port: u16, dst_port: u16, payload: &[u8]) -> Option<ApplicationLayer> {
+    let ports = [src_port, dst_port];
+
+    // DNS
+    if ports.contains(&53) && payload.len() >= 12 {
+        let qr = (payload[2] >> 7) & 1;
+        let qtype = if qr == 0 { "Query" } else { "Response" };
+        return Some(ApplicationLayer {
+            protocol: "DNS".to_string(),
+            info: format!("{}", qtype),
+        });
+    }
+
+    // HTTP
+    if ports.contains(&80) && !payload.is_empty() {
+        let payload_str = String::from_utf8_lossy(&payload[..payload.len().min(100)]);
+        if payload_str.starts_with("GET ") || payload_str.starts_with("POST ") ||
+           payload_str.starts_with("HTTP/") || payload_str.starts_with("PUT ") ||
+           payload_str.starts_with("DELETE ") || payload_str.starts_with("HEAD ") {
+            let first_line = payload_str.lines().next().unwrap_or("");
+            return Some(ApplicationLayer {
+                protocol: "HTTP".to_string(),
+                info: first_line.chars().take(60).collect(),
+            });
+        }
+    }
+
+    // TLS/HTTPS
+    if ports.contains(&443) && payload.len() > 5 && payload[0] == 0x16 {
+        let handshake_type = if payload.len() > 5 { payload[5] } else { 0 };
+        let type_str = match handshake_type {
+            0x01 => "ClientHello",
+            0x02 => "ServerHello",
+            0x0b => "Certificate",
+            0x0c => "ServerKeyExchange",
+            0x0d => "CertificateRequest",
+            0x0e => "ServerHelloDone",
+            0x10 => "ClientKeyExchange",
+            0x14 => "Finished",
+            _ => "Handshake",
+        };
+        return Some(ApplicationLayer {
+            protocol: "TLS".to_string(),
+            info: type_str.to_string(),
+        });
+    }
+
+    // DHCP
+    if (ports.contains(&67) || ports.contains(&68)) && payload.len() >= 240 {
+        let msg_type = payload[0];
+        let type_str = if msg_type == 1 { "BOOTREQUEST" } else { "BOOTREPLY" };
+        return Some(ApplicationLayer {
+            protocol: "DHCP".to_string(),
+            info: type_str.to_string(),
+        });
+    }
+
+    // SSH
+    if ports.contains(&22) && !payload.is_empty() {
+        let payload_str = String::from_utf8_lossy(&payload[..payload.len().min(50)]);
+        if payload_str.contains("SSH-") {
+            return Some(ApplicationLayer {
+                protocol: "SSH".to_string(),
+                info: payload_str.lines().next().unwrap_or("").to_string(),
+            });
+        }
+    }
+
+    // SMB
+    if ports.contains(&445) && payload.len() >= 4 {
+        if &payload[0..4] == b"\xffSMB" || &payload[0..4] == b"\xfeSMB" {
+            return Some(ApplicationLayer {
+                protocol: "SMB".to_string(),
+                info: if payload[0] == 0xff { "SMB1" } else { "SMB2/3" }.to_string(),
+            });
+        }
+    }
+
+    // NetBIOS
+    if ports.contains(&137) || ports.contains(&138) || ports.contains(&139) {
+        return Some(ApplicationLayer {
+            protocol: "NetBIOS".to_string(),
+            info: String::new(),
+        });
+    }
+
+    None
 }
 
 /// Search result

@@ -62,6 +62,10 @@ interface ProtocolStats {
   telnet: number
   smtp: number
   other: number
+  dhcp: number
+  tls_client_hello: number
+  netbios: number
+  smb: number
 }
 
 interface PortStats {
@@ -80,6 +84,47 @@ interface PcapPreAnalysis {
   sensitive_indicators: string[]
 }
 
+interface EthernetLayer {
+  src_mac: string
+  dst_mac: string
+  ethertype: string
+  ethertype_raw: number
+}
+
+interface IpLayer {
+  version: number
+  src_ip: string
+  dst_ip: string
+  protocol: string
+  protocol_num: number
+  ttl: number
+  length: number
+}
+
+interface TransportLayer {
+  protocol: string
+  src_port: number
+  dst_port: number
+  flags?: string
+  seq?: number
+  ack?: number
+  length: number
+}
+
+interface ApplicationLayer {
+  protocol: string
+  info: string
+}
+
+interface ParsedPacket {
+  ethernet?: EthernetLayer
+  ip?: IpLayer
+  transport?: TransportLayer
+  application?: ApplicationLayer
+  payload_preview: string
+  total_length: number
+}
+
 interface PacketComparison {
   index: number
   original_hex: string
@@ -88,6 +133,8 @@ interface PacketComparison {
   modified_ascii: string
   changed: boolean
   summary: string
+  original_parsed: ParsedPacket
+  modified_parsed: ParsedPacket
 }
 
 interface SearchResult {
@@ -1137,6 +1184,11 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                           <span className="text-sm text-gray-700 dark:text-gray-300">Scrub TLS SNI</span>
+                          {preAnalysis && preAnalysis.protocols.tls_client_hello > 0 && (
+                            <span className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded">
+                              {preAnalysis.protocols.tls_client_hello}
+                            </span>
+                          )}
                         </label>
                         <p className="text-xs text-gray-500 ml-6">Anonymize server names in HTTPS</p>
                       </div>
@@ -1154,6 +1206,11 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                           <span className="text-sm text-gray-700 dark:text-gray-300">Scrub HTTP Headers</span>
+                          {preAnalysis && preAnalysis.protocols.http > 0 && (
+                            <span className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded">
+                              {preAnalysis.protocols.http}
+                            </span>
+                          )}
                         </label>
                         <p className="text-xs text-gray-500 ml-6">Redact cookies, auth, host</p>
                       </div>
@@ -1171,6 +1228,11 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                           <span className="text-sm text-gray-700 dark:text-gray-300">Anonymize DHCP</span>
+                          {preAnalysis && preAnalysis.protocols.dhcp > 0 && (
+                            <span className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded">
+                              {preAnalysis.protocols.dhcp}
+                            </span>
+                          )}
                         </label>
                         <p className="text-xs text-gray-500 ml-6">Hostnames, client identifiers</p>
                       </div>
@@ -1188,6 +1250,11 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                           <span className="text-sm text-gray-700 dark:text-gray-300">Scrub NetBIOS/SMB</span>
+                          {preAnalysis && (preAnalysis.protocols.netbios > 0 || preAnalysis.protocols.smb > 0) && (
+                            <span className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded">
+                              {preAnalysis.protocols.netbios + preAnalysis.protocols.smb}
+                            </span>
+                          )}
                         </label>
                         <p className="text-xs text-gray-500 ml-6">Computer names, usernames, shares</p>
                       </div>
@@ -1607,8 +1674,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                 <div className="space-y-4">
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Side-by-side comparison showing original vs anonymized packet data in hex and ASCII format.
-                      Changed bytes are highlighted.
+                      Side-by-side comparison showing parsed packet layers (like Wireshark) with original vs anonymized values.
                     </p>
                   </div>
 
@@ -1645,7 +1711,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                       </div>
 
                       {comparisons.map((pkt) => (
-                        <div
+                        <details
                           key={pkt.index}
                           className={`border rounded-lg overflow-hidden ${
                             pkt.changed
@@ -1653,40 +1719,204 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                               : 'border-gray-200 dark:border-gray-700'
                           }`}
                         >
-                          <div className={`px-3 py-2 flex justify-between items-center ${
+                          <summary className={`px-3 py-2 flex items-center gap-3 cursor-pointer select-none ${
                             pkt.changed
                               ? 'bg-yellow-100 dark:bg-yellow-900/30'
                               : 'bg-gray-100 dark:bg-gray-700'
                           }`}>
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              Packet #{pkt.index + 1}
+                              #{pkt.index + 1}
                             </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {pkt.summary}
+                            <span className="text-xs text-gray-500 dark:text-gray-400 flex-1">
+                              {pkt.original_parsed.total_length} bytes • {pkt.summary}
                             </span>
                             {pkt.changed && (
                               <span className="px-2 py-0.5 text-xs font-medium bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded">
                                 Modified
                               </span>
                             )}
-                          </div>
+                          </summary>
                           <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
-                            <div className="p-3">
-                              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Original</div>
-                              <div className="font-mono text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto">
-                                <div className="text-red-600 dark:text-red-400 whitespace-pre">{pkt.original_hex}</div>
-                                <div className="text-gray-500 dark:text-gray-500 mt-1 whitespace-pre border-t border-gray-200 dark:border-gray-700 pt-1">{pkt.original_ascii}</div>
-                              </div>
+                            {/* Original Packet */}
+                            <div className="p-3 space-y-2">
+                              <div className="text-xs font-medium text-red-600 dark:text-red-400 mb-2">Original</div>
+
+                              {/* Ethernet Layer */}
+                              {pkt.original_parsed.ethernet && (
+                                <details open className="text-xs">
+                                  <summary className="font-medium text-purple-700 dark:text-purple-400 cursor-pointer">
+                                    Ethernet II ({pkt.original_parsed.ethernet.ethertype})
+                                  </summary>
+                                  <div className="ml-4 mt-1 space-y-0.5 font-mono text-gray-600 dark:text-gray-400">
+                                    <div>Src: <span className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.ethernet.src_mac}</span></div>
+                                    <div>Dst: <span className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.ethernet.dst_mac}</span></div>
+                                    <div>Type: <span className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.ethernet.ethertype} (0x{pkt.original_parsed.ethernet.ethertype_raw.toString(16).padStart(4, '0')})</span></div>
+                                  </div>
+                                </details>
+                              )}
+
+                              {/* IP Layer */}
+                              {pkt.original_parsed.ip && (
+                                <details open className="text-xs">
+                                  <summary className="font-medium text-blue-700 dark:text-blue-400 cursor-pointer">
+                                    {pkt.original_parsed.ip.version === 4 ? 'IPv4' : 'IPv6'} ({pkt.original_parsed.ip.protocol})
+                                  </summary>
+                                  <div className="ml-4 mt-1 space-y-0.5 font-mono text-gray-600 dark:text-gray-400">
+                                    <div>Src: <span className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.ip.src_ip}</span></div>
+                                    <div>Dst: <span className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.ip.dst_ip}</span></div>
+                                    <div>TTL: <span className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.ip.ttl}</span>, Len: <span className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.ip.length}</span></div>
+                                  </div>
+                                </details>
+                              )}
+
+                              {/* Transport Layer */}
+                              {pkt.original_parsed.transport && (
+                                <details open className="text-xs">
+                                  <summary className="font-medium text-green-700 dark:text-green-400 cursor-pointer">
+                                    {pkt.original_parsed.transport.protocol}
+                                  </summary>
+                                  <div className="ml-4 mt-1 space-y-0.5 font-mono text-gray-600 dark:text-gray-400">
+                                    <div>Src Port: <span className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.transport.src_port}</span></div>
+                                    <div>Dst Port: <span className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.transport.dst_port}</span></div>
+                                    {pkt.original_parsed.transport.flags && (
+                                      <div>Flags: <span className="text-gray-900 dark:text-gray-100">[{pkt.original_parsed.transport.flags}]</span></div>
+                                    )}
+                                    {pkt.original_parsed.transport.seq !== undefined && (
+                                      <div>Seq: <span className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.transport.seq}</span></div>
+                                    )}
+                                    <div>Payload: <span className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.transport.length} bytes</span></div>
+                                  </div>
+                                </details>
+                              )}
+
+                              {/* Application Layer */}
+                              {pkt.original_parsed.application && (
+                                <details open className="text-xs">
+                                  <summary className="font-medium text-orange-700 dark:text-orange-400 cursor-pointer">
+                                    {pkt.original_parsed.application.protocol}
+                                  </summary>
+                                  <div className="ml-4 mt-1 font-mono text-gray-600 dark:text-gray-400">
+                                    {pkt.original_parsed.application.info && (
+                                      <div className="text-gray-900 dark:text-gray-100">{pkt.original_parsed.application.info}</div>
+                                    )}
+                                  </div>
+                                </details>
+                              )}
+
+                              {/* Payload Preview */}
+                              {pkt.original_parsed.payload_preview && (
+                                <details className="text-xs">
+                                  <summary className="font-medium text-gray-500 dark:text-gray-500 cursor-pointer">
+                                    Payload Preview
+                                  </summary>
+                                  <div className="ml-4 mt-1 font-mono text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-all">
+                                    {pkt.original_parsed.payload_preview}
+                                  </div>
+                                </details>
+                              )}
                             </div>
-                            <div className="p-3">
-                              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Anonymized</div>
-                              <div className="font-mono text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto">
-                                <div className="text-green-600 dark:text-green-400 whitespace-pre">{pkt.modified_hex}</div>
-                                <div className="text-gray-500 dark:text-gray-500 mt-1 whitespace-pre border-t border-gray-200 dark:border-gray-700 pt-1">{pkt.modified_ascii}</div>
-                              </div>
+
+                            {/* Modified Packet */}
+                            <div className="p-3 space-y-2">
+                              <div className="text-xs font-medium text-green-600 dark:text-green-400 mb-2">Anonymized</div>
+
+                              {/* Ethernet Layer */}
+                              {pkt.modified_parsed.ethernet && (
+                                <details open className="text-xs">
+                                  <summary className="font-medium text-purple-700 dark:text-purple-400 cursor-pointer">
+                                    Ethernet II ({pkt.modified_parsed.ethernet.ethertype})
+                                  </summary>
+                                  <div className="ml-4 mt-1 space-y-0.5 font-mono text-gray-600 dark:text-gray-400">
+                                    <div>Src: <span className={pkt.original_parsed.ethernet?.src_mac !== pkt.modified_parsed.ethernet.src_mac ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ethernet.src_mac}</span></div>
+                                    <div>Dst: <span className={pkt.original_parsed.ethernet?.dst_mac !== pkt.modified_parsed.ethernet.dst_mac ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ethernet.dst_mac}</span></div>
+                                    <div>Type: <span className="text-gray-900 dark:text-gray-100">{pkt.modified_parsed.ethernet.ethertype}</span></div>
+                                  </div>
+                                </details>
+                              )}
+
+                              {/* IP Layer */}
+                              {pkt.modified_parsed.ip && (
+                                <details open className="text-xs">
+                                  <summary className="font-medium text-blue-700 dark:text-blue-400 cursor-pointer">
+                                    {pkt.modified_parsed.ip.version === 4 ? 'IPv4' : 'IPv6'} ({pkt.modified_parsed.ip.protocol})
+                                  </summary>
+                                  <div className="ml-4 mt-1 space-y-0.5 font-mono text-gray-600 dark:text-gray-400">
+                                    <div>Src: <span className={pkt.original_parsed.ip?.src_ip !== pkt.modified_parsed.ip.src_ip ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ip.src_ip}</span></div>
+                                    <div>Dst: <span className={pkt.original_parsed.ip?.dst_ip !== pkt.modified_parsed.ip.dst_ip ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.ip.dst_ip}</span></div>
+                                    <div>TTL: <span className="text-gray-900 dark:text-gray-100">{pkt.modified_parsed.ip.ttl}</span>, Len: <span className="text-gray-900 dark:text-gray-100">{pkt.modified_parsed.ip.length}</span></div>
+                                  </div>
+                                </details>
+                              )}
+
+                              {/* Transport Layer */}
+                              {pkt.modified_parsed.transport && (
+                                <details open className="text-xs">
+                                  <summary className="font-medium text-green-700 dark:text-green-400 cursor-pointer">
+                                    {pkt.modified_parsed.transport.protocol}
+                                  </summary>
+                                  <div className="ml-4 mt-1 space-y-0.5 font-mono text-gray-600 dark:text-gray-400">
+                                    <div>Src Port: <span className={pkt.original_parsed.transport?.src_port !== pkt.modified_parsed.transport.src_port ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.transport.src_port}</span></div>
+                                    <div>Dst Port: <span className={pkt.original_parsed.transport?.dst_port !== pkt.modified_parsed.transport.dst_port ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.transport.dst_port}</span></div>
+                                    {pkt.modified_parsed.transport.flags && (
+                                      <div>Flags: <span className="text-gray-900 dark:text-gray-100">[{pkt.modified_parsed.transport.flags}]</span></div>
+                                    )}
+                                    {pkt.modified_parsed.transport.seq !== undefined && (
+                                      <div>Seq: <span className="text-gray-900 dark:text-gray-100">{pkt.modified_parsed.transport.seq}</span></div>
+                                    )}
+                                    <div>Payload: <span className="text-gray-900 dark:text-gray-100">{pkt.modified_parsed.transport.length} bytes</span></div>
+                                  </div>
+                                </details>
+                              )}
+
+                              {/* Application Layer */}
+                              {pkt.modified_parsed.application && (
+                                <details open className="text-xs">
+                                  <summary className="font-medium text-orange-700 dark:text-orange-400 cursor-pointer">
+                                    {pkt.modified_parsed.application.protocol}
+                                  </summary>
+                                  <div className="ml-4 mt-1 font-mono text-gray-600 dark:text-gray-400">
+                                    {pkt.modified_parsed.application.info && (
+                                      <div className={pkt.original_parsed.application?.info !== pkt.modified_parsed.application.info ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-900 dark:text-gray-100'}>{pkt.modified_parsed.application.info}</div>
+                                    )}
+                                  </div>
+                                </details>
+                              )}
+
+                              {/* Payload Preview */}
+                              {pkt.modified_parsed.payload_preview && (
+                                <details className="text-xs">
+                                  <summary className="font-medium text-gray-500 dark:text-gray-500 cursor-pointer">
+                                    Payload Preview
+                                  </summary>
+                                  <div className="ml-4 mt-1 font-mono text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-all">
+                                    {pkt.modified_parsed.payload_preview}
+                                  </div>
+                                </details>
+                              )}
                             </div>
                           </div>
-                        </div>
+
+                          {/* Hex view (collapsed by default) */}
+                          <details className="border-t border-gray-200 dark:border-gray-700">
+                            <summary className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 cursor-pointer bg-gray-50 dark:bg-gray-800">
+                              Raw Hex View
+                            </summary>
+                            <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
+                              <div className="p-3">
+                                <div className="font-mono text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto">
+                                  <div className="text-red-600 dark:text-red-400 whitespace-pre">{pkt.original_hex}</div>
+                                  <div className="text-gray-500 dark:text-gray-500 mt-1 whitespace-pre border-t border-gray-200 dark:border-gray-700 pt-1">{pkt.original_ascii}</div>
+                                </div>
+                              </div>
+                              <div className="p-3">
+                                <div className="font-mono text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto">
+                                  <div className="text-green-600 dark:text-green-400 whitespace-pre">{pkt.modified_hex}</div>
+                                  <div className="text-gray-500 dark:text-gray-500 mt-1 whitespace-pre border-t border-gray-200 dark:border-gray-700 pt-1">{pkt.modified_ascii}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </details>
+                        </details>
                       ))}
                     </div>
                   )}

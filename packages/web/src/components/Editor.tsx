@@ -6,6 +6,7 @@ import { tokenizeWithPositions } from '../utils/syntaxHighlight'
 import { Modal } from './Modal'
 import { DocumentPreview } from './DocumentPreview'
 import { MetadataDialog, DocumentMetadata } from './MetadataDialog'
+import { PcapPreview } from './PcapPreview'
 import { extractOfficeMetadata, extractOpenDocumentMetadata, extractPdfMetadata, hasMetadata, generateMinimalCoreXml, generateMinimalAppXml, generateMinimalMetaXml } from '../utils/metadataExtractor'
 
 // DocumentType is now imported from store
@@ -622,6 +623,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   // Document preview state
   const [documentFile, setDocumentFile] = useState<File | null>(null)
   const [showDocumentPreview, setShowDocumentPreview] = useState(true)
+  const [pcapFile, setPcapFile] = useState<File | null>(null)
   const [scrubbedDocFile, setScrubbedDocFile] = useState<File | null>(null)
   const [showScrubbedPreview, setShowScrubbedPreview] = useState(true)
   const [previewHeight, setPreviewHeight] = useState(() => loadEditorPreference('previewHeight', 256))
@@ -1345,8 +1347,21 @@ Here are examples of actual replacements made in this ${docTypeShort}:
     const file = e.target.files?.[0]
     if (file) {
       try {
+        // Handle PCAP files specially - show PCAP anonymizer
+        const lowerName = file.name.toLowerCase()
+        if (lowerName.endsWith('.pcap') || lowerName.endsWith('.pcapng')) {
+          setPcapFile(file)
+          // Reset other state
+          setDocumentFile(null)
+          setDocumentType(null)
+          setPreviewPage(0)
+          setStripMetadataPreference(null)
+          setDocumentMetadata(null)
+          return
+        }
+
         // Handle ZIP files specially - extract all text files
-        if (file.name.toLowerCase().endsWith('.zip')) {
+        if (lowerName.endsWith('.zip')) {
           await ensureWasm()
           const arrayBuffer = await file.arrayBuffer()
           const data = new Uint8Array(arrayBuffer)
@@ -1357,6 +1372,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
           setPreviewPage(0)
           setStripMetadataPreference(null)
           setDocumentMetadata(null)
+          setPcapFile(null)
           return
         }
 
@@ -2102,7 +2118,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
               <input
                 type="file"
                 onChange={handleFileUpload}
-                accept=".log,.txt,.json,.xml,.csv,.zip,.gz,.gzip,.pdf,.xlsx,.docx,.odt,.ods,.gpx"
+                accept=".log,.txt,.json,.xml,.csv,.zip,.gz,.gzip,.pdf,.xlsx,.docx,.odt,.ods,.gpx,.pcap,.pcapng"
                 className="hidden"
               />
             </label>
@@ -2650,6 +2666,13 @@ Here are examples of actual replacements made in this ${docTypeShort}:
           onKeep={handleMetadataKeep}
           onRemove={handleMetadataRemove}
           onCancel={handleMetadataCancel}
+        />
+      )}
+
+      {pcapFile && (
+        <PcapPreview
+          file={pcapFile}
+          onClose={() => setPcapFile(null)}
         />
       )}
     </div>

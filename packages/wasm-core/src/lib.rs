@@ -1,4 +1,5 @@
 mod patterns;
+mod pcap;
 mod validators;
 
 use flate2::read::GzDecoder;
@@ -730,5 +731,74 @@ pub fn validate_syntax(text: &str, filename: Option<String>) -> String {
         "yaml" => validate_yaml(text),
         "toml" => validate_toml(text),
         _ => result_ok("unknown"),
+    }
+}
+
+// ============================================================================
+// PCAP Anonymization Functions
+// ============================================================================
+
+/// Anonymize a PCAP/PCAPNG file
+/// config_json: {"anonymize_ipv4": true, "anonymize_ipv6": true, "anonymize_mac": true, "preserve_private_ips": false}
+/// Returns JSON with base64-encoded data, stats, and mappings
+#[wasm_bindgen]
+pub fn anonymize_pcap(data: &[u8], config_json: &str) -> Result<String, JsValue> {
+    let config: pcap::PcapConfig = serde_json::from_str(config_json).unwrap_or_default();
+
+    match pcap::anonymize_pcap(data, config) {
+        Ok(result) => {
+            // Serialize result to JSON (data will be returned separately as bytes)
+            #[derive(Serialize)]
+            struct JsonResult {
+                stats: pcap::PcapStats,
+                mappings: pcap::PcapMappings,
+            }
+
+            let json_result = JsonResult {
+                stats: result.stats,
+                mappings: result.mappings,
+            };
+
+            serde_json::to_string(&json_result)
+                .map_err(|e| JsValue::from_str(&format!("Failed to serialize result: {}", e)))
+        }
+        Err(e) => Err(JsValue::from_str(&e)),
+    }
+}
+
+/// Anonymize a PCAP/PCAPNG file and return the anonymized bytes
+/// This is the function to call to get the actual anonymized PCAP data
+#[wasm_bindgen]
+pub fn anonymize_pcap_bytes(data: &[u8], config_json: &str) -> Result<Vec<u8>, JsValue> {
+    let config: pcap::PcapConfig = serde_json::from_str(config_json).unwrap_or_default();
+
+    match pcap::anonymize_pcap(data, config) {
+        Ok(result) => Ok(result.data),
+        Err(e) => Err(JsValue::from_str(&e)),
+    }
+}
+
+/// Analyze a PCAP file without modifying it - returns stats and what would be anonymized
+#[wasm_bindgen]
+pub fn analyze_pcap(data: &[u8], config_json: &str) -> Result<String, JsValue> {
+    let config: pcap::PcapConfig = serde_json::from_str(config_json).unwrap_or_default();
+
+    match pcap::anonymize_pcap(data, config) {
+        Ok(result) => {
+            #[derive(Serialize)]
+            struct AnalysisResult {
+                stats: pcap::PcapStats,
+                mappings: pcap::PcapMappings,
+            }
+
+            let analysis = AnalysisResult {
+                stats: result.stats,
+                mappings: result.mappings,
+            };
+
+            serde_json::to_string(&analysis)
+                .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e)))
+        }
+        Err(e) => Err(JsValue::from_str(&e)),
     }
 }

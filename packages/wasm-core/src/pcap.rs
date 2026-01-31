@@ -15,6 +15,9 @@ pub struct PcapStats {
     pub ipv4_replaced: usize,
     pub ipv6_replaced: usize,
     pub mac_replaced: usize,
+    pub ports_anonymized: usize,
+    pub payloads_truncated: usize,
+    pub timestamps_shifted: usize,
     pub errors: Vec<String>,
     // Filter breakdown
     pub filtered_by_port: usize,
@@ -36,6 +39,7 @@ pub struct PcapMappings {
     pub ipv4: HashMap<String, String>,
     pub ipv6: HashMap<String, String>,
     pub mac: HashMap<String, String>,
+    pub ports: HashMap<u16, u16>,
 }
 
 /// Port filter specification
@@ -316,6 +320,19 @@ pub struct PcapConfig {
     /// Packet filtering options
     #[serde(default)]
     pub filter: PacketFilter,
+    /// Anonymize port numbers
+    #[serde(default)]
+    pub anonymize_ports: bool,
+    /// Preserve well-known ports (0-1023) when anonymizing ports
+    #[serde(default = "default_true")]
+    pub preserve_well_known_ports: bool,
+    /// Shift all timestamps by this many seconds (can be negative)
+    #[serde(default)]
+    pub timestamp_shift_secs: i64,
+    /// Truncate packet payloads to this many bytes (0 = no truncation)
+    /// Keeps link layer + IP + transport headers, truncates application data
+    #[serde(default)]
+    pub payload_max_bytes: usize,
 }
 
 fn default_true() -> bool {
@@ -328,9 +345,11 @@ pub struct PcapAnonymizer {
     ipv4_map: HashMap<[u8; 4], [u8; 4]>,
     ipv6_map: HashMap<[u8; 16], [u8; 16]>,
     mac_map: HashMap<[u8; 6], [u8; 6]>,
+    port_map: HashMap<u16, u16>,
     ipv4_counter: u32,
     ipv6_counter: u128,
     mac_counter: u64,
+    port_counter: u16,
 }
 
 impl PcapAnonymizer {
@@ -340,10 +359,13 @@ impl PcapAnonymizer {
             ipv4_map: HashMap::new(),
             ipv6_map: HashMap::new(),
             mac_map: HashMap::new(),
+            port_map: HashMap::new(),
             // Start counters at 1 to avoid 0.0.0.0
             ipv4_counter: 1,
             ipv6_counter: 1,
             mac_counter: 1,
+            // Start port counter at 49152 (ephemeral port range)
+            port_counter: 49152,
         }
     }
 
@@ -484,10 +506,35 @@ impl PcapAnonymizer {
         })
     }
 
+    /// Get or create anonymized port number
+    /// Preserves well-known ports (0-1023) if configured
+    fn get_anon_port(&mut self, original: u16) -> u16 {
+        // Always preserve port 0
+        if original == 0 {
+            return 0;
+        }
+
+        // Preserve well-known ports if configured
+        if self.config.preserve_well_known_ports && original < 1024 {
+            return original;
+        }
+
+        *self.port_map.entry(original).or_insert_with(|| {
+            let n = self.port_counter;
+            self.port_counter = self.port_counter.wrapping_add(1);
+            // Wrap around in ephemeral range (49152-65535)
+            if self.port_counter < 49152 {
+                self.port_counter = 49152;
+            }
+            n
+        })
+    }
+
     /// Anonymize a single packet's data, returning modified data
     pub fn anonymize_packet(&mut self, data: &[u8], stats: &mut PcapStats) -> Vec<u8> {
         let mut modified = data.to_vec();
         let mut was_modified = false;
+        let mut needs_checksum_recalc = false;
 
         // Try to parse the packet
         match SlicedPacket::from_ethernet(&data) {
@@ -512,6 +559,9 @@ impl PcapAnonymizer {
                     }
                 }
 
+                let ip_offset = find_ip_offset(&data);
+                let is_ipv6 = matches!(&parsed.net, Some(NetSlice::Ipv6(_)));
+
                 // Anonymize IP addresses
                 match &parsed.net {
                     Some(NetSlice::Ipv4(ipv4)) => {
@@ -523,35 +573,18 @@ impl PcapAnonymizer {
                             let anon_src = self.get_anon_ipv4(src_ip);
                             let anon_dst = self.get_anon_ipv4(dst_ip);
 
-                            // Find IP header offset (after Ethernet header, possibly after VLAN tags)
-                            if let Some(ip_offset) = find_ip_offset(&data) {
-                                // IPv4 header: src at offset 12, dst at offset 16
+                            if let Some(ip_off) = ip_offset {
                                 if anon_src != src_ip {
-                                    modified[ip_offset + 12..ip_offset + 16]
-                                        .copy_from_slice(&anon_src);
+                                    modified[ip_off + 12..ip_off + 16].copy_from_slice(&anon_src);
                                     was_modified = true;
+                                    needs_checksum_recalc = true;
                                     stats.ipv4_replaced += 1;
                                 }
                                 if anon_dst != dst_ip {
-                                    modified[ip_offset + 16..ip_offset + 20]
-                                        .copy_from_slice(&anon_dst);
+                                    modified[ip_off + 16..ip_off + 20].copy_from_slice(&anon_dst);
                                     was_modified = true;
+                                    needs_checksum_recalc = true;
                                     stats.ipv4_replaced += 1;
-                                }
-
-                                // Recalculate IP header checksum
-                                if was_modified {
-                                    recalculate_ipv4_checksum(&mut modified, ip_offset);
-
-                                    // Recalculate transport checksum if TCP/UDP
-                                    if let Some(transport) = &parsed.transport {
-                                        recalculate_transport_checksum(
-                                            &mut modified,
-                                            ip_offset,
-                                            transport,
-                                            false,
-                                        );
-                                    }
                                 }
                             }
                         }
@@ -565,37 +598,143 @@ impl PcapAnonymizer {
                             let anon_src = self.get_anon_ipv6(src_ip);
                             let anon_dst = self.get_anon_ipv6(dst_ip);
 
-                            // Find IP header offset
-                            if let Some(ip_offset) = find_ip_offset(&data) {
-                                // IPv6 header: src at offset 8 (16 bytes), dst at offset 24 (16 bytes)
+                            if let Some(ip_off) = ip_offset {
                                 if anon_src != src_ip {
-                                    modified[ip_offset + 8..ip_offset + 24]
-                                        .copy_from_slice(&anon_src);
+                                    modified[ip_off + 8..ip_off + 24].copy_from_slice(&anon_src);
                                     was_modified = true;
+                                    needs_checksum_recalc = true;
                                     stats.ipv6_replaced += 1;
                                 }
                                 if anon_dst != dst_ip {
-                                    modified[ip_offset + 24..ip_offset + 40]
-                                        .copy_from_slice(&anon_dst);
+                                    modified[ip_off + 24..ip_off + 40].copy_from_slice(&anon_dst);
                                     was_modified = true;
+                                    needs_checksum_recalc = true;
                                     stats.ipv6_replaced += 1;
-                                }
-
-                                // Recalculate transport checksum for IPv6
-                                if was_modified {
-                                    if let Some(transport) = &parsed.transport {
-                                        recalculate_transport_checksum(
-                                            &mut modified,
-                                            ip_offset,
-                                            transport,
-                                            true,
-                                        );
-                                    }
                                 }
                             }
                         }
                     }
                     None => {}
+                }
+
+                // Anonymize ports
+                if self.config.anonymize_ports {
+                    if let (Some(ip_off), Some(transport)) = (ip_offset, &parsed.transport) {
+                        let transport_offset = if is_ipv6 {
+                            ip_off + 40
+                        } else {
+                            let ihl = (modified[ip_off] & 0x0f) as usize * 4;
+                            ip_off + ihl
+                        };
+
+                        match transport {
+                            TransportSlice::Tcp(tcp) => {
+                                let src_port = tcp.source_port();
+                                let dst_port = tcp.destination_port();
+                                let anon_src = self.get_anon_port(src_port);
+                                let anon_dst = self.get_anon_port(dst_port);
+
+                                if modified.len() >= transport_offset + 4 {
+                                    if anon_src != src_port {
+                                        modified[transport_offset..transport_offset + 2]
+                                            .copy_from_slice(&anon_src.to_be_bytes());
+                                        was_modified = true;
+                                        needs_checksum_recalc = true;
+                                        stats.ports_anonymized += 1;
+                                    }
+                                    if anon_dst != dst_port {
+                                        modified[transport_offset + 2..transport_offset + 4]
+                                            .copy_from_slice(&anon_dst.to_be_bytes());
+                                        was_modified = true;
+                                        needs_checksum_recalc = true;
+                                        stats.ports_anonymized += 1;
+                                    }
+                                }
+                            }
+                            TransportSlice::Udp(udp) => {
+                                let src_port = udp.source_port();
+                                let dst_port = udp.destination_port();
+                                let anon_src = self.get_anon_port(src_port);
+                                let anon_dst = self.get_anon_port(dst_port);
+
+                                if modified.len() >= transport_offset + 4 {
+                                    if anon_src != src_port {
+                                        modified[transport_offset..transport_offset + 2]
+                                            .copy_from_slice(&anon_src.to_be_bytes());
+                                        was_modified = true;
+                                        needs_checksum_recalc = true;
+                                        stats.ports_anonymized += 1;
+                                    }
+                                    if anon_dst != dst_port {
+                                        modified[transport_offset + 2..transport_offset + 4]
+                                            .copy_from_slice(&anon_dst.to_be_bytes());
+                                        was_modified = true;
+                                        needs_checksum_recalc = true;
+                                        stats.ports_anonymized += 1;
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                // Payload truncation
+                if self.config.payload_max_bytes > 0 {
+                    if let (Some(ip_off), Some(transport)) = (ip_offset, &parsed.transport) {
+                        let transport_offset = if is_ipv6 {
+                            ip_off + 40
+                        } else {
+                            let ihl = (modified[ip_off] & 0x0f) as usize * 4;
+                            ip_off + ihl
+                        };
+
+                        let transport_header_len = match transport {
+                            TransportSlice::Tcp(tcp) => tcp.data_offset() as usize * 4,
+                            TransportSlice::Udp(_) => 8,
+                            _ => 0,
+                        };
+
+                        let payload_start = transport_offset + transport_header_len;
+                        let max_len = payload_start + self.config.payload_max_bytes;
+
+                        if modified.len() > max_len {
+                            modified.truncate(max_len);
+                            was_modified = true;
+                            needs_checksum_recalc = true;
+                            stats.payloads_truncated += 1;
+
+                            // Update IP total length field
+                            if !is_ipv6 {
+                                let new_total_len = (modified.len() - ip_off) as u16;
+                                modified[ip_off + 2..ip_off + 4]
+                                    .copy_from_slice(&new_total_len.to_be_bytes());
+                            } else {
+                                let new_payload_len = (modified.len() - ip_off - 40) as u16;
+                                modified[ip_off + 4..ip_off + 6]
+                                    .copy_from_slice(&new_payload_len.to_be_bytes());
+                            }
+
+                            // Update UDP length if applicable
+                            if let TransportSlice::Udp(_) = transport {
+                                let new_udp_len = (modified.len() - transport_offset) as u16;
+                                modified[transport_offset + 4..transport_offset + 6]
+                                    .copy_from_slice(&new_udp_len.to_be_bytes());
+                            }
+                        }
+                    }
+                }
+
+                // Recalculate checksums if needed
+                if needs_checksum_recalc {
+                    if let Some(ip_off) = ip_offset {
+                        if !is_ipv6 {
+                            recalculate_ipv4_checksum(&mut modified, ip_off);
+                        }
+                        if let Some(transport) = &parsed.transport {
+                            recalculate_transport_checksum(&mut modified, ip_off, transport, is_ipv6);
+                        }
+                    }
                 }
             }
             Err(e) => {
@@ -757,6 +896,10 @@ impl PcapAnonymizer {
                 anon[0], anon[1], anon[2], anon[3], anon[4], anon[5]
             );
             mappings.mac.insert(orig_str, anon_str);
+        }
+
+        for (orig, anon) in &self.port_map {
+            mappings.ports.insert(*orig, *anon);
         }
 
         mappings
@@ -988,6 +1131,7 @@ pub fn anonymize_pcap_legacy(data: &[u8], config: PcapConfig) -> Result<PcapResu
     let mut reader = PcapReader::new(cursor).map_err(|e| format!("Failed to read PCAP: {}", e))?;
 
     let header = reader.header();
+    let timestamp_shift = config.timestamp_shift_secs;
     let mut anonymizer = PcapAnonymizer::new(config);
     let mut stats = PcapStats::default();
     let mut packets: Vec<PcapPacket<'static>> = Vec::new();
@@ -1011,8 +1155,20 @@ pub fn anonymize_pcap_legacy(data: &[u8], config: PcapConfig) -> Result<PcapResu
 
         let anon_data = anonymizer.anonymize_packet(&pkt.data, &mut stats);
 
+        // Apply timestamp shift
+        let new_timestamp = if timestamp_shift != 0 {
+            stats.timestamps_shifted += 1;
+            if timestamp_shift > 0 {
+                pkt.timestamp + Duration::from_secs(timestamp_shift as u64)
+            } else {
+                pkt.timestamp.saturating_sub(Duration::from_secs((-timestamp_shift) as u64))
+            }
+        } else {
+            pkt.timestamp
+        };
+
         packets.push(PcapPacket {
-            timestamp: pkt.timestamp,
+            timestamp: new_timestamp,
             orig_len: pkt.orig_len,
             data: anon_data.into(),
         });
@@ -1088,6 +1244,7 @@ pub fn anonymize_pcapng(data: &[u8], config: PcapConfig) -> Result<PcapResult, S
     }
 
     // Second pass: filter and anonymize packets
+    let timestamp_shift = config.timestamp_shift_secs;
     let mut anonymizer = PcapAnonymizer::new(config);
     let mut stats = PcapStats::default();
 
@@ -1108,9 +1265,22 @@ pub fn anonymize_pcapng(data: &[u8], config: PcapConfig) -> Result<PcapResult, S
             }
 
             let anon_data = anonymizer.anonymize_packet(&pkt.data, &mut stats);
+
+            // Apply timestamp shift
+            let new_timestamp = if timestamp_shift != 0 && pkt.is_enhanced {
+                stats.timestamps_shifted += 1;
+                if timestamp_shift > 0 {
+                    pkt.timestamp + Duration::from_secs(timestamp_shift as u64)
+                } else {
+                    pkt.timestamp.saturating_sub(Duration::from_secs((-timestamp_shift) as u64))
+                }
+            } else {
+                pkt.timestamp
+            };
+
             Some(StoredPacket {
                 interface_id: pkt.interface_id,
-                timestamp: pkt.timestamp,
+                timestamp: new_timestamp,
                 original_len: pkt.original_len,
                 data: anon_data,
                 is_enhanced: pkt.is_enhanced,

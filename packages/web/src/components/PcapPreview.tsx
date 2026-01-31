@@ -17,6 +17,9 @@ interface PcapStats {
   ipv4_replaced: number
   ipv6_replaced: number
   mac_replaced: number
+  ports_anonymized: number
+  payloads_truncated: number
+  timestamps_shifted: number
   filtered_by_port: number
   filtered_by_ip: number
   filtered_by_protocol: number
@@ -27,6 +30,7 @@ interface PcapMappings {
   ipv4: Record<string, string>
   ipv6: Record<string, string>
   mac: Record<string, string>
+  ports: Record<number, number>
 }
 
 interface PcapAnalysis {
@@ -93,6 +97,12 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
   const [anonymizeIpv4, setAnonymizeIpv4] = useState(true)
   const [anonymizeIpv6, setAnonymizeIpv6] = useState(true)
   const [anonymizeMac, setAnonymizeMac] = useState(true)
+  const [anonymizePorts, setAnonymizePorts] = useState(false)
+  const [preserveWellKnownPorts, setPreserveWellKnownPorts] = useState(true)
+
+  // Advanced options
+  const [timestampShift, setTimestampShift] = useState(0)
+  const [payloadMaxBytes, setPayloadMaxBytes] = useState(0)
 
   // Filter options
   const [filterPorts, setFilterPorts] = useState('')
@@ -165,9 +175,13 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       anonymize_ipv6: anonymizeIpv6,
       anonymize_mac: anonymizeMac,
       preserve_private_ips: preservePrivateIPs,
+      anonymize_ports: anonymizePorts,
+      preserve_well_known_ports: preserveWellKnownPorts,
+      timestamp_shift_secs: timestampShift,
+      payload_max_bytes: payloadMaxBytes,
       filter: buildFilterConfig()
     }
-  }, [anonymizeIpv4, anonymizeIpv6, anonymizeMac, preservePrivateIPs, buildFilterConfig])
+  }, [anonymizeIpv4, anonymizeIpv6, anonymizeMac, preservePrivateIPs, anonymizePorts, preserveWellKnownPorts, timestampShift, payloadMaxBytes, buildFilterConfig])
 
   // Load and analyze the file
   useEffect(() => {
@@ -263,6 +277,9 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       `IPv4 addresses replaced: ${analysis.stats.ipv4_replaced}`,
       `IPv6 addresses replaced: ${analysis.stats.ipv6_replaced}`,
       `MAC addresses replaced: ${analysis.stats.mac_replaced}`,
+      `Ports anonymized: ${analysis.stats.ports_anonymized}`,
+      `Payloads truncated: ${analysis.stats.payloads_truncated}`,
+      `Timestamps shifted: ${analysis.stats.timestamps_shifted}`,
       ``,
       `## IPv4 Mappings`,
       ...Object.entries(analysis.mappings.ipv4).map(([orig, anon]) => `${orig} -> ${anon}`),
@@ -272,6 +289,9 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       ``,
       `## MAC Mappings`,
       ...Object.entries(analysis.mappings.mac).map(([orig, anon]) => `${orig} -> ${anon}`),
+      ``,
+      `## Port Mappings`,
+      ...Object.entries(analysis.mappings.ports).map(([orig, anon]) => `${orig} -> ${anon}`),
     ].join('\n')
 
     const blob = new Blob([report], { type: 'text/plain' })
@@ -366,9 +386,9 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
               {/* Anonymization Tab */}
               {activeTab === 'anonymize' && (
                 <>
-                  {/* Options */}
+                  {/* Address Anonymization */}
                   <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Anonymization Options</h3>
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Address Anonymization</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -420,46 +440,145 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                     </div>
                   </div>
 
+                  {/* Port & Advanced Options */}
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Advanced Options</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Port Anonymization */}
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={anonymizePorts}
+                            onChange={(e) => {
+                              setAnonymizePorts(e.target.checked)
+                              setTimeout(reanalyze, 0)
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Anonymize Ports</span>
+                        </label>
+                        {anonymizePorts && (
+                          <label className="flex items-center gap-2 cursor-pointer ml-6">
+                            <input
+                              type="checkbox"
+                              checked={preserveWellKnownPorts}
+                              onChange={(e) => {
+                                setPreserveWellKnownPorts(e.target.checked)
+                                setTimeout(reanalyze, 0)
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-600 dark:text-gray-400">Preserve well-known ports (0-1023)</span>
+                          </label>
+                        )}
+                      </div>
+
+                      {/* Payload Truncation */}
+                      <div className="space-y-2">
+                        <label className="block text-sm text-gray-700 dark:text-gray-300">
+                          Truncate Payload (bytes)
+                        </label>
+                        <input
+                          type="number"
+                          value={payloadMaxBytes || ''}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0
+                            setPayloadMaxBytes(val)
+                          }}
+                          onBlur={() => setTimeout(reanalyze, 0)}
+                          placeholder="0 = no truncation"
+                          min={0}
+                          className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100"
+                        />
+                        <p className="text-xs text-gray-500">Keeps headers, truncates application data</p>
+                      </div>
+
+                      {/* Timestamp Shift */}
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="block text-sm text-gray-700 dark:text-gray-300">
+                          Timestamp Shift (seconds)
+                        </label>
+                        <input
+                          type="number"
+                          value={timestampShift || ''}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0
+                            setTimestampShift(val)
+                          }}
+                          onBlur={() => setTimeout(reanalyze, 0)}
+                          placeholder="0 = no shift"
+                          className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100"
+                        />
+                        <p className="text-xs text-gray-500">Shift all timestamps by N seconds (negative to shift earlier)</p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Statistics */}
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
                         {analysis.stats.packets_processed}
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Packets</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">Packets</div>
                     </div>
-                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-green-600 dark:text-green-400">
                         {analysis.stats.packets_modified}
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Modified</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">Modified</div>
                     </div>
                     {analysis.stats.packets_filtered > 0 && (
-                      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 text-center">
-                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-red-600 dark:text-red-400">
                           {analysis.stats.packets_filtered}
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Filtered</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Filtered</div>
                       </div>
                     )}
-                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
                         {analysis.stats.ipv4_replaced}
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">IPv4</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">IPv4</div>
                     </div>
-                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
                         {analysis.stats.ipv6_replaced}
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">IPv6</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">IPv6</div>
                     </div>
-                    <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
+                    <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-pink-600 dark:text-pink-400">
                         {analysis.stats.mac_replaced}
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">MAC</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">MAC</div>
                     </div>
+                    {analysis.stats.ports_anonymized > 0 && (
+                      <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-cyan-600 dark:text-cyan-400">
+                          {analysis.stats.ports_anonymized}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Ports</div>
+                      </div>
+                    )}
+                    {analysis.stats.payloads_truncated > 0 && (
+                      <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                          {analysis.stats.payloads_truncated}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Truncated</div>
+                      </div>
+                    )}
+                    {analysis.stats.timestamps_shifted > 0 && (
+                      <div className="bg-teal-50 dark:bg-teal-900/20 rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-teal-600 dark:text-teal-400">
+                          {analysis.stats.timestamps_shifted}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Time Shifted</div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Errors */}
@@ -480,23 +599,23 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                   )}
 
                   {/* Mappings */}
-                  <div className="grid md:grid-cols-3 gap-4">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* IPv4 */}
                     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                       <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        IPv4 Mappings ({Object.keys(analysis.mappings.ipv4).length})
+                        IPv4 ({Object.keys(analysis.mappings.ipv4).length})
                       </div>
-                      <div className="max-h-48 overflow-auto">
+                      <div className="max-h-40 overflow-auto">
                         {Object.keys(analysis.mappings.ipv4).length === 0 ? (
-                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">No IPv4 addresses found</div>
+                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">None</div>
                         ) : (
                           <table className="w-full text-xs">
                             <tbody>
                               {Object.entries(analysis.mappings.ipv4).map(([orig, anon]) => (
                                 <tr key={orig} className="border-t border-gray-100 dark:border-gray-700">
-                                  <td className="px-3 py-1 font-mono text-red-600 dark:text-red-400">{orig}</td>
-                                  <td className="px-1 text-gray-400">-&gt;</td>
-                                  <td className="px-3 py-1 font-mono text-green-600 dark:text-green-400">{anon}</td>
+                                  <td className="px-2 py-1 font-mono text-red-600 dark:text-red-400">{orig}</td>
+                                  <td className="text-gray-400">→</td>
+                                  <td className="px-2 py-1 font-mono text-green-600 dark:text-green-400">{anon}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -508,19 +627,19 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                     {/* IPv6 */}
                     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                       <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        IPv6 Mappings ({Object.keys(analysis.mappings.ipv6).length})
+                        IPv6 ({Object.keys(analysis.mappings.ipv6).length})
                       </div>
-                      <div className="max-h-48 overflow-auto">
+                      <div className="max-h-40 overflow-auto">
                         {Object.keys(analysis.mappings.ipv6).length === 0 ? (
-                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">No IPv6 addresses found</div>
+                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">None</div>
                         ) : (
                           <table className="w-full text-xs">
                             <tbody>
                               {Object.entries(analysis.mappings.ipv6).map(([orig, anon]) => (
                                 <tr key={orig} className="border-t border-gray-100 dark:border-gray-700">
-                                  <td className="px-3 py-1 font-mono text-red-600 dark:text-red-400 break-all">{orig}</td>
-                                  <td className="px-1 text-gray-400">-&gt;</td>
-                                  <td className="px-3 py-1 font-mono text-green-600 dark:text-green-400 break-all">{anon}</td>
+                                  <td className="px-2 py-1 font-mono text-red-600 dark:text-red-400 break-all">{orig}</td>
+                                  <td className="text-gray-400">→</td>
+                                  <td className="px-2 py-1 font-mono text-green-600 dark:text-green-400 break-all">{anon}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -532,19 +651,43 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                     {/* MAC */}
                     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                       <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        MAC Mappings ({Object.keys(analysis.mappings.mac).length})
+                        MAC ({Object.keys(analysis.mappings.mac).length})
                       </div>
-                      <div className="max-h-48 overflow-auto">
+                      <div className="max-h-40 overflow-auto">
                         {Object.keys(analysis.mappings.mac).length === 0 ? (
-                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">No MAC addresses found</div>
+                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">None</div>
                         ) : (
                           <table className="w-full text-xs">
                             <tbody>
                               {Object.entries(analysis.mappings.mac).map(([orig, anon]) => (
                                 <tr key={orig} className="border-t border-gray-100 dark:border-gray-700">
-                                  <td className="px-3 py-1 font-mono text-red-600 dark:text-red-400">{orig}</td>
-                                  <td className="px-1 text-gray-400">-&gt;</td>
-                                  <td className="px-3 py-1 font-mono text-green-600 dark:text-green-400">{anon}</td>
+                                  <td className="px-2 py-1 font-mono text-red-600 dark:text-red-400">{orig}</td>
+                                  <td className="text-gray-400">→</td>
+                                  <td className="px-2 py-1 font-mono text-green-600 dark:text-green-400">{anon}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Ports */}
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                      <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Ports ({Object.keys(analysis.mappings.ports).length})
+                      </div>
+                      <div className="max-h-40 overflow-auto">
+                        {Object.keys(analysis.mappings.ports).length === 0 ? (
+                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 italic">None</div>
+                        ) : (
+                          <table className="w-full text-xs">
+                            <tbody>
+                              {Object.entries(analysis.mappings.ports).map(([orig, anon]) => (
+                                <tr key={orig} className="border-t border-gray-100 dark:border-gray-700">
+                                  <td className="px-2 py-1 font-mono text-red-600 dark:text-red-400">{orig}</td>
+                                  <td className="text-gray-400">→</td>
+                                  <td className="px-2 py-1 font-mono text-green-600 dark:text-green-400">{anon}</td>
                                 </tr>
                               ))}
                             </tbody>

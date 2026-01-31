@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV Anonymizer - Sanitize Tabular Data | LogScrub</title>
+  <meta name="description" content="Free CSV anonymization tool for database exports, analytics data, and spreadsheets. Remove PII from columns containing emails, phone numbers, addresses. Browser-based, no upload.">
+  <meta name="keywords" content="CSV anonymizer, CSV PII removal, tabular data sanitizer, database export cleaner, spreadsheet anonymizer, data masking, CSV redaction tool">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      code, pre { background: #2d2d44; }
+      .example { background: #252540; border-color: #3d3d5c; }
+      .feature-box { background: #252540; }
+      .screenshot-placeholder { background: #3d3d5c; }
+      table { border-color: #3d3d5c; }
+      th { background: #252540; }
+    }
+    h1 { margin-bottom: 0.5rem; color: #667eea; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    @media (prefers-color-scheme: dark) { .subtitle { color: #aaa; } }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+
+    h2 { margin-top: 2.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+    h3 { color: #667eea; margin-top: 2rem; }
+
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .example {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+    .example-header {
+      background: #667eea;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .example-content {
+      padding: 1rem;
+      overflow-x: auto;
+    }
+    .example table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .example th, .example td {
+      border: 1px solid #ddd;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    .example th {
+      background: #f8f9fa;
+      font-weight: 600;
+    }
+    .redacted {
+      background: #dcfce7;
+      color: #166534;
+    }
+    @media (prefers-color-scheme: dark) {
+      .example th, .example td { border-color: #3d3d5c; }
+      .example th { background: #2d2d44; }
+      .redacted { background: #14532d; color: #86efac; }
+    }
+
+    .feature-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .screenshot-placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 3rem;
+      text-align: center;
+      color: #888;
+      margin: 1.5rem 0;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    @media (prefers-color-scheme: dark) { .cta { background: #252540; } }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 600px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <a href="logscrub-features.html" class="back">&larr; Back to Features</a>
+
+  <h1>📊 CSV Anonymizer</h1>
+  <p class="subtitle">Sanitize tabular data with smart PII detection</p>
+
+  <p>LogScrub processes CSV files with the same powerful pattern matching used for log files. It automatically detects and anonymizes PII in any column—emails, phone numbers, addresses, and more—while preserving the structure of your data.</p>
+
+  <div class="screenshot-placeholder">
+    📸 Screenshot placeholder: CSV file in editor with highlighted PII matches
+  </div>
+
+  <h2>Before &amp; After Examples</h2>
+
+  <h3>Customer Database Export</h3>
+  <div class="example">
+    <div class="example-header">Before Anonymization</div>
+    <div class="example-content">
+      <table>
+        <tr>
+          <th>id</th>
+          <th>name</th>
+          <th>email</th>
+          <th>phone</th>
+          <th>ip_address</th>
+        </tr>
+        <tr>
+          <td>1</td>
+          <td>John Smith</td>
+          <td>john.smith@email.com</td>
+          <td>+1 (555) 123-4567</td>
+          <td>192.168.1.100</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Jane Doe</td>
+          <td>jane.doe@company.org</td>
+          <td>+1 (555) 987-6543</td>
+          <td>10.0.0.55</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Bob Wilson</td>
+          <td>bob.w@example.net</td>
+          <td>+44 20 7123 4567</td>
+          <td>172.16.0.10</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="example">
+    <div class="example-header">After Anonymization</div>
+    <div class="example-content">
+      <table>
+        <tr>
+          <th>id</th>
+          <th>name</th>
+          <th>email</th>
+          <th>phone</th>
+          <th>ip_address</th>
+        </tr>
+        <tr>
+          <td>1</td>
+          <td class="redacted">[NAME-1]</td>
+          <td class="redacted">[EMAIL-1]</td>
+          <td class="redacted">[PHONE-1]</td>
+          <td class="redacted">[IP-1]</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td class="redacted">[NAME-2]</td>
+          <td class="redacted">[EMAIL-2]</td>
+          <td class="redacted">[PHONE-2]</td>
+          <td class="redacted">[IP-2]</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td class="redacted">[NAME-3]</td>
+          <td class="redacted">[EMAIL-3]</td>
+          <td class="redacted">[PHONE-3]</td>
+          <td class="redacted">[IP-3]</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <h3>Transaction Log</h3>
+  <div class="example">
+    <div class="example-header">Financial Data Anonymization</div>
+    <div class="example-content">
+      <div class="two-col">
+        <div>
+          <strong>Before:</strong>
+          <pre style="margin-top:0.5rem">date,card_number,amount,merchant
+2024-01-15,4111-1111-1111-1111,99.99,Amazon
+2024-01-15,5500-0000-0000-0004,45.50,Starbucks</pre>
+        </div>
+        <div>
+          <strong>After:</strong>
+          <pre style="margin-top:0.5rem">date,card_number,amount,merchant
+2024-01-15,[CC-1],99.99,Amazon
+2024-01-15,[CC-2],45.50,Starbucks</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Commonly Detected PII in CSV Files</h2>
+
+  <div class="feature-box">
+    <div class="two-col">
+      <ul style="margin:0">
+        <li>Email addresses</li>
+        <li>Phone numbers (all formats)</li>
+        <li>Social Security Numbers</li>
+        <li>Credit card numbers</li>
+        <li>IP addresses (IPv4 &amp; IPv6)</li>
+        <li>Street addresses</li>
+      </ul>
+      <ul style="margin:0">
+        <li>Names (when detectable)</li>
+        <li>Account numbers</li>
+        <li>Driver's license numbers</li>
+        <li>Passport numbers</li>
+        <li>API keys and tokens</li>
+        <li>Custom identifiers</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Key Features</h2>
+
+  <h3>Consistency Mode</h3>
+  <p>When the same email appears in multiple rows, it gets the same replacement every time. This preserves relationships in your data—if <code>john@example.com</code> becomes <code>[EMAIL-1]</code>, you can still see all rows belonging to that user.</p>
+
+  <div class="example">
+    <div class="example-header">Consistent Replacements Across Rows</div>
+    <div class="example-content">
+      <div class="two-col">
+        <div>
+          <strong>Before:</strong>
+          <pre style="margin-top:0.5rem">user_email,action
+john@corp.com,login
+jane@corp.com,view
+john@corp.com,purchase
+john@corp.com,logout</pre>
+        </div>
+        <div>
+          <strong>After:</strong>
+          <pre style="margin-top:0.5rem">user_email,action
+[EMAIL-1],login
+[EMAIL-2],view
+[EMAIL-1],purchase
+[EMAIL-1],logout</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Syntax Validation</h3>
+  <p>LogScrub validates your CSV structure and warns about common issues:</p>
+  <ul>
+    <li>Inconsistent column counts between rows</li>
+    <li>Unclosed quoted fields</li>
+    <li>Invalid escape sequences</li>
+  </ul>
+
+  <h3>Large File Support</h3>
+  <p>Process large CSV exports with virtual scrolling—only visible rows are rendered, keeping the interface responsive even with millions of rows.</p>
+
+  <h2>Use Cases</h2>
+
+  <ul>
+    <li><strong>Database exports</strong> — Sanitize customer tables before sharing with vendors</li>
+    <li><strong>Analytics data</strong> — Remove user identifiers from behavioral data</li>
+    <li><strong>Log aggregation</strong> — Clean up CSV exports from logging systems</li>
+    <li><strong>Testing data</strong> — Create anonymized datasets for QA environments</li>
+    <li><strong>Compliance reports</strong> — Redact PII before external audits</li>
+  </ul>
+
+  <h2>Output Options</h2>
+
+  <ul>
+    <li><strong>Download sanitized CSV</strong> — Get the anonymized file</li>
+    <li><strong>Copy to clipboard</strong> — Quick paste into other applications</li>
+    <li><strong>Export mapping</strong> — Download original→replacement dictionary</li>
+  </ul>
+
+  <div class="cta">
+    <h3>Ready to anonymize your CSV data?</h3>
+    <p>Drop your CSV file into LogScrub to get started.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

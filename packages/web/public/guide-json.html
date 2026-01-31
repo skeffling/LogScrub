@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON Anonymizer - Context-Aware Secret Detection | LogScrub</title>
+  <meta name="description" content="Free JSON anonymization tool with context-aware secret detection. Finds passwords, tokens, and API keys by key names. Supports NDJSON and JSON Lines. Browser-based, no upload.">
+  <meta name="keywords" content="JSON anonymizer, JSON PII removal, NDJSON sanitizer, JSON Lines scrubber, API key detection, password redaction, token removal, JSON secret detection">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      code, pre { background: #2d2d44; }
+      .example { background: #252540; border-color: #3d3d5c; }
+      .feature-box { background: #252540; }
+      .screenshot-placeholder { background: #3d3d5c; }
+    }
+    h1 { margin-bottom: 0.5rem; color: #667eea; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    @media (prefers-color-scheme: dark) { .subtitle { color: #aaa; } }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+
+    h2 { margin-top: 2.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+    h3 { color: #667eea; margin-top: 2rem; }
+
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .example {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+    .example-header {
+      background: #667eea;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .example-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    @media (max-width: 600px) {
+      .example-content { grid-template-columns: 1fr; }
+    }
+    .example-before, .example-after {
+      padding: 1rem;
+    }
+    .example-before {
+      border-right: 1px solid #e0e0e0;
+      background: #fff5f5;
+    }
+    .example-after {
+      background: #f0fff4;
+    }
+    @media (prefers-color-scheme: dark) {
+      .example-before { background: #2d2020; border-color: #3d3d5c; }
+      .example-after { background: #1a2d1a; }
+    }
+    .example-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #888;
+    }
+    .example pre { margin: 0; background: transparent; padding: 0; }
+
+    .feature-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .screenshot-placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 3rem;
+      text-align: center;
+      color: #888;
+      margin: 1.5rem 0;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    @media (prefers-color-scheme: dark) { .cta { background: #252540; } }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .key-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+    .key-list code {
+      display: block;
+      text-align: center;
+    }
+
+    .highlight { background: #fef3c7; padding: 0.1rem 0.3rem; border-radius: 2px; }
+    @media (prefers-color-scheme: dark) { .highlight { background: #78350f; } }
+  </style>
+</head>
+<body>
+  <a href="logscrub-features.html" class="back">&larr; Back to Features</a>
+
+  <h1>{ } JSON Anonymizer</h1>
+  <p class="subtitle">Context-aware secret detection for JSON-structured data</p>
+
+  <p>LogScrub's JSON anonymizer goes beyond simple pattern matching. It understands JSON structure and detects sensitive values based on their key names—finding passwords, tokens, and secrets that pattern matching alone would miss.</p>
+
+  <div class="screenshot-placeholder">
+    📸 Screenshot placeholder: Context-Aware suggestions panel showing detected secrets
+  </div>
+
+  <h2>How Context-Aware Detection Works</h2>
+
+  <p>Traditional PII detection looks for patterns like <code>sk_live_...</code> or email formats. Context-aware detection finds sensitive values by their <strong>key names</strong>:</p>
+
+  <div class="example">
+    <div class="example-header">Detection by Key Name</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Original JSON</div>
+        <pre>{
+  "user": "admin",
+  "password": "myS3cretP@ss",
+  "api_token": "abc123xyz",
+  "session_id": "sess_789"
+}</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">Detected Secrets</div>
+        <pre>✓ password → "myS3cretP@ss"
+  (High confidence: key contains "password")
+
+✓ api_token → "abc123xyz"
+  (High confidence: key contains "token")
+
+✓ session_id → "sess_789"
+  (Medium confidence: key contains "session")</pre>
+      </div>
+    </div>
+  </div>
+
+  <h2>Suspicious Key Names</h2>
+
+  <p>LogScrub detects values associated with these key patterns:</p>
+
+  <div class="key-list">
+    <code>password</code>
+    <code>passwd</code>
+    <code>secret</code>
+    <code>token</code>
+    <code>api_key</code>
+    <code>apikey</code>
+    <code>access_key</code>
+    <code>auth</code>
+    <code>credential</code>
+    <code>private_key</code>
+    <code>session</code>
+    <code>cookie</code>
+    <code>bearer</code>
+    <code>jwt</code>
+    <code>oauth</code>
+    <code>ssn</code>
+    <code>credit_card</code>
+    <code>cvv</code>
+  </div>
+
+  <h2>Before &amp; After Examples</h2>
+
+  <h3>API Configuration</h3>
+  <div class="example">
+    <div class="example-header">Config File with Credentials</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>{
+  "database": {
+    "host": "db.internal.corp",
+    "user": "app_user",
+    "password": "Pr0dP@ssw0rd!"
+  },
+  "stripe": {
+    "api_key": "sk_live_4eC39HqLyjW",
+    "webhook_secret": "whsec_abc123"
+  }
+}</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>{
+  "database": {
+    "host": "[HOST-1]",
+    "user": "[USER-1]",
+    "password": "[REDACTED]"
+  },
+  "stripe": {
+    "api_key": "[API-KEY-1]",
+    "webhook_secret": "[REDACTED]"
+  }
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Structured Log Entry (NDJSON)</h3>
+  <div class="example">
+    <div class="example-header">JSON Lines Log Format</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>{"ts":"2024-01-15T10:30:00Z","level":"info","user_email":"john@corp.com","action":"login","ip":"192.168.1.50"}
+{"ts":"2024-01-15T10:30:05Z","level":"debug","auth_token":"eyJhbGc...","refresh_token":"rt_abc123"}</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>{"ts":"2024-01-15T10:30:00Z","level":"info","user_email":"[EMAIL-1]","action":"login","ip":"[IP-1]"}
+{"ts":"2024-01-15T10:30:05Z","level":"debug","auth_token":"[JWT-1]","refresh_token":"[REDACTED]"}</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Nested Objects</h3>
+  <div class="example">
+    <div class="example-header">Deeply Nested Secrets</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>{
+  "config": {
+    "services": {
+      "payment": {
+        "credentials": {
+          "client_secret": "cs_abc123"
+        }
+      }
+    }
+  }
+}</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>{
+  "config": {
+    "services": {
+      "payment": {
+        "credentials": {
+          "client_secret": "[REDACTED]"
+        }
+      }
+    }
+  }
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <h2>Supported Formats</h2>
+
+  <div class="feature-box">
+    <h3 style="margin-top:0">Pure JSON</h3>
+    <p>Standard JSON files with objects, arrays, and nested structures.</p>
+    <pre>{"user": "john", "password": "secret123"}</pre>
+
+    <h3>NDJSON / JSON Lines</h3>
+    <p>Newline-delimited JSON, common in log aggregation systems.</p>
+    <pre>{"event": "login", "user": "alice"}
+{"event": "logout", "user": "alice"}</pre>
+
+    <h3>Embedded JSON in Logs</h3>
+    <p>Log lines that contain JSON payloads mixed with text.</p>
+    <pre>2024-01-15 INFO Request received: {"user_id": 123, "api_key": "abc"}</pre>
+  </div>
+
+  <h2>Confidence Levels</h2>
+
+  <p>Context-aware findings are ranked by confidence:</p>
+
+  <ul>
+    <li><strong>High</strong> — Key name directly matches sensitive patterns (e.g., <code>password</code>, <code>api_key</code>)</li>
+    <li><strong>Medium</strong> — Key name partially matches or contains sensitive terms (e.g., <code>user_session_id</code>)</li>
+    <li><strong>Low</strong> — Value looks suspicious but key name is generic (e.g., long random strings)</li>
+  </ul>
+
+  <h2>Syntax Validation</h2>
+
+  <p>LogScrub validates your JSON syntax and shows errors with clickable line numbers:</p>
+
+  <pre style="color: #dc2626;">
+✗ JSON Syntax Error at line 5, column 12:
+  Expected ':' but found '}'
+
+  Click to jump to error location
+</pre>
+
+  <p>Valid JSON shows a green checkmark indicator.</p>
+
+  <div class="cta">
+    <h3>Ready to sanitize your JSON?</h3>
+    <p>Drop your JSON file into LogScrub to detect and remove secrets.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

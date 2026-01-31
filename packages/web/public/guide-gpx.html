@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPX Anonymizer - Remove Location Data from GPS Tracks | LogScrub</title>
+  <meta name="description" content="Free GPX anonymization tool. Remove or shift GPS coordinates from track files. Protect privacy in fitness activities, travel logs, and location data. Browser-based, no upload.">
+  <meta name="keywords" content="GPX anonymizer, GPS track privacy, location data removal, Strava anonymizer, fitness track scrubber, GPS coordinate shift, waypoint removal, GPX privacy tool">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      code, pre { background: #2d2d44; }
+      .example { background: #252540; border-color: #3d3d5c; }
+      .feature-box { background: #252540; }
+      .screenshot-placeholder { background: #3d3d5c; }
+      .warning { background: #78350f; border-color: #d97706; }
+    }
+    h1 { margin-bottom: 0.5rem; color: #667eea; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    @media (prefers-color-scheme: dark) { .subtitle { color: #aaa; } }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+
+    h2 { margin-top: 2.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+    h3 { color: #667eea; margin-top: 2rem; }
+
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .example {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+    .example-header {
+      background: #667eea;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .example-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    @media (max-width: 600px) {
+      .example-content { grid-template-columns: 1fr; }
+    }
+    .example-before, .example-after {
+      padding: 1rem;
+    }
+    .example-before {
+      border-right: 1px solid #e0e0e0;
+      background: #fff5f5;
+    }
+    .example-after {
+      background: #f0fff4;
+    }
+    @media (prefers-color-scheme: dark) {
+      .example-before { background: #2d2020; border-color: #3d3d5c; }
+      .example-after { background: #1a2d1a; }
+    }
+    .example-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #888;
+    }
+    .example pre { margin: 0; background: transparent; padding: 0; }
+
+    .feature-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .screenshot-placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 3rem;
+      text-align: center;
+      color: #888;
+      margin: 1.5rem 0;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    @media (prefers-color-scheme: dark) { .cta { background: #252540; } }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .warning {
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1.5rem 0;
+    }
+    .warning-title {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .method-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .method-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+    @media (prefers-color-scheme: dark) {
+      .method-card { border-color: #3d3d5c; background: #252540; }
+    }
+    .method-card h4 {
+      margin: 0 0 0.5rem;
+      color: #667eea;
+    }
+    .method-card p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: #666;
+    }
+    @media (prefers-color-scheme: dark) {
+      .method-card p { color: #aaa; }
+    }
+  </style>
+</head>
+<body>
+  <a href="logscrub-features.html" class="back">&larr; Back to Features</a>
+
+  <h1>🗺️ GPX Anonymizer</h1>
+  <p class="subtitle">Protect your location privacy in GPS track files</p>
+
+  <p>GPX files from fitness apps, GPS devices, and mapping software contain precise location data that can reveal where you live, work, and travel. LogScrub helps you anonymize this sensitive data before sharing routes, activities, or location logs.</p>
+
+  <div class="screenshot-placeholder">
+    📸 Screenshot placeholder: GPX file with coordinate anonymization options
+  </div>
+
+  <div class="warning">
+    <div class="warning-title">🔒 Why GPS Privacy Matters</div>
+    <p style="margin:0">GPS tracks can reveal your home address (where runs start/end), workplace location, daily routines, and travel patterns. Even "public" activity sharing can expose sensitive location data.</p>
+  </div>
+
+  <h2>Anonymization Methods</h2>
+
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>📍 Coordinate Shifting</h4>
+      <p>Offset all coordinates by a random amount. The track shape is preserved but moved to a different location.</p>
+    </div>
+    <div class="method-card">
+      <h4>🎯 Precision Reduction</h4>
+      <p>Reduce GPS decimal precision. Full precision (6 decimals) = ~10cm accuracy. Reduced (3 decimals) = ~100m accuracy.</p>
+    </div>
+    <div class="method-card">
+      <h4>✂️ Start/End Trimming</h4>
+      <p>Remove the first and last N points to hide where the activity started and ended (typically home/work).</p>
+    </div>
+    <div class="method-card">
+      <h4>🗑️ Waypoint Removal</h4>
+      <p>Remove named waypoints that may contain location names, addresses, or personal annotations.</p>
+    </div>
+  </div>
+
+  <h2>Before &amp; After Examples</h2>
+
+  <h3>Coordinate Shifting</h3>
+  <p>All coordinates are offset by the same amount, preserving the track shape but relocating it.</p>
+
+  <div class="example">
+    <div class="example-header">GPS Track Points (Shifted +0.1°)</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>&lt;trkpt lat="37.7749" lon="-122.4194"&gt;
+  &lt;ele&gt;10&lt;/ele&gt;
+  &lt;time&gt;2024-01-15T08:00:00Z&lt;/time&gt;
+&lt;/trkpt&gt;
+&lt;trkpt lat="37.7751" lon="-122.4180"&gt;
+  &lt;ele&gt;12&lt;/ele&gt;
+  &lt;time&gt;2024-01-15T08:01:00Z&lt;/time&gt;
+&lt;/trkpt&gt;</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>&lt;trkpt lat="37.8749" lon="-122.3194"&gt;
+  &lt;ele&gt;10&lt;/ele&gt;
+  &lt;time&gt;2024-01-15T08:00:00Z&lt;/time&gt;
+&lt;/trkpt&gt;
+&lt;trkpt lat="37.8751" lon="-122.3180"&gt;
+  &lt;ele&gt;12&lt;/ele&gt;
+  &lt;time&gt;2024-01-15T08:01:00Z&lt;/time&gt;
+&lt;/trkpt&gt;</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Precision Reduction</h3>
+  <p>Reducing decimal places makes it harder to pinpoint exact locations.</p>
+
+  <div class="example">
+    <div class="example-header">Coordinate Precision (6 → 3 decimals)</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before (±10cm accuracy)</div>
+        <pre>lat="37.774929" lon="-122.419416"
+lat="37.775103" lon="-122.418892"</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After (±100m accuracy)</div>
+        <pre>lat="37.775" lon="-122.419"
+lat="37.775" lon="-122.419"</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Named Waypoint Removal</h3>
+  <div class="example">
+    <div class="example-header">Waypoints with Personal Information</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>&lt;wpt lat="37.7749" lon="-122.4194"&gt;
+  &lt;name&gt;Home - 123 Main Street&lt;/name&gt;
+  &lt;desc&gt;My apartment&lt;/desc&gt;
+&lt;/wpt&gt;
+&lt;wpt lat="37.7899" lon="-122.4004"&gt;
+  &lt;name&gt;Work - ACME Corp Office&lt;/name&gt;
+&lt;/wpt&gt;</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>&lt;!-- Waypoints removed --&gt;
+
+
+</pre>
+      </div>
+    </div>
+  </div>
+
+  <h2>What Gets Detected</h2>
+
+  <div class="feature-box">
+    <ul style="margin:0">
+      <li><strong>Track coordinates</strong> — Latitude/longitude in <code>&lt;trkpt&gt;</code> elements</li>
+      <li><strong>Waypoints</strong> — Named locations in <code>&lt;wpt&gt;</code> elements</li>
+      <li><strong>Route points</strong> — Planned routes in <code>&lt;rtept&gt;</code> elements</li>
+      <li><strong>Metadata</strong> — Creator name, device info, activity names</li>
+      <li><strong>Timestamps</strong> — Date/time information (can reveal schedules)</li>
+      <li><strong>Embedded text</strong> — Descriptions, comments, annotations</li>
+    </ul>
+  </div>
+
+  <h2>Text Content Anonymization</h2>
+
+  <p>GPX files often contain text that reveals personal information:</p>
+
+  <div class="example">
+    <div class="example-header">Metadata and Descriptions</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>&lt;metadata&gt;
+  &lt;name&gt;Morning run from home&lt;/name&gt;
+  &lt;author&gt;
+    &lt;name&gt;John Smith&lt;/name&gt;
+    &lt;email&gt;john@email.com&lt;/email&gt;
+  &lt;/author&gt;
+  &lt;desc&gt;5K loop around Oak Park&lt;/desc&gt;
+&lt;/metadata&gt;</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>&lt;metadata&gt;
+  &lt;name&gt;Morning run from home&lt;/name&gt;
+  &lt;author&gt;
+    &lt;name&gt;[NAME-1]&lt;/name&gt;
+    &lt;email&gt;[EMAIL-1]&lt;/email&gt;
+  &lt;/author&gt;
+  &lt;desc&gt;5K loop around Oak Park&lt;/desc&gt;
+&lt;/metadata&gt;</pre>
+      </div>
+    </div>
+  </div>
+
+  <h2>Use Cases</h2>
+
+  <ul>
+    <li><strong>Sharing fitness activities</strong> — Post runs/rides without revealing home location</li>
+    <li><strong>Route sharing</strong> — Share hiking trails without exposing parking spots</li>
+    <li><strong>Bug reports</strong> — Report GPS issues without disclosing location</li>
+    <li><strong>Public datasets</strong> — Contribute to mapping projects anonymously</li>
+    <li><strong>Travel blogging</strong> — Share adventures without revealing exact campsites</li>
+  </ul>
+
+  <h2>Compatible Sources</h2>
+
+  <p>GPX files from any source can be processed:</p>
+
+  <ul>
+    <li>Strava, Garmin Connect, Wahoo, Komoot</li>
+    <li>Fitness watches and bike computers</li>
+    <li>Smartphone GPS apps</li>
+    <li>Car GPS devices</li>
+    <li>Mapping applications (Google Earth, AllTrails)</li>
+  </ul>
+
+  <h2>Output</h2>
+
+  <ul>
+    <li><strong>Download anonymized GPX</strong> — Valid GPX file with coordinates/data modified</li>
+    <li><strong>Export as text</strong> — Plain text version of track data</li>
+  </ul>
+
+  <div class="cta">
+    <h3>Ready to protect your location privacy?</h3>
+    <p>Drop your GPX file into LogScrub to anonymize your GPS tracks.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

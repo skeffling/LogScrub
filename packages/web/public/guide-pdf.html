@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Anonymizer - Remove PII from PDF Documents | LogScrub</title>
+  <meta name="description" content="Free PDF anonymization tool. Extract and redact PII from PDF documents including emails, phone numbers, addresses, and sensitive data. Browser-based, no upload required.">
+  <meta name="keywords" content="PDF anonymizer, PDF PII removal, PDF redaction tool, PDF sanitizer, document anonymization, PDF text extraction, PDF privacy tool">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      code, pre { background: #2d2d44; }
+      .example { background: #252540; border-color: #3d3d5c; }
+      .feature-box { background: #252540; }
+      .screenshot-placeholder { background: #3d3d5c; }
+      .note { background: #2d2d44; border-color: #3d3d5c; }
+    }
+    h1 { margin-bottom: 0.5rem; color: #667eea; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    @media (prefers-color-scheme: dark) { .subtitle { color: #aaa; } }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+
+    h2 { margin-top: 2.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+    h3 { color: #667eea; margin-top: 2rem; }
+
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .example {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+    .example-header {
+      background: #667eea;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .example-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    @media (max-width: 600px) {
+      .example-content { grid-template-columns: 1fr; }
+    }
+    .example-before, .example-after {
+      padding: 1rem;
+    }
+    .example-before {
+      border-right: 1px solid #e0e0e0;
+      background: #fff5f5;
+    }
+    .example-after {
+      background: #f0fff4;
+    }
+    @media (prefers-color-scheme: dark) {
+      .example-before { background: #2d2020; border-color: #3d3d5c; }
+      .example-after { background: #1a2d1a; }
+    }
+    .example-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #888;
+    }
+    .example pre { margin: 0; background: transparent; padding: 0; }
+
+    .feature-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .screenshot-placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 3rem;
+      text-align: center;
+      color: #888;
+      margin: 1.5rem 0;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    @media (prefers-color-scheme: dark) { .cta { background: #252540; } }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .note {
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1.5rem 0;
+    }
+    .note-title {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .workflow {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 1.5rem 0;
+    }
+    .workflow-step {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+      flex: 1;
+      min-width: 150px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .workflow-step { background: #252540; }
+    }
+    .workflow-arrow {
+      font-size: 1.5rem;
+      color: #667eea;
+    }
+  </style>
+</head>
+<body>
+  <a href="logscrub-features.html" class="back">&larr; Back to Features</a>
+
+  <h1>📕 PDF Anonymizer</h1>
+  <p class="subtitle">Extract and redact PII from PDF documents</p>
+
+  <p>LogScrub extracts text content from PDF files and applies the same powerful PII detection used for log files. View the document with a live preview, identify sensitive data, and export the sanitized text.</p>
+
+  <div class="screenshot-placeholder">
+    📸 Screenshot placeholder: PDF preview with extracted text and PII highlighting
+  </div>
+
+  <h2>How It Works</h2>
+
+  <div class="workflow">
+    <div class="workflow-step">
+      <div style="font-size:2rem">📄</div>
+      <div><strong>Upload PDF</strong></div>
+      <div style="font-size:0.85rem;color:#666">Drop your file</div>
+    </div>
+    <div class="workflow-arrow">→</div>
+    <div class="workflow-step">
+      <div style="font-size:2rem">🔍</div>
+      <div><strong>Extract Text</strong></div>
+      <div style="font-size:0.85rem;color:#666">Page by page</div>
+    </div>
+    <div class="workflow-arrow">→</div>
+    <div class="workflow-step">
+      <div style="font-size:2rem">🎯</div>
+      <div><strong>Detect PII</strong></div>
+      <div style="font-size:0.85rem;color:#666">90+ patterns</div>
+    </div>
+    <div class="workflow-arrow">→</div>
+    <div class="workflow-step">
+      <div style="font-size:2rem">✅</div>
+      <div><strong>Export Clean Text</strong></div>
+      <div style="font-size:0.85rem;color:#666">Anonymized output</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <div class="note-title">📋 Note on PDF Output</div>
+    <p style="margin:0">LogScrub extracts and anonymizes <strong>text content</strong> from PDFs. The output is plain text (not a PDF) to ensure complete removal of sensitive data. For full PDF redaction with preserved formatting, specialized PDF editing tools may be needed.</p>
+  </div>
+
+  <h2>Before &amp; After Examples</h2>
+
+  <h3>Business Letter</h3>
+  <div class="example">
+    <div class="example-header">Extracted PDF Text</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>ACME Corporation
+123 Business Park Drive
+San Francisco, CA 94105
+
+Dear Mr. John Smith,
+
+Your account #4532-8876-2234 has been
+activated. Please contact our support
+team at support@acme-corp.com or call
++1 (415) 555-0123 for assistance.
+
+Your customer ID: CUST-2024-00892</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>ACME Corporation
+[ADDRESS-1]
+[CITY-1], [STATE-1] [ZIP-1]
+
+Dear Mr. [NAME-1],
+
+Your account #[ACCOUNT-1] has been
+activated. Please contact our support
+team at [EMAIL-1] or call
+[PHONE-1] for assistance.
+
+Your customer ID: [ID-1]</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Invoice Document</h3>
+  <div class="example">
+    <div class="example-header">Financial Document</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>INVOICE #INV-2024-1234
+
+Bill To:
+Jane Doe
+456 Oak Street, Apt 7B
+New York, NY 10001
+
+Payment Method: Visa ending 4242
+Transaction ID: txn_1ABC2DEF3GHI</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>INVOICE #[INVOICE-1]
+
+Bill To:
+[NAME-1]
+[ADDRESS-1]
+[CITY-1], [STATE-1] [ZIP-1]
+
+Payment Method: Visa ending [CC-LAST4-1]
+Transaction ID: [TXN-1]</pre>
+      </div>
+    </div>
+  </div>
+
+  <h2>What Gets Detected</h2>
+
+  <div class="feature-box">
+    <h3 style="margin-top:0">Personal Information</h3>
+    <ul style="margin-bottom:1.5rem">
+      <li>Names (in common contexts like "Dear Mr./Ms.")</li>
+      <li>Email addresses</li>
+      <li>Phone numbers (all formats)</li>
+      <li>Physical addresses</li>
+      <li>Social Security Numbers</li>
+    </ul>
+
+    <h3>Financial Data</h3>
+    <ul style="margin-bottom:1.5rem">
+      <li>Credit card numbers</li>
+      <li>Bank account numbers</li>
+      <li>Invoice/order numbers</li>
+      <li>Transaction IDs</li>
+    </ul>
+
+    <h3>Technical Identifiers</h3>
+    <ul style="margin:0">
+      <li>IP addresses</li>
+      <li>API keys and tokens</li>
+      <li>UUIDs</li>
+      <li>Custom ID patterns</li>
+    </ul>
+  </div>
+
+  <h2>Features</h2>
+
+  <h3>Side-by-Side Preview</h3>
+  <p>View the original PDF alongside extracted text. Navigate pages while reviewing what text has been extracted.</p>
+
+  <h3>Multi-Page Support</h3>
+  <p>Process entire documents with page-by-page text extraction. Each page's content is clearly separated.</p>
+
+  <h3>Consistency Mode</h3>
+  <p>Same values get the same replacement throughout the document. If "John Smith" appears on page 1 and page 5, both become <code>[NAME-1]</code>.</p>
+
+  <h3>Smart Suggestions</h3>
+  <p>LogScrub analyzes the extracted text and suggests additional patterns it detects that you might want to add.</p>
+
+  <h2>Supported PDF Types</h2>
+
+  <ul>
+    <li><strong>Text-based PDFs</strong> — Documents created from word processors, spreadsheets, or web pages</li>
+    <li><strong>Searchable PDFs</strong> — Scanned documents that have been OCR'd</li>
+    <li><strong>Forms</strong> — PDF forms with fillable fields</li>
+  </ul>
+
+  <div class="note">
+    <div class="note-title">⚠️ Limitations</div>
+    <p style="margin:0">Image-only PDFs (scanned without OCR) cannot have text extracted. If your PDF contains only images, you'll need to run OCR first using a tool like Adobe Acrobat or Tesseract.</p>
+  </div>
+
+  <h2>Output Options</h2>
+
+  <ul>
+    <li><strong>Download as TXT</strong> — Plain text file with anonymized content</li>
+    <li><strong>Copy to clipboard</strong> — Quick paste into other applications</li>
+    <li><strong>Export mapping</strong> — Download original→replacement dictionary for reference</li>
+  </ul>
+
+  <div class="cta">
+    <h3>Ready to anonymize your PDF?</h3>
+    <p>Drop your PDF file into LogScrub to extract and sanitize text.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

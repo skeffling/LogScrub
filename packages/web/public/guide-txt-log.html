@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log File Scrubber - Remove PII from Text & Log Files | LogScrub</title>
+  <meta name="description" content="Free log file anonymizer with 90+ PII detection patterns. Remove IP addresses, emails, phone numbers, API keys, and sensitive data from text and log files. Browser-based, no upload.">
+  <meta name="keywords" content="log scrubber, log file anonymizer, PII removal tool, text file sanitizer, remove IP from logs, email redaction, API key remover, log file cleaner">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      code, pre { background: #2d2d44; }
+      .example { background: #252540; border-color: #3d3d5c; }
+      .feature-box { background: #252540; }
+      .screenshot-placeholder { background: #3d3d5c; }
+      .pattern-table th { background: #252540; }
+      .pattern-table td, .pattern-table th { border-color: #3d3d5c; }
+    }
+    h1 { margin-bottom: 0.5rem; color: #667eea; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    @media (prefers-color-scheme: dark) { .subtitle { color: #aaa; } }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+
+    h2 { margin-top: 2.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+    h3 { color: #667eea; margin-top: 2rem; }
+
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .example {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+    .example-header {
+      background: #667eea;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .example-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    @media (max-width: 600px) {
+      .example-content { grid-template-columns: 1fr; }
+    }
+    .example-before, .example-after {
+      padding: 1rem;
+    }
+    .example-before {
+      border-right: 1px solid #e0e0e0;
+      background: #fff5f5;
+    }
+    .example-after {
+      background: #f0fff4;
+    }
+    @media (prefers-color-scheme: dark) {
+      .example-before { background: #2d2020; border-color: #3d3d5c; }
+      .example-after { background: #1a2d1a; }
+    }
+    .example-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #888;
+    }
+    .example pre { margin: 0; background: transparent; padding: 0; }
+
+    .feature-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .screenshot-placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 3rem;
+      text-align: center;
+      color: #888;
+      margin: 1.5rem 0;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    @media (prefers-color-scheme: dark) { .cta { background: #252540; } }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .pattern-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    .pattern-table th, .pattern-table td {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .pattern-table th { background: #f8f9fa; font-weight: 600; }
+
+    .category {
+      background: #667eea;
+      color: white;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    .highlight {
+      background: #fef3c7;
+      padding: 0.1rem 0.3rem;
+      border-radius: 2px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .highlight { background: #78350f; }
+    }
+  </style>
+</head>
+<body>
+  <a href="logscrub-features.html" class="back">&larr; Back to Features</a>
+
+  <h1>📄 Text &amp; Log File Scrubber</h1>
+  <p class="subtitle">Remove PII from log files with 90+ detection patterns</p>
+
+  <p>LogScrub's text file scrubber is designed for server logs, application logs, debug output, and any plain text files that may contain sensitive information. With over 90 built-in detection patterns, it automatically finds and replaces personally identifiable information.</p>
+
+  <div class="screenshot-placeholder">
+    📸 Screenshot placeholder: Editor interface showing log file with highlighted PII
+  </div>
+
+  <h2>Built-in Detection Patterns</h2>
+
+  <table class="pattern-table">
+    <tr class="category"><td colspan="3">Network &amp; Infrastructure</td></tr>
+    <tr>
+      <th>Pattern</th>
+      <th>Example Match</th>
+      <th>Replacement</th>
+    </tr>
+    <tr>
+      <td>IPv4 Addresses</td>
+      <td><code>192.168.1.100</code></td>
+      <td><code>[IP-1]</code></td>
+    </tr>
+    <tr>
+      <td>IPv6 Addresses</td>
+      <td><code>2001:db8::1</code></td>
+      <td><code>[IPv6-1]</code></td>
+    </tr>
+    <tr>
+      <td>MAC Addresses</td>
+      <td><code>00:1A:2B:3C:4D:5E</code></td>
+      <td><code>[MAC-1]</code></td>
+    </tr>
+    <tr>
+      <td>Hostnames</td>
+      <td><code>server01.internal.corp</code></td>
+      <td><code>[HOST-1]</code></td>
+    </tr>
+    <tr>
+      <td>URLs with Credentials</td>
+      <td><code>https://user:pass@host.com</code></td>
+      <td><code>[URL-CRED-1]</code></td>
+    </tr>
+
+    <tr class="category"><td colspan="3">Personal Identifiers</td></tr>
+    <tr>
+      <td>Email Addresses</td>
+      <td><code>john.doe@company.com</code></td>
+      <td><code>[EMAIL-1]</code></td>
+    </tr>
+    <tr>
+      <td>Phone Numbers</td>
+      <td><code>+1 (555) 123-4567</code></td>
+      <td><code>[PHONE-1]</code></td>
+    </tr>
+    <tr>
+      <td>SSN (US)</td>
+      <td><code>123-45-6789</code></td>
+      <td><code>[SSN-1]</code></td>
+    </tr>
+    <tr>
+      <td>Credit Card Numbers</td>
+      <td><code>4111-1111-1111-1111</code></td>
+      <td><code>[CC-1]</code></td>
+    </tr>
+
+    <tr class="category"><td colspan="3">Secrets &amp; Credentials</td></tr>
+    <tr>
+      <td>API Keys</td>
+      <td><code>sk_live_abc123...</code></td>
+      <td><code>[API-KEY-1]</code></td>
+    </tr>
+    <tr>
+      <td>AWS Access Keys</td>
+      <td><code>AKIAIOSFODNN7EXAMPLE</code></td>
+      <td><code>[AWS-KEY-1]</code></td>
+    </tr>
+    <tr>
+      <td>JWT Tokens</td>
+      <td><code>eyJhbGciOiJIUzI1NiIs...</code></td>
+      <td><code>[JWT-1]</code></td>
+    </tr>
+    <tr>
+      <td>Private Keys</td>
+      <td><code>-----BEGIN RSA PRIVATE KEY-----</code></td>
+      <td><code>[PRIVATE-KEY-1]</code></td>
+    </tr>
+    <tr>
+      <td>Connection Strings</td>
+      <td><code>mongodb://user:pass@host</code></td>
+      <td><code>[CONN-STR-1]</code></td>
+    </tr>
+  </table>
+
+  <p><em>And 75+ more patterns for UUIDs, dates, file paths, usernames, and industry-specific identifiers.</em></p>
+
+  <h2>Before &amp; After Examples</h2>
+
+  <h3>Server Log Entry</h3>
+  <div class="example">
+    <div class="example-header">Apache/Nginx Access Log</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>192.168.1.105 - john.doe [15/Jan/2024:10:30:00] "GET /api/users?email=jane@corp.com HTTP/1.1" 200 1234 "Mozilla/5.0"</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>[IP-1] - [USER-1] [15/Jan/2024:10:30:00] "GET /api/users?email=[EMAIL-1] HTTP/1.1" 200 1234 "Mozilla/5.0"</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Application Debug Log</h3>
+  <div class="example">
+    <div class="example-header">Debug Output with API Keys</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>2024-01-15 10:30:00 [DEBUG] Connecting to database...
+  Host: db.internal.company.net
+  User: admin_user
+  API Key: sk_live_4eC39HqLyjWDarjtT1zdp7dc
+2024-01-15 10:30:01 [INFO] User john@example.com logged in from 10.0.0.55</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>2024-01-15 10:30:00 [DEBUG] Connecting to database...
+  Host: [HOST-1]
+  User: [USER-1]
+  API Key: [API-KEY-1]
+2024-01-15 10:30:01 [INFO] User [EMAIL-1] logged in from [IP-1]</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Error Stack Trace</h3>
+  <div class="example">
+    <div class="example-header">Exception with File Paths</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>Error: Connection refused
+  at /home/jsmith/projects/api/src/db.js:42
+  at /home/jsmith/projects/api/node_modules/pg/lib/client.js:123
+ConnectionString: postgresql://dbuser:s3cr3t@192.168.1.50:5432/prod</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>Error: Connection refused
+  at [PATH-1]/src/db.js:42
+  at [PATH-1]/node_modules/pg/lib/client.js:123
+ConnectionString: [CONN-STR-1]</pre>
+      </div>
+    </div>
+  </div>
+
+  <h2>Key Features</h2>
+
+  <h3>Consistency Mode</h3>
+  <p>When enabled, the same original value always gets the same replacement. If <code>192.168.1.100</code> becomes <code>[IP-1]</code>, every occurrence in the file will use <code>[IP-1]</code>. This preserves data relationships and makes the output easier to analyze.</p>
+
+  <h3>Custom Regex Patterns</h3>
+  <p>Add your own detection patterns for company-specific identifiers:</p>
+  <pre>Pattern: EMP-\d{6}
+Label: EMPLOYEE-ID
+Example: EMP-123456 → [EMPLOYEE-ID-1]</pre>
+
+  <h3>Smart Suggestions</h3>
+  <p>LogScrub analyzes your file and suggests additional patterns it detects. Click to add them to your active rules.</p>
+
+  <h3>Time Shift</h3>
+  <p>Offset all timestamps in your logs by a fixed amount to obscure when events occurred:</p>
+  <div class="example">
+    <div class="example-header">Timestamp Shifting (+24 hours)</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>2024-01-15 10:30:00 [INFO] Server started
+2024-01-15 10:30:05 [INFO] Ready</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>2024-01-16 10:30:00 [INFO] Server started
+2024-01-16 10:30:05 [INFO] Ready</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Mapping Export</h3>
+  <p>Download a mapping file showing all replacements made. Useful for reverse lookups when investigating issues:</p>
+  <pre>{
+  "IP-1": "192.168.1.100",
+  "IP-2": "10.0.0.55",
+  "EMAIL-1": "john@example.com"
+}</pre>
+
+  <h2>Supported File Types</h2>
+  <ul>
+    <li><code>.log</code> - Standard log files</li>
+    <li><code>.txt</code> - Plain text files</li>
+    <li><code>.out</code> - Command output files</li>
+    <li><code>.err</code> - Error logs</li>
+    <li><code>.debug</code> - Debug output</li>
+    <li>Any plain text file regardless of extension</li>
+    <li><code>.gz</code> - Gzip-compressed text files (auto-extracted)</li>
+    <li><code>.zip</code> - ZIP archives containing text files</li>
+  </ul>
+
+  <div class="cta">
+    <h3>Ready to clean your log files?</h3>
+    <p>Drop your log file into LogScrub to get started.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

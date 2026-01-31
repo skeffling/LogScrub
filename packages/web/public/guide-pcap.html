@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCAP Anonymizer - Remove PII from Network Captures | LogScrub</title>
+  <meta name="description" content="Free PCAP anonymization tool. Remove IP addresses, MAC addresses, DNS queries, HTTP headers, and sensitive data from Wireshark captures. Browser-based, no upload required.">
+  <meta name="keywords" content="PCAP anonymizer, Wireshark anonymization, network capture PII removal, IP address anonymization, MAC address scrubber, DNS anonymization, packet capture sanitizer">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      code, pre { background: #2d2d44; }
+      .example { background: #252540; border-color: #3d3d5c; }
+      .feature-box { background: #252540; }
+      .screenshot-placeholder { background: #3d3d5c; }
+    }
+    h1 { margin-bottom: 0.5rem; color: #667eea; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    @media (prefers-color-scheme: dark) { .subtitle { color: #aaa; } }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+
+    h2 { margin-top: 2.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+    h3 { color: #667eea; margin-top: 2rem; }
+
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .example {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+    .example-header {
+      background: #667eea;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .example-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    @media (max-width: 600px) {
+      .example-content { grid-template-columns: 1fr; }
+    }
+    .example-before, .example-after {
+      padding: 1rem;
+    }
+    .example-before {
+      border-right: 1px solid #e0e0e0;
+      background: #fff5f5;
+    }
+    .example-after {
+      background: #f0fff4;
+    }
+    @media (prefers-color-scheme: dark) {
+      .example-before { background: #2d2020; border-color: #3d3d5c; }
+      .example-after { background: #1a2d1a; }
+    }
+    .example-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #888;
+    }
+    .example pre { margin: 0; background: transparent; padding: 0; }
+
+    .feature-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+    .feature-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .feature-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .feature-list .check { color: #22c55e; }
+
+    .screenshot-placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 3rem;
+      text-align: center;
+      color: #888;
+      margin: 1.5rem 0;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    @media (prefers-color-scheme: dark) { .cta { background: #252540; } }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    @media (prefers-color-scheme: dark) {
+      th, td { border-color: #3d3d5c; }
+    }
+    th { background: #f8f9fa; font-weight: 600; }
+    @media (prefers-color-scheme: dark) { th { background: #252540; } }
+  </style>
+</head>
+<body>
+  <a href="logscrub-features.html" class="back">&larr; Back to Features</a>
+
+  <h1>🌐 PCAP Anonymizer</h1>
+  <p class="subtitle">Remove sensitive data from network captures before sharing</p>
+
+  <p>LogScrub's PCAP anonymizer helps you sanitize Wireshark captures, tcpdump output, and other packet capture files. Remove IP addresses, MAC addresses, hostnames, and protocol-specific data while maintaining the capture's usefulness for debugging.</p>
+
+  <div class="screenshot-placeholder">
+    📸 Screenshot placeholder: PCAP Anonymizer interface showing analysis results
+  </div>
+
+  <h2>What Gets Anonymized</h2>
+
+  <div class="feature-box">
+    <ul class="feature-list">
+      <li><span class="check">✓</span> IPv4 addresses</li>
+      <li><span class="check">✓</span> IPv6 addresses</li>
+      <li><span class="check">✓</span> MAC addresses</li>
+      <li><span class="check">✓</span> Port numbers</li>
+      <li><span class="check">✓</span> DNS queries &amp; responses</li>
+      <li><span class="check">✓</span> ARP packets</li>
+      <li><span class="check">✓</span> TLS SNI (server names)</li>
+      <li><span class="check">✓</span> HTTP headers</li>
+      <li><span class="check">✓</span> DHCP hostnames</li>
+      <li><span class="check">✓</span> NetBIOS/SMB names</li>
+      <li><span class="check">✓</span> Packet timestamps</li>
+      <li><span class="check">✓</span> Payload truncation</li>
+    </ul>
+  </div>
+
+  <h2>Before &amp; After Examples</h2>
+
+  <h3>IP Address Anonymization</h3>
+  <p>All IP addresses are consistently replaced. The same original IP always maps to the same anonymized IP, preserving traffic patterns.</p>
+
+  <div class="example">
+    <div class="example-header">IPv4 Address Mapping</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>192.168.1.100 → 8.8.8.8
+192.168.1.100 → 1.1.1.1
+10.0.0.50 → 8.8.8.8</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>10.0.0.1 → 10.0.0.2
+10.0.0.1 → 10.0.0.3
+10.0.0.4 → 10.0.0.2</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>DNS Query Anonymization</h3>
+  <p>Domain names in DNS queries and responses are replaced with anonymous placeholders while maintaining consistency.</p>
+
+  <div class="example">
+    <div class="example-header">DNS Query/Response</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>Query: api.mycompany.com
+Query: secret-internal.corp.net
+Response: api.mycompany.com → 52.1.2.3</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>Query: anon00001.example.com
+Query: anon00002.example.com
+Response: anon00001.example.com → 10.0.0.5</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>HTTP Header Scrubbing</h3>
+  <p>Sensitive HTTP headers are redacted to remove cookies, authentication tokens, and identifying information.</p>
+
+  <div class="example">
+    <div class="example-header">HTTP Request Headers</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>Host: api.example.com
+Cookie: session=abc123xyz
+Authorization: Bearer eyJhbGc...
+Referer: https://internal.corp/</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>Host: [REDACTED]
+Cookie: [REDACTED]
+Authorization: [REDACTED]
+Referer: [REDACTED]</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>TLS SNI Anonymization</h3>
+  <p>Server Name Indication in TLS ClientHello messages reveals which domains are being accessed, even in encrypted traffic.</p>
+
+  <div class="example">
+    <div class="example-header">TLS ClientHello SNI</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>SNI: login.internal-app.com
+SNI: api.secret-service.net</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>SNI: anon00003.example.com
+SNI: anon00004.example.com</pre>
+      </div>
+    </div>
+  </div>
+
+  <h2>Advanced Features</h2>
+
+  <h3>Packet Filtering</h3>
+  <p>Remove entire packets matching specific criteria before anonymization. Uses Wireshark-style display filter syntax.</p>
+
+  <table>
+    <tr>
+      <th>Filter</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><code>tcp.port == 22</code></td>
+      <td>Remove all SSH traffic</td>
+    </tr>
+    <tr>
+      <td><code>ip.addr == 192.168.1.0/24</code></td>
+      <td>Remove traffic to/from a subnet</td>
+    </tr>
+    <tr>
+      <td><code>http</code></td>
+      <td>Remove all HTTP traffic</td>
+    </tr>
+    <tr>
+      <td><code>tcp.port == 443 and ip.addr == 10.0.0.50</code></td>
+      <td>Remove HTTPS to specific host</td>
+    </tr>
+  </table>
+
+  <h3>Mapping Consistency</h3>
+  <p>Export the address mapping as JSON to apply the same anonymization to related PCAP files. This ensures that <code>192.168.1.100</code> always becomes <code>10.0.0.1</code> across all your captures.</p>
+
+  <h3>Payload Truncation</h3>
+  <p>Optionally truncate packet payloads to a maximum size (e.g., keep only first 64 bytes). This removes application-layer data while preserving headers for protocol analysis.</p>
+
+  <h3>Timestamp Shifting</h3>
+  <p>Shift all packet timestamps by a fixed offset to obscure when the capture was taken.</p>
+
+  <h2>Protocol-Specific Scrubbing</h2>
+
+  <table>
+    <tr>
+      <th>Protocol</th>
+      <th>Data Removed</th>
+    </tr>
+    <tr>
+      <td>DNS</td>
+      <td>Query names, response records, hostnames</td>
+    </tr>
+    <tr>
+      <td>DHCP</td>
+      <td>Hostname options, client identifiers</td>
+    </tr>
+    <tr>
+      <td>HTTP</td>
+      <td>Host, Cookie, Authorization, Referer headers</td>
+    </tr>
+    <tr>
+      <td>TLS</td>
+      <td>Server Name Indication (SNI)</td>
+    </tr>
+    <tr>
+      <td>NetBIOS/SMB</td>
+      <td>Computer names, usernames, share names</td>
+    </tr>
+    <tr>
+      <td>ARP</td>
+      <td>IP-to-MAC mappings (consistent with IP/MAC anonymization)</td>
+    </tr>
+  </table>
+
+  <h2>Output Options</h2>
+
+  <ul>
+    <li><strong>Download anonymized PCAP</strong> &mdash; Get the sanitized capture file</li>
+    <li><strong>Export mapping report</strong> &mdash; Human-readable text report with all mappings</li>
+    <li><strong>Export mappings as JSON</strong> &mdash; Machine-readable format for applying to other files</li>
+    <li><strong>Side-by-side comparison</strong> &mdash; View original vs anonymized packets in hex/ASCII</li>
+  </ul>
+
+  <div class="cta">
+    <h3>Ready to anonymize your network captures?</h3>
+    <p>Drop your PCAP/PCAPNG file into LogScrub to get started.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

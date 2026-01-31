@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogScrub Features - PII Removal & Data Anonymization Tool</title>
+  <meta name="description" content="LogScrub is a free, browser-based PII removal tool that anonymizes sensitive data in log files, PCAP captures, JSON, CSV, PDF, Office documents, and more. No data leaves your browser.">
+  <meta name="keywords" content="PII removal, data anonymization, log scrubber, PCAP anonymizer, JSON redaction, CSV sanitizer, PDF anonymizer, GDPR compliance, privacy tool">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      code { background: #2d2d44; }
+      .card { background: #252540; border-color: #3d3d5c; }
+      .card:hover { border-color: #6eb5ff; }
+      .hero { background: linear-gradient(135deg, #1e3a5f 0%, #2d1b4e 100%); }
+      .tag { background: #3d3d5c; }
+    }
+    h1 { margin-bottom: 0.5rem; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    @media (prefers-color-scheme: dark) { .subtitle { color: #aaa; } }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+
+    .hero {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .hero h1 { color: white; margin: 0; font-size: 2rem; }
+    .hero p { margin: 1rem 0 0; opacity: 0.9; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+    .card {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1.5rem;
+      background: #fafafa;
+      transition: border-color 0.2s, transform 0.2s;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .card:hover {
+      border-color: #667eea;
+      transform: translateY(-2px);
+    }
+    .card h3 {
+      margin: 0 0 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .card p { margin: 0; color: #666; font-size: 0.95rem; }
+    @media (prefers-color-scheme: dark) { .card p { color: #aaa; } }
+    .card .icon { font-size: 1.5rem; }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      background: #e8e8e8;
+      color: #555;
+      margin-left: 0.5rem;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    h2 { margin-top: 3rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+
+    .benefit-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .benefit {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .benefit .check {
+      color: #22c55e;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    @media (prefers-color-scheme: dark) { .cta { background: #252540; } }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+      margin-top: 1rem;
+    }
+    .cta a:hover { background: #5a6fd6; }
+  </style>
+</head>
+<body>
+  <a href="./" class="back">&larr; Back to LogScrub</a>
+
+  <div class="hero">
+    <h1>LogScrub Features</h1>
+    <p>Free, browser-based PII removal and data anonymization for multiple file formats</p>
+  </div>
+
+  <p>LogScrub helps you remove personally identifiable information (PII) and sensitive data from files before sharing them. Everything runs in your browser &mdash; <strong>no data is ever uploaded to any server</strong>.</p>
+
+  <h2>Supported File Formats</h2>
+
+  <div class="features-grid">
+    <a href="guide-pcap.html" class="card">
+      <h3><span class="icon">🌐</span> PCAP Files <span class="tag">Network</span></h3>
+      <p>Anonymize network captures: IP addresses, MAC addresses, DNS queries, HTTP headers, TLS SNI, and more.</p>
+    </a>
+
+    <a href="guide-txt-log.html" class="card">
+      <h3><span class="icon">📄</span> Text &amp; Log Files</h3>
+      <p>Scrub log files with 90+ built-in patterns for IPs, emails, phone numbers, API keys, and custom patterns.</p>
+    </a>
+
+    <a href="guide-json.html" class="card">
+      <h3><span class="icon">{ }</span> JSON Files</h3>
+      <p>Context-aware detection of secrets in JSON logs. Finds sensitive values by key names like "password" or "token".</p>
+    </a>
+
+    <a href="guide-csv.html" class="card">
+      <h3><span class="icon">📊</span> CSV Files</h3>
+      <p>Sanitize tabular data with column-aware processing. Perfect for database exports and analytics data.</p>
+    </a>
+
+    <a href="guide-pdf.html" class="card">
+      <h3><span class="icon">📕</span> PDF Documents</h3>
+      <p>Extract and anonymize text from PDF files while preserving document structure.</p>
+    </a>
+
+    <a href="guide-docx-odt.html" class="card">
+      <h3><span class="icon">📝</span> Word Documents <span class="tag">DOCX/ODT</span></h3>
+      <p>Scrub Microsoft Word and LibreOffice documents. Removes PII from document text and metadata.</p>
+    </a>
+
+    <a href="guide-xlsx-ods.html" class="card">
+      <h3><span class="icon">📈</span> Spreadsheets <span class="tag">XLSX/ODS</span></h3>
+      <p>Anonymize Excel and LibreOffice Calc spreadsheets. Process multiple sheets with cell-level precision.</p>
+    </a>
+
+    <a href="guide-gpx.html" class="card">
+      <h3><span class="icon">🗺️</span> GPX Files <span class="tag">GPS</span></h3>
+      <p>Remove location data from GPS tracks. Shift coordinates, truncate precision, or remove waypoints.</p>
+    </a>
+  </div>
+
+  <h2>Key Features</h2>
+
+  <div class="benefit-list">
+    <div class="benefit">
+      <span class="check">✓</span>
+      <div><strong>100% Browser-Based</strong><br>All processing happens locally. Your data never leaves your device.</div>
+    </div>
+    <div class="benefit">
+      <span class="check">✓</span>
+      <div><strong>90+ Detection Patterns</strong><br>Pre-built rules for IPs, emails, phone numbers, SSNs, credit cards, API keys, and more.</div>
+    </div>
+    <div class="benefit">
+      <span class="check">✓</span>
+      <div><strong>Consistent Replacements</strong><br>Same value always maps to same placeholder, preserving data relationships.</div>
+    </div>
+    <div class="benefit">
+      <span class="check">✓</span>
+      <div><strong>Custom Regex Rules</strong><br>Add your own patterns for company-specific identifiers or data formats.</div>
+    </div>
+    <div class="benefit">
+      <span class="check">✓</span>
+      <div><strong>Mapping Export</strong><br>Download the original→replacement mapping for reverse lookups when needed.</div>
+    </div>
+    <div class="benefit">
+      <span class="check">✓</span>
+      <div><strong>High Performance</strong><br>Rust/WebAssembly engine processes files at native speed.</div>
+    </div>
+  </div>
+
+  <h2>Common Use Cases</h2>
+
+  <ul>
+    <li><strong>Support Ticket Attachments</strong> &mdash; Remove customer PII before sharing logs with vendors</li>
+    <li><strong>Bug Reports</strong> &mdash; Sanitize network captures and logs before posting to issue trackers</li>
+    <li><strong>Security Audits</strong> &mdash; Anonymize data for third-party security assessments</li>
+    <li><strong>GDPR/Privacy Compliance</strong> &mdash; Redact personal data before data processing</li>
+    <li><strong>Training Data Preparation</strong> &mdash; Remove PII from datasets used for ML/AI training</li>
+    <li><strong>Documentation Examples</strong> &mdash; Create sanitized examples from real production data</li>
+  </ul>
+
+  <div class="cta">
+    <h3>Ready to anonymize your data?</h3>
+    <p>No installation required. Just open LogScrub and drop your files.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

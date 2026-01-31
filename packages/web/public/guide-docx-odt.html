@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Document Anonymizer - DOCX & ODT PII Removal | LogScrub</title>
+  <meta name="description" content="Free Word document anonymizer. Remove PII from DOCX and ODT files including emails, phone numbers, addresses. Preserves formatting. Browser-based, no upload required.">
+  <meta name="keywords" content="Word document anonymizer, DOCX PII removal, ODT sanitizer, Microsoft Word redaction, LibreOffice document cleaner, document anonymization tool">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      code, pre { background: #2d2d44; }
+      .example { background: #252540; border-color: #3d3d5c; }
+      .feature-box { background: #252540; }
+      .screenshot-placeholder { background: #3d3d5c; }
+    }
+    h1 { margin-bottom: 0.5rem; color: #667eea; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    @media (prefers-color-scheme: dark) { .subtitle { color: #aaa; } }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+
+    h2 { margin-top: 2.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+    h3 { color: #667eea; margin-top: 2rem; }
+
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .example {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+    .example-header {
+      background: #667eea;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .example-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    @media (max-width: 600px) {
+      .example-content { grid-template-columns: 1fr; }
+    }
+    .example-before, .example-after {
+      padding: 1rem;
+    }
+    .example-before {
+      border-right: 1px solid #e0e0e0;
+      background: #fff5f5;
+    }
+    .example-after {
+      background: #f0fff4;
+    }
+    @media (prefers-color-scheme: dark) {
+      .example-before { background: #2d2020; border-color: #3d3d5c; }
+      .example-after { background: #1a2d1a; }
+    }
+    .example-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #888;
+    }
+    .example pre { margin: 0; background: transparent; padding: 0; }
+
+    .feature-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .screenshot-placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 3rem;
+      text-align: center;
+      color: #888;
+      margin: 1.5rem 0;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    @media (prefers-color-scheme: dark) { .cta { background: #252540; } }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .format-badges {
+      display: flex;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .format-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    @media (prefers-color-scheme: dark) {
+      .format-badge { background: #252540; }
+    }
+    .format-badge .icon { font-size: 1.5rem; }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 600px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <a href="logscrub-features.html" class="back">&larr; Back to Features</a>
+
+  <h1>📝 Word Document Anonymizer</h1>
+  <p class="subtitle">Remove PII from Microsoft Word and LibreOffice documents</p>
+
+  <div class="format-badges">
+    <div class="format-badge">
+      <span class="icon">📘</span>
+      <span>DOCX (Microsoft Word)</span>
+    </div>
+    <div class="format-badge">
+      <span class="icon">📄</span>
+      <span>ODT (LibreOffice/OpenDocument)</span>
+    </div>
+  </div>
+
+  <p>LogScrub processes Word documents by extracting text, anonymizing PII, and repackaging the document with sanitized content. The original formatting, styles, and structure are preserved.</p>
+
+  <div class="screenshot-placeholder">
+    📸 Screenshot placeholder: Document preview with side-by-side original and anonymized content
+  </div>
+
+  <h2>How It Works</h2>
+
+  <div class="feature-box">
+    <ol style="margin:0">
+      <li><strong>Extract</strong> — Document is unpacked and text content is extracted from all paragraphs, tables, headers, and footers</li>
+      <li><strong>Analyze</strong> — 90+ PII detection patterns scan the text for sensitive data</li>
+      <li><strong>Anonymize</strong> — Detected PII is replaced with consistent placeholders</li>
+      <li><strong>Repackage</strong> — Modified text is placed back into the document structure</li>
+      <li><strong>Download</strong> — You get a new document with PII removed but formatting intact</li>
+    </ol>
+  </div>
+
+  <h2>Before &amp; After Examples</h2>
+
+  <h3>Employment Contract</h3>
+  <div class="example">
+    <div class="example-header">Legal Document Text</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>EMPLOYMENT AGREEMENT
+
+This agreement is entered into between
+ACME Corporation and John Michael Smith
+(SSN: 123-45-6789).
+
+Employee Contact Information:
+Email: john.smith@personal-email.com
+Phone: (555) 123-4567
+Address: 742 Evergreen Terrace
+         Springfield, IL 62701</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>EMPLOYMENT AGREEMENT
+
+This agreement is entered into between
+ACME Corporation and [NAME-1]
+(SSN: [SSN-1]).
+
+Employee Contact Information:
+Email: [EMAIL-1]
+Phone: [PHONE-1]
+Address: [ADDRESS-1]
+         [CITY-1], [STATE-1] [ZIP-1]</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Meeting Notes</h3>
+  <div class="example">
+    <div class="example-header">Internal Document</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>Meeting Notes - January 15, 2024
+Attendees: Sarah Johnson, Mike Chen
+
+Action Items:
+• Sarah to email client at
+  client@bigcorp.com by Friday
+• Mike to call vendor at 415-555-0199
+• Review server logs from 192.168.1.50</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>Meeting Notes - January 15, 2024
+Attendees: [NAME-1], [NAME-2]
+
+Action Items:
+• [NAME-1] to email client at
+  [EMAIL-1] by Friday
+• [NAME-2] to call vendor at [PHONE-1]
+• Review server logs from [IP-1]</pre>
+      </div>
+    </div>
+  </div>
+
+  <h2>What Gets Preserved</h2>
+
+  <div class="two-col">
+    <div class="feature-box">
+      <h3 style="margin-top:0">✓ Preserved</h3>
+      <ul style="margin:0">
+        <li>Text formatting (bold, italic, underline)</li>
+        <li>Font styles and sizes</li>
+        <li>Paragraph alignment</li>
+        <li>Bullet and numbered lists</li>
+        <li>Tables and table formatting</li>
+        <li>Headers and footers</li>
+        <li>Page layout</li>
+      </ul>
+    </div>
+    <div class="feature-box">
+      <h3 style="margin-top:0">✓ Anonymized</h3>
+      <ul style="margin:0">
+        <li>Email addresses</li>
+        <li>Phone numbers</li>
+        <li>Physical addresses</li>
+        <li>Names (in context)</li>
+        <li>SSN/ID numbers</li>
+        <li>IP addresses</li>
+        <li>Custom patterns</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Document Metadata</h2>
+
+  <p>Word documents often contain hidden metadata with sensitive information:</p>
+
+  <ul>
+    <li><strong>Author name</strong> — Who created the document</li>
+    <li><strong>Last modified by</strong> — Who last edited it</li>
+    <li><strong>Company name</strong> — Organization metadata</li>
+    <li><strong>Comments</strong> — Review comments and tracked changes</li>
+    <li><strong>Revision history</strong> — Previous versions</li>
+  </ul>
+
+  <p>LogScrub focuses on visible text content. For complete metadata removal, consider using your word processor's built-in "Inspect Document" feature alongside LogScrub.</p>
+
+  <h2>Tables and Structured Content</h2>
+
+  <p>LogScrub processes text within tables, maintaining cell structure:</p>
+
+  <div class="example">
+    <div class="example-header">Table Content</div>
+    <div class="example-content">
+      <div class="example-before">
+        <div class="example-label">Before</div>
+        <pre>| Name        | Email              | Phone        |
+|-------------|-------------------|--------------|
+| Alice Brown | alice@corp.com    | 555-111-2222 |
+| Bob Green   | bob.g@company.net | 555-333-4444 |</pre>
+      </div>
+      <div class="example-after">
+        <div class="example-label">After</div>
+        <pre>| Name     | Email      | Phone      |
+|----------|------------|------------|
+| [NAME-1] | [EMAIL-1]  | [PHONE-1]  |
+| [NAME-2] | [EMAIL-2]  | [PHONE-2]  |</pre>
+      </div>
+    </div>
+  </div>
+
+  <h2>Features</h2>
+
+  <h3>Live Preview</h3>
+  <p>See the original document rendered alongside the extracted/anonymized text before downloading.</p>
+
+  <h3>Consistency Mode</h3>
+  <p>Same values get the same replacement throughout the document. If "John Smith" appears in the header and body, both become <code>[NAME-1]</code>.</p>
+
+  <h3>Custom Patterns</h3>
+  <p>Add your own regex patterns for company-specific identifiers, project codes, or internal reference numbers.</p>
+
+  <h2>Supported Formats</h2>
+
+  <ul>
+    <li><code>.docx</code> — Microsoft Word 2007 and later</li>
+    <li><code>.odt</code> — OpenDocument Text (LibreOffice, OpenOffice)</li>
+  </ul>
+
+  <p><em>Note: Legacy <code>.doc</code> format is not supported. Please save as <code>.docx</code> first.</em></p>
+
+  <div class="cta">
+    <h3>Ready to anonymize your documents?</h3>
+    <p>Drop your DOCX or ODT file into LogScrub to get started.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

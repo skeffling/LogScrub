@@ -49,6 +49,7 @@ interface EditorProps {
   showLeftHandle?: boolean
   gpxTransposedContinent?: string | null
   syntaxValidFormat?: ValidatedFormat
+  onMetadataStrippingChange?: (willStrip: boolean) => void
 }
 
 export interface EditorHandle {
@@ -612,7 +613,7 @@ function dismissDonationForever() {
   } catch {}
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, onLeftResize, showLeftHandle = false, gpxTransposedContinent, syntaxValidFormat }, ref) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, onLeftResize, showLeftHandle = false, gpxTransposedContinent, syntaxValidFormat, onMetadataStrippingChange }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType, files, selectedFileId, isMultiFileMode, selectFile, addFilesFromZip } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showAIExplain, setShowAIExplain] = useState(false)
@@ -667,6 +668,14 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
       setShowDiff(true)
     }
   }, [output, replacements.length])
+
+  // Notify parent when metadata stripping state changes
+  useEffect(() => {
+    if (onMetadataStrippingChange) {
+      const willStrip = stripMetadataPreference === true && documentMetadata !== null
+      onMetadataStrippingChange(willStrip)
+    }
+  }, [stripMetadataPreference, documentMetadata, onMetadataStrippingChange])
 
   // Generate scrubbed document preview when output is available
   useEffect(() => {

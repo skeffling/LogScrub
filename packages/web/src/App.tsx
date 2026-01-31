@@ -157,6 +157,7 @@ function App() {
   const [fullscreenGoToLineValue, setFullscreenGoToLineValue] = useState('')
   const [fullscreenLineFilter, setFullscreenLineFilter] = useState<'all' | 'changed' | 'unchanged'>('all')
   const [lineFilter, setLineFilter] = useState<'all' | 'changed' | 'unchanged'>('all')
+  const [willStripMetadata, setWillStripMetadata] = useState(false)
   const editorRef = useRef<{ scrollToLine: (line: number) => void } | null>(null)
   const fullscreenScrollRef = useRef<HTMLDivElement | null>(null)
 
@@ -1402,7 +1403,9 @@ function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span className="text-green-800 dark:text-green-200 text-sm">
-                    No PII found. Output is identical to input.
+                    {willStripMetadata
+                      ? 'No PII found in text content. Metadata will be removed on download.'
+                      : 'No PII found. Output is identical to input.'}
                   </span>
                   <button
                     onClick={() => setOutput('')}
@@ -1467,6 +1470,7 @@ function App() {
                 showLeftHandle={showRules}
                 gpxTransposedContinent={gpxTransposedContinent}
                 syntaxValidFormat={syntaxValidFormat}
+                onMetadataStrippingChange={setWillStripMetadata}
               />
             </div>
           </div>

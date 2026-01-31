@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIT File Anonymizer - Remove PII from Garmin Activity Files | LogScrub</title>
+  <meta name="description" content="Free FIT file anonymizer for Garmin, Wahoo, and fitness device data. Remove GPS coordinates, user profiles, and timestamps from workout files. Browser-based, no upload required.">
+  <meta name="keywords" content="FIT file anonymizer, Garmin activity privacy, fitness data anonymization, GPS track removal, workout file scrubber, Wahoo data privacy, sports watch anonymizer">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    h1 { margin-bottom: 0.5rem; color: #667eea; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+    h2 { margin-top: 2.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+    h3 { color: #667eea; margin-top: 2rem; }
+
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .feature-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+    .feature-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .feature-list li { display: flex; align-items: center; gap: 0.5rem; }
+    .feature-list .check { color: #22c55e; }
+
+    .screenshot-placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 3rem;
+      text-align: center;
+      color: #888;
+      margin: 1.5rem 0;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .device-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .device-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .device-card .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+    .data-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    .data-table th, .data-table td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #e0e0e0; }
+    .data-table th { background: #f8f9fa; font-weight: 600; }
+
+    .warning {
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1.5rem 0;
+    }
+    .warning-title { font-weight: 600; margin-bottom: 0.5rem; }
+
+    @media (max-width: 600px) {
+      .device-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      .subtitle { color: #aaa; }
+      code, pre { background: #2d2d44; }
+      .feature-box { background: #252540; }
+      .screenshot-placeholder { background: #3d3d5c; border-color: #555; }
+      .cta { background: #252540; }
+      .device-card { border-color: #3d3d5c; background: #252540; }
+      .data-table th { background: #252540; }
+      .data-table th, .data-table td { border-color: #3d3d5c; }
+      .warning { background: #78350f; border-color: #d97706; }
+    }
+  </style>
+</head>
+<body>
+  <a href="logscrub-features.html" class="back">&larr; Back to Features</a>
+
+  <h1>FIT File Anonymizer</h1>
+  <p class="subtitle">Remove sensitive data from Garmin, Wahoo, and fitness device files</p>
+
+  <p>FIT (Flexible and Interoperable Data Transfer) files from sports watches, bike computers, and fitness devices contain detailed personal data including GPS tracks, heart rate, user profiles, and timestamps. LogScrub helps you anonymize this data before sharing activities or uploading to third-party services.</p>
+
+  <div class="screenshot-placeholder">
+    Screenshot placeholder: FIT file analyzer showing detected sensitive data
+  </div>
+
+  <h2>Supported Devices</h2>
+
+  <div class="device-grid">
+    <div class="device-card">
+      <div class="icon">Watch</div>
+      <div>Garmin Watches</div>
+    </div>
+    <div class="device-card">
+      <div class="icon">Bike</div>
+      <div>Bike Computers</div>
+    </div>
+    <div class="device-card">
+      <div class="icon">Run</div>
+      <div>Wahoo Devices</div>
+    </div>
+    <div class="device-card">
+      <div class="icon">Swim</div>
+      <div>Swimming Watches</div>
+    </div>
+    <div class="device-card">
+      <div class="icon">GPS</div>
+      <div>Hiking GPS</div>
+    </div>
+    <div class="device-card">
+      <div class="icon">HR</div>
+      <div>Heart Rate Monitors</div>
+    </div>
+  </div>
+
+  <h2>What Gets Detected</h2>
+
+  <div class="feature-box">
+    <ul class="feature-list">
+      <li><span class="check">+</span> GPS coordinates (latitude, longitude)</li>
+      <li><span class="check">+</span> Altitude data</li>
+      <li><span class="check">+</span> Activity timestamps</li>
+      <li><span class="check">+</span> Heart rate data</li>
+      <li><span class="check">+</span> Power measurements</li>
+      <li><span class="check">+</span> Cadence data</li>
+      <li><span class="check">+</span> Speed data</li>
+      <li><span class="check">+</span> User profile (name, weight, age)</li>
+      <li><span class="check">+</span> Device serial numbers</li>
+      <li><span class="check">+</span> Manufacturer info</li>
+    </ul>
+  </div>
+
+  <h2>Privacy Risks in FIT Files</h2>
+
+  <table class="data-table">
+    <tr>
+      <th>Data Type</th>
+      <th>Privacy Risk</th>
+    </tr>
+    <tr>
+      <td>GPS Coordinates</td>
+      <td>Reveals home address, workplace, and travel patterns</td>
+    </tr>
+    <tr>
+      <td>Timestamps</td>
+      <td>Shows when you're away from home, daily routines</td>
+    </tr>
+    <tr>
+      <td>User Profile</td>
+      <td>Contains personal details like name, weight, age, gender</td>
+    </tr>
+    <tr>
+      <td>Device Info</td>
+      <td>Serial numbers can be used to identify your specific device</td>
+    </tr>
+    <tr>
+      <td>Heart Rate</td>
+      <td>May reveal health conditions or fitness level</td>
+    </tr>
+  </table>
+
+  <h2>How It Works</h2>
+
+  <p>LogScrub analyzes your FIT file and shows you exactly what sensitive data it contains. Since FIT is a binary format that's complex to rewrite, LogScrub exports the data to JSON format where it can be fully anonymized.</p>
+
+  <div class="warning">
+    <div class="warning-title">Export to JSON</div>
+    <p>FIT files are exported to JSON for anonymization. The resulting JSON contains all activity data in a human-readable format that can be used for analysis or converted to other formats like GPX.</p>
+  </div>
+
+  <h3>Analysis Report</h3>
+  <p>When you load a FIT file, LogScrub provides a detailed report including:</p>
+  <ul>
+    <li>Number of GPS points recorded</li>
+    <li>GPS bounding box (geographic area covered)</li>
+    <li>Activity duration and distance</li>
+    <li>Data types present (heart rate, power, etc.)</li>
+    <li>User profile fields detected</li>
+    <li>Device manufacturer and model</li>
+  </ul>
+
+  <h2>Common Use Cases</h2>
+
+  <ul>
+    <li><strong>Sharing Routes</strong> &mdash; Share interesting routes without revealing where you live</li>
+    <li><strong>Bug Reports</strong> &mdash; Report issues to fitness app developers without exposing personal data</li>
+    <li><strong>Research</strong> &mdash; Contribute activity data to research projects anonymously</li>
+    <li><strong>Training Analysis</strong> &mdash; Share workouts with coaches while protecting location privacy</li>
+    <li><strong>Social Sharing</strong> &mdash; Post activities to forums without location data</li>
+  </ul>
+
+  <div class="cta">
+    <h3>Ready to analyze your FIT files?</h3>
+    <p>Drop your FIT file into LogScrub to see what sensitive data it contains.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

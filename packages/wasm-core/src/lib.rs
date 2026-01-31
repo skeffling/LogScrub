@@ -1,3 +1,4 @@
+mod fit;
 mod patterns;
 mod pcap;
 mod validators;
@@ -836,4 +837,27 @@ pub fn search_packets(data: &[u8], search_term: &str, max_results: usize) -> Res
             .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e))),
         Err(e) => Err(JsValue::from_str(&e)),
     }
+}
+
+// ============================================================================
+// FIT File Functions
+// ============================================================================
+
+/// Analyze a FIT file and return statistics and metadata
+/// Returns JSON with stats, GPS bounds, activity info, and user fields detected
+#[wasm_bindgen]
+pub fn analyze_fit(data: &[u8]) -> Result<String, JsValue> {
+    match fit::analyze_fit(data) {
+        Ok(analysis) => serde_json::to_string(&analysis)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e))),
+        Err(e) => Err(JsValue::from_str(&e)),
+    }
+}
+
+/// Export FIT file data to JSON format
+/// Converts binary FIT data to structured JSON for anonymization
+#[wasm_bindgen]
+pub fn fit_to_json(data: &[u8]) -> Result<String, JsValue> {
+    fit::fit_to_json(data)
+        .map_err(|e| JsValue::from_str(&e))
 }

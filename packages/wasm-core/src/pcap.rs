@@ -3282,7 +3282,6 @@ fn parse_packet_layers(data: &[u8]) -> ParsedPacket {
                         info: format!("Type {}: {}", icmp_type, type_str),
                     });
                 }
-                _ => {}
             }
         }
     }

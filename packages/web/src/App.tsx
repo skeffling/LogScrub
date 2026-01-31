@@ -1040,7 +1040,7 @@ function App() {
                   </button>
                 )}
                 {hasTimestamps && (
-                  <div className="relative">
+                  <div className={`relative ${showTimeShift ? 'z-50' : ''}`}>
                     <button
                       onClick={() => setShowTimeShift(!showTimeShift)}
                       className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${

@@ -14,8 +14,31 @@ use fit_rust::protocol::message_type::MessageType;
 use fit_rust::protocol::value::Value;
 use fit_rust::protocol::{FitDataMessage, FitMessage};
 use fit_rust::Fit;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// Configuration options for GPX export/anonymization
+#[derive(Debug, Deserialize, Default)]
+pub struct GpxConfig {
+    /// Remove heart rate data
+    #[serde(default)]
+    pub strip_heart_rate: bool,
+    /// Remove cadence data
+    #[serde(default)]
+    pub strip_cadence: bool,
+    /// Remove power data
+    #[serde(default)]
+    pub strip_power: bool,
+    /// Remove temperature data
+    #[serde(default)]
+    pub strip_temperature: bool,
+    /// Remove elevation data
+    #[serde(default)]
+    pub strip_elevation: bool,
+    /// Remove timestamps
+    #[serde(default)]
+    pub strip_timestamps: bool,
+}
 
 /// Statistics from FIT file analysis
 #[derive(Debug, Serialize, Default)]
@@ -329,11 +352,18 @@ fn get_field_u8(msg: &FitDataMessage, field_num: u8) -> Option<u8> {
     None
 }
 
-/// Convert FIT file to GPX format
+/// Convert FIT file to GPX format (with default config - includes all data)
 ///
 /// This allows FIT files to be exported as GPX, which can then be anonymized
 /// using the standard GPX/XML processing pipeline.
 pub fn fit_to_gpx(data: &[u8]) -> Result<String, String> {
+    fit_to_gpx_with_config(data, &GpxConfig::default())
+}
+
+/// Convert FIT file to GPX format with configuration options
+///
+/// Allows stripping personal data like heart rate, cadence, power, etc.
+pub fn fit_to_gpx_with_config(data: &[u8], config: &GpxConfig) -> Result<String, String> {
     let fit = Fit::read(data.to_vec())
         .map_err(|e| format!("Failed to parse FIT file: {:?}", e))?;
 
@@ -374,25 +404,29 @@ pub fn fit_to_gpx(data: &[u8]) -> Result<String, String> {
                 gpx.push_str(&format!("      <trkpt lat=\"{:.7}\" lon=\"{:.7}\">\n", lat_deg, lon_deg));
 
                 // Elevation (altitude in FIT is in meters with scale 5, offset 500)
-                if let Some(alt) = get_field_u16(&data_msg, field_nums::ALTITUDE) {
-                    // FIT altitude: (value / 5) - 500 = meters
-                    let ele_meters = (alt as f64 / 5.0) - 500.0;
-                    if ele_meters > -500.0 && ele_meters < 10000.0 {
-                        gpx.push_str(&format!("        <ele>{:.1}</ele>\n", ele_meters));
+                if !config.strip_elevation {
+                    if let Some(alt) = get_field_u16(&data_msg, field_nums::ALTITUDE) {
+                        // FIT altitude: (value / 5) - 500 = meters
+                        let ele_meters = (alt as f64 / 5.0) - 500.0;
+                        if ele_meters > -500.0 && ele_meters < 10000.0 {
+                            gpx.push_str(&format!("        <ele>{:.1}</ele>\n", ele_meters));
+                        }
                     }
                 }
 
                 // Timestamp
-                if let Some(ts) = get_field_u32(&data_msg, field_nums::TIMESTAMP) {
-                    let iso_time = fit_timestamp_to_iso(ts);
-                    gpx.push_str(&format!("        <time>{}</time>\n", iso_time));
+                if !config.strip_timestamps {
+                    if let Some(ts) = get_field_u32(&data_msg, field_nums::TIMESTAMP) {
+                        let iso_time = fit_timestamp_to_iso(ts);
+                        gpx.push_str(&format!("        <time>{}</time>\n", iso_time));
+                    }
                 }
 
                 // Extensions (heart rate, cadence, power, temperature)
-                let hr = get_field_u8(&data_msg, field_nums::HEART_RATE);
-                let cad = get_field_u8(&data_msg, field_nums::CADENCE);
-                let power = get_field_u16(&data_msg, field_nums::POWER);
-                let temp = get_field_u8(&data_msg, field_nums::TEMPERATURE);
+                let hr = if config.strip_heart_rate { None } else { get_field_u8(&data_msg, field_nums::HEART_RATE) };
+                let cad = if config.strip_cadence { None } else { get_field_u8(&data_msg, field_nums::CADENCE) };
+                let power = if config.strip_power { None } else { get_field_u16(&data_msg, field_nums::POWER) };
+                let temp = if config.strip_temperature { None } else { get_field_u8(&data_msg, field_nums::TEMPERATURE) };
 
                 if hr.is_some() || cad.is_some() || power.is_some() || temp.is_some() {
                     gpx.push_str("        <extensions>\n");
@@ -443,4 +477,85 @@ pub fn fit_to_gpx(data: &[u8]) -> Result<String, String> {
     }
 
     Ok(gpx)
+}
+
+/// Strip personal data from existing GPX content
+///
+/// Removes heart rate, cadence, power, temperature, elevation, and/or timestamps
+/// based on config options.
+pub fn strip_gpx_personal_data(gpx_content: &str, config: &GpxConfig) -> String {
+    use quick_xml::events::Event;
+    use quick_xml::{Reader, Writer};
+    use std::io::Cursor;
+
+    let mut reader = Reader::from_str(gpx_content);
+
+    let mut writer = Writer::new(Cursor::new(Vec::new()));
+    let mut skip_depth = 0;
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(ref e)) => {
+                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+
+                // Check if we should skip this element
+                let should_skip = match name.as_str() {
+                    "ele" => config.strip_elevation,
+                    "time" => config.strip_timestamps,
+                    "gpxtpx:hr" | "hr" => config.strip_heart_rate,
+                    "gpxtpx:cad" | "cad" => config.strip_cadence,
+                    "gpxtpx:power" | "power" => config.strip_power,
+                    "gpxtpx:atemp" | "atemp" => config.strip_temperature,
+                    _ => false,
+                };
+
+                if should_skip {
+                    skip_depth = 1;
+                } else if skip_depth == 0 {
+                    writer.write_event(Event::Start(e.clone())).ok();
+                }
+            }
+            Ok(Event::End(ref e)) => {
+                if skip_depth > 0 {
+                    skip_depth -= 1;
+                } else {
+                    writer.write_event(Event::End(e.clone())).ok();
+                }
+            }
+            Ok(Event::Empty(ref e)) => {
+                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+
+                let should_skip = match name.as_str() {
+                    "ele" => config.strip_elevation,
+                    "time" => config.strip_timestamps,
+                    "gpxtpx:hr" | "hr" => config.strip_heart_rate,
+                    "gpxtpx:cad" | "cad" => config.strip_cadence,
+                    "gpxtpx:power" | "power" => config.strip_power,
+                    "gpxtpx:atemp" | "atemp" => config.strip_temperature,
+                    _ => false,
+                };
+
+                if !should_skip && skip_depth == 0 {
+                    writer.write_event(Event::Empty(e.clone())).ok();
+                }
+            }
+            Ok(Event::Text(ref e)) => {
+                if skip_depth == 0 {
+                    writer.write_event(Event::Text(e.clone())).ok();
+                }
+            }
+            Ok(Event::Eof) => break,
+            Ok(e) => {
+                if skip_depth == 0 {
+                    writer.write_event(e.clone()).ok();
+                }
+            }
+            Err(_) => break,
+        }
+        buf.clear();
+    }
+
+    let result = writer.into_inner().into_inner();
+    String::from_utf8(result).unwrap_or_else(|_| gpx_content.to_string())
 }

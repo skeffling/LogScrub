@@ -254,130 +254,146 @@
     <span class="workflow-step">Download GPX</span>
   </div>
 
-  <h2>Anonymization Methods</h2>
+  <h2>Privacy Options</h2>
 
   <div class="method-grid">
     <div class="method-card">
-      <h4>Coordinate Shifting</h4>
-      <p>Offset all coordinates by a random amount. The track shape is preserved but moved to a different location.</p>
+      <h4>Strip Health Data</h4>
+      <p>Remove heart rate, cadence, and power data that can reveal your fitness level and identity.</p>
     </div>
     <div class="method-card">
-      <h4>Precision Reduction</h4>
-      <p>Reduce GPS decimal precision. Full precision (6 decimals) = ~10cm accuracy. Reduced (3 decimals) = ~100m accuracy.</p>
+      <h4>Strip Temperature</h4>
+      <p>Remove ambient temperature readings that can correlate with specific times and locations.</p>
     </div>
     <div class="method-card">
-      <h4>Start/End Trimming</h4>
-      <p>Remove the first and last N points to hide where the activity started and ended (typically home/work).</p>
+      <h4>Strip Elevation</h4>
+      <p>Remove altitude data that can help identify specific routes and locations.</p>
     </div>
     <div class="method-card">
-      <h4>Timestamp Shifting</h4>
-      <p>Offset all timestamps to obscure when the activity occurred, hiding your daily schedule.</p>
+      <h4>Strip Timestamps</h4>
+      <p>Remove time data to hide when activities occurred, protecting your daily schedule.</p>
     </div>
   </div>
 
   <h2>Before & After Examples</h2>
 
-  <h3>Coordinate Shifting</h3>
-  <p>All coordinates are offset by the same amount, preserving the track shape but relocating it.</p>
+  <h3>Stripping Health Data</h3>
+  <p>Remove personal fitness metrics like heart rate, cadence, and power.</p>
 
   <div class="example">
-    <div class="example-header">GPS Track Points (Shifted +0.1 degrees)</div>
+    <div class="example-header">Track Point with Health Data Removed</div>
     <div class="example-content">
       <div class="example-before">
         <div class="example-label">Before</div>
         <pre>&lt;trkpt lat="37.7749" lon="-122.4194"&gt;
   &lt;ele&gt;10&lt;/ele&gt;
   &lt;time&gt;2024-01-15T08:00:00Z&lt;/time&gt;
-&lt;/trkpt&gt;
-&lt;trkpt lat="37.7751" lon="-122.4180"&gt;
-  &lt;ele&gt;12&lt;/ele&gt;
-  &lt;time&gt;2024-01-15T08:01:00Z&lt;/time&gt;
+  &lt;extensions&gt;
+    &lt;gpxtpx:TrackPointExtension&gt;
+      &lt;gpxtpx:hr&gt;142&lt;/gpxtpx:hr&gt;
+      &lt;gpxtpx:cad&gt;85&lt;/gpxtpx:cad&gt;
+      &lt;gpxtpx:power&gt;210&lt;/gpxtpx:power&gt;
+    &lt;/gpxtpx:TrackPointExtension&gt;
+  &lt;/extensions&gt;
 &lt;/trkpt&gt;</pre>
       </div>
       <div class="example-after">
-        <div class="example-label">After</div>
-        <pre>&lt;trkpt lat="37.8749" lon="-122.3194"&gt;
+        <div class="example-label">After (health data stripped)</div>
+        <pre>&lt;trkpt lat="37.7749" lon="-122.4194"&gt;
   &lt;ele&gt;10&lt;/ele&gt;
   &lt;time&gt;2024-01-15T08:00:00Z&lt;/time&gt;
-&lt;/trkpt&gt;
-&lt;trkpt lat="37.8751" lon="-122.3180"&gt;
-  &lt;ele&gt;12&lt;/ele&gt;
-  &lt;time&gt;2024-01-15T08:01:00Z&lt;/time&gt;
 &lt;/trkpt&gt;</pre>
       </div>
     </div>
   </div>
 
-  <h3>Precision Reduction</h3>
-  <p>Reducing decimal places makes it harder to pinpoint exact locations.</p>
+  <h3>Stripping Timestamps</h3>
+  <p>Remove time data to hide when activities occurred.</p>
 
   <div class="example">
-    <div class="example-header">Coordinate Precision (6 to 3 decimals)</div>
+    <div class="example-header">Track Point with Timestamp Removed</div>
     <div class="example-content">
       <div class="example-before">
-        <div class="example-label">Before (~10cm accuracy)</div>
-        <pre>lat="37.774929" lon="-122.419416"
-lat="37.775103" lon="-122.418892"</pre>
+        <div class="example-label">Before</div>
+        <pre>&lt;trkpt lat="37.7749" lon="-122.4194"&gt;
+  &lt;ele&gt;10&lt;/ele&gt;
+  &lt;time&gt;2024-01-15T08:00:00Z&lt;/time&gt;
+&lt;/trkpt&gt;</pre>
       </div>
       <div class="example-after">
-        <div class="example-label">After (~100m accuracy)</div>
-        <pre>lat="37.775" lon="-122.419"
-lat="37.775" lon="-122.419"</pre>
+        <div class="example-label">After (timestamp stripped)</div>
+        <pre>&lt;trkpt lat="37.7749" lon="-122.4194"&gt;
+  &lt;ele&gt;10&lt;/ele&gt;
+&lt;/trkpt&gt;</pre>
       </div>
     </div>
   </div>
 
-  <h2>What Gets Detected</h2>
+  <h2>What Can Be Removed</h2>
 
   <div class="feature-box">
     <ul style="margin:0">
-      <li><strong>Track coordinates</strong> - Latitude/longitude in track points</li>
-      <li><strong>Waypoints</strong> - Named locations (often home/work)</li>
-      <li><strong>Timestamps</strong> - Date/time information revealing schedules</li>
-      <li><strong>User profile</strong> - Name, weight, age (FIT files)</li>
-      <li><strong>Device info</strong> - Serial numbers, manufacturer (FIT files)</li>
-      <li><strong>Sensor data</strong> - Heart rate, power, cadence (preserved in export)</li>
+      <li><strong>Heart rate</strong> - Personal fitness metric that can identify individuals</li>
+      <li><strong>Cadence</strong> - Running/cycling rhythm data</li>
+      <li><strong>Power</strong> - Cycling power meter data (watts)</li>
+      <li><strong>Temperature</strong> - Ambient temperature readings</li>
+      <li><strong>Elevation</strong> - Altitude data that can identify locations</li>
+      <li><strong>Timestamps</strong> - Date/time revealing your schedule</li>
+      <li><strong>PII in metadata</strong> - Names, emails, device info in GPX/FIT files</li>
     </ul>
   </div>
 
-  <h2>FIT File Data Preserved in GPX Export</h2>
+  <h2>FIT File Conversion</h2>
 
-  <p>When converting FIT to GPX, the following data is included:</p>
+  <p>FIT files (Garmin's binary format) are automatically converted to GPX. You can choose to include or strip the following data:</p>
 
   <table>
     <tr>
       <th>Data Type</th>
       <th>GPX Element</th>
+      <th>Can Strip?</th>
     </tr>
     <tr>
       <td>GPS position</td>
       <td><code>&lt;trkpt lat="..." lon="..."&gt;</code></td>
+      <td>Always included</td>
     </tr>
     <tr>
       <td>Elevation</td>
       <td><code>&lt;ele&gt;</code></td>
+      <td>Yes</td>
     </tr>
     <tr>
       <td>Timestamp</td>
       <td><code>&lt;time&gt;</code></td>
+      <td>Yes</td>
     </tr>
     <tr>
       <td>Heart rate</td>
-      <td><code>&lt;gpxtpx:hr&gt;</code> (Garmin extension)</td>
+      <td><code>&lt;gpxtpx:hr&gt;</code></td>
+      <td>Yes</td>
     </tr>
     <tr>
       <td>Cadence</td>
       <td><code>&lt;gpxtpx:cad&gt;</code></td>
+      <td>Yes</td>
     </tr>
     <tr>
       <td>Power</td>
       <td><code>&lt;gpxtpx:power&gt;</code></td>
+      <td>Yes</td>
     </tr>
     <tr>
       <td>Temperature</td>
       <td><code>&lt;gpxtpx:atemp&gt;</code></td>
+      <td>Yes</td>
     </tr>
   </table>
+
+  <div class="note">
+    <div class="note-title">FIT Export Limitation</div>
+    <p style="margin:0">FIT files can only be converted to GPX format. The original binary FIT format cannot be re-exported due to format complexity. Download your anonymized activity as GPX.</p>
+  </div>
 
   <h2>Common Use Cases</h2>
 

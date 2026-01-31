@@ -484,7 +484,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     offsetMinutes: 0,
     startDate: '',
     startTime: '',
-    lineOnly: true
+    lineOnly: false
   },
   fileName: null,
   savedPresets: loadPresetsFromStorage(),

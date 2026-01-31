@@ -870,3 +870,25 @@ pub fn fit_to_gpx(data: &[u8]) -> Result<String, JsValue> {
     fit::fit_to_gpx(data)
         .map_err(|e| JsValue::from_str(&e))
 }
+
+/// Convert FIT file to GPX format with options to strip personal data
+/// config_json: {"strip_heart_rate": bool, "strip_cadence": bool, "strip_power": bool,
+///               "strip_temperature": bool, "strip_elevation": bool, "strip_timestamps": bool}
+#[wasm_bindgen]
+pub fn fit_to_gpx_with_config(data: &[u8], config_json: &str) -> Result<String, JsValue> {
+    let config: fit::GpxConfig = serde_json::from_str(config_json)
+        .map_err(|e| JsValue::from_str(&format!("Invalid config: {}", e)))?;
+    fit::fit_to_gpx_with_config(data, &config)
+        .map_err(|e| JsValue::from_str(&e))
+}
+
+/// Strip personal data from GPX content
+/// Removes heart rate, cadence, power, temperature, elevation, and/or timestamps
+/// config_json: {"strip_heart_rate": bool, "strip_cadence": bool, "strip_power": bool,
+///               "strip_temperature": bool, "strip_elevation": bool, "strip_timestamps": bool}
+#[wasm_bindgen]
+pub fn strip_gpx_personal_data(gpx_content: &str, config_json: &str) -> Result<String, JsValue> {
+    let config: fit::GpxConfig = serde_json::from_str(config_json)
+        .map_err(|e| JsValue::from_str(&format!("Invalid config: {}", e)))?;
+    Ok(fit::strip_gpx_personal_data(gpx_content, &config))
+}

@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import init, { decompress_gzip, decompress_zip, decompress_zip_file, compress_zip, compress_gzip, fit_to_gpx } from '../wasm-core/wasm_core'
+import init, { decompress_gzip, decompress_zip, decompress_zip_file, compress_zip, compress_gzip, fit_to_gpx_with_config } from '../wasm-core/wasm_core'
 import { useAppStore, type ReplacementInfo, type DocumentType, type ValidatedFormat } from '../stores/useAppStore'
 import { tokenizeWithPositions } from '../utils/syntaxHighlight'
 import { Modal } from './Modal'
@@ -635,6 +635,17 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const [showMetadataDialog, setShowMetadataDialog] = useState(false)
   const [documentMetadata, setDocumentMetadata] = useState<DocumentMetadata | null>(null)
   const [stripMetadataPreference, setStripMetadataPreference] = useState<boolean | null>(null)
+  // GPX/FIT privacy options
+  const [showGpxPrivacyDialog, setShowGpxPrivacyDialog] = useState(false)
+  const [pendingFitData, setPendingFitData] = useState<{ data: Uint8Array; fileName: string } | null>(null)
+  const [gpxPrivacyOptions, setGpxPrivacyOptions] = useState({
+    stripHeartRate: false,
+    stripCadence: false,
+    stripPower: false,
+    stripTemperature: false,
+    stripElevation: false,
+    stripTimestamps: false,
+  })
   const originalPreviewRef = useRef<HTMLDivElement>(null)
   const scrubbedPreviewRef = useRef<HTMLDivElement>(null)
 
@@ -1369,26 +1380,21 @@ Here are examples of actual replacements made in this ${docTypeShort}:
           return
         }
 
-        // Handle FIT files specially - convert to GPX
+        // Handle FIT files specially - show privacy options then convert to GPX
         if (lowerName.endsWith('.fit')) {
           await ensureWasm()
           const arrayBuffer = await file.arrayBuffer()
           const data = new Uint8Array(arrayBuffer)
-          try {
-            const gpxContent = fit_to_gpx(data)
-            const baseName = file.name.replace(/\.fit$/i, '')
-            onInputChange(gpxContent)
-            setFileName(`${baseName}.gpx`)
-            // Reset document-related state
-            setDocumentFile(null)
-            setDocumentType(null)
-            setPreviewPage(0)
-            setStripMetadataPreference(null)
-            setDocumentMetadata(null)
-            setPcapFile(null)
-          } catch (err) {
-            alert(`Failed to convert FIT file: ${err instanceof Error ? err.message : String(err)}`)
-          }
+          // Store the data and show privacy options dialog
+          setPendingFitData({ data, fileName: file.name })
+          setShowGpxPrivacyDialog(true)
+          // Reset document-related state
+          setDocumentFile(null)
+          setDocumentType(null)
+          setPreviewPage(0)
+          setStripMetadataPreference(null)
+          setDocumentMetadata(null)
+          setPcapFile(null)
           return
         }
 
@@ -1430,6 +1436,32 @@ Here are examples of actual replacements made in this ${docTypeShort}:
         console.error('File load error:', err)
         alert('Failed to read file. Make sure it\'s a valid file.')
       }
+    }
+  }
+
+  // Convert pending FIT file to GPX with privacy options
+  const handleFitConversion = async () => {
+    if (!pendingFitData) return
+
+    try {
+      const config = JSON.stringify({
+        strip_heart_rate: gpxPrivacyOptions.stripHeartRate,
+        strip_cadence: gpxPrivacyOptions.stripCadence,
+        strip_power: gpxPrivacyOptions.stripPower,
+        strip_temperature: gpxPrivacyOptions.stripTemperature,
+        strip_elevation: gpxPrivacyOptions.stripElevation,
+        strip_timestamps: gpxPrivacyOptions.stripTimestamps,
+      })
+
+      const gpxContent = fit_to_gpx_with_config(pendingFitData.data, config)
+      const baseName = pendingFitData.fileName.replace(/\.fit$/i, '')
+      onInputChange(gpxContent)
+      setFileName(`${baseName}.gpx`)
+    } catch (err) {
+      alert(`Failed to convert FIT file: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setPendingFitData(null)
+      setShowGpxPrivacyDialog(false)
     }
   }
 
@@ -1957,26 +1989,21 @@ Here are examples of actual replacements made in this ${docTypeShort}:
           return
         }
 
-        // Handle FIT files specially - convert to GPX
+        // Handle FIT files specially - show privacy options then convert to GPX
         if (lowerName.endsWith('.fit')) {
           await ensureWasm()
           const arrayBuffer = await file.arrayBuffer()
           const data = new Uint8Array(arrayBuffer)
-          try {
-            const gpxContent = fit_to_gpx(data)
-            const baseName = file.name.replace(/\.fit$/i, '')
-            onInputChange(gpxContent)
-            setFileName(`${baseName}.gpx`)
-            // Reset document-related state
-            setDocumentFile(null)
-            setDocumentType(null)
-            setPreviewPage(0)
-            setStripMetadataPreference(null)
-            setDocumentMetadata(null)
-            setPcapFile(null)
-          } catch (err) {
-            alert(`Failed to convert FIT file: ${err instanceof Error ? err.message : String(err)}`)
-          }
+          // Store the data and show privacy options dialog
+          setPendingFitData({ data, fileName: file.name })
+          setShowGpxPrivacyDialog(true)
+          // Reset document-related state
+          setDocumentFile(null)
+          setDocumentType(null)
+          setPreviewPage(0)
+          setStripMetadataPreference(null)
+          setDocumentMetadata(null)
+          setPcapFile(null)
           return
         }
 
@@ -2736,6 +2763,92 @@ Here are examples of actual replacements made in this ${docTypeShort}:
           onRemove={handleMetadataRemove}
           onCancel={handleMetadataCancel}
         />
+      )}
+
+      {/* GPX/FIT Privacy Options Dialog */}
+      {showGpxPrivacyDialog && pendingFitData && (
+        <Modal onClose={() => { setPendingFitData(null); setShowGpxPrivacyDialog(false); }} title="FIT File Privacy Options">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Your FIT file will be converted to GPX format. Choose what personal data to include or strip:
+            </p>
+
+            <div className="space-y-3">
+              <div className="font-medium text-sm text-gray-700 dark:text-gray-300">Health & Fitness Data</div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={gpxPrivacyOptions.stripHeartRate}
+                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripHeartRate: e.target.checked }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Strip heart rate data</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={gpxPrivacyOptions.stripCadence}
+                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripCadence: e.target.checked }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Strip cadence data</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={gpxPrivacyOptions.stripPower}
+                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripPower: e.target.checked }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Strip power data</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={gpxPrivacyOptions.stripTemperature}
+                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripTemperature: e.target.checked }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Strip temperature data</span>
+              </label>
+
+              <div className="font-medium text-sm text-gray-700 dark:text-gray-300 mt-4">Location & Time Data</div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={gpxPrivacyOptions.stripElevation}
+                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripElevation: e.target.checked }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Strip elevation data</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={gpxPrivacyOptions.stripTimestamps}
+                  onChange={(e) => setGpxPrivacyOptions(prev => ({ ...prev, stripTimestamps: e.target.checked }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Strip timestamps</span>
+              </label>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => { setPendingFitData(null); setShowGpxPrivacyDialog(false); }}
+                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFitConversion}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Convert to GPX
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {pcapFile && (

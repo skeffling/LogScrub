@@ -90,6 +90,7 @@ pub struct PcapStats {
     pub tls_sni_scrubbed: usize,
     pub http_headers_scrubbed: usize,
     pub dhcp_options_anonymized: usize,
+    pub netbios_smb_scrubbed: usize,
     pub errors: Vec<String>,
     // Filter breakdown
     pub filtered_by_port: usize,
@@ -426,6 +427,9 @@ pub struct PcapConfig {
     /// Anonymize DHCP hostnames and client identifiers
     #[serde(default)]
     pub anonymize_dhcp: bool,
+    /// Scrub NetBIOS/SMB computer names, usernames, share names
+    #[serde(default)]
+    pub scrub_netbios_smb: bool,
     /// Intentionally break checksums (some tools expect this for anonymized data)
     #[serde(default)]
     pub break_checksums: bool,
@@ -1293,6 +1297,187 @@ impl PcapAnonymizer {
         (modified, anonymized)
     }
 
+    /// Scrub NetBIOS/SMB traffic - computer names, usernames, share names
+    /// Ports: 137 (NBNS), 138 (NBDGM), 139 (NBSS), 445 (SMB)
+    fn scrub_netbios_smb(&mut self, payload: &[u8], port: u16) -> (Vec<u8>, usize) {
+        let mut modified = payload.to_vec();
+        let mut scrubbed = 0;
+
+        match port {
+            // NetBIOS Name Service (port 137) - UDP
+            137 => {
+                // NBNS packet structure:
+                // Transaction ID (2) + Flags (2) + Questions (2) + Answer RRs (2) +
+                // Authority RRs (2) + Additional RRs (2) + Questions/Answers
+                if payload.len() < 12 {
+                    return (modified, 0);
+                }
+
+                let qdcount = u16::from_be_bytes([payload[4], payload[5]]) as usize;
+                let mut offset = 12;
+
+                // Process questions - NetBIOS names are in the question section
+                for _ in 0..qdcount {
+                    if offset >= modified.len() {
+                        break;
+                    }
+
+                    // NetBIOS name is encoded: length byte followed by 32 bytes of encoded name
+                    let name_len = modified[offset] as usize;
+                    if name_len == 32 && offset + 1 + name_len <= modified.len() {
+                        // Anonymize the encoded NetBIOS name (replace with spaces encoded)
+                        // Encoded space is 'CA' repeated
+                        for i in 0..32 {
+                            modified[offset + 1 + i] = if i % 2 == 0 { b'C' } else { b'A' };
+                        }
+                        scrubbed += 1;
+                    }
+                    offset += 1 + name_len;
+
+                    // Skip null terminator
+                    if offset < modified.len() && modified[offset] == 0 {
+                        offset += 1;
+                    }
+
+                    // Skip type (2) and class (2)
+                    offset += 4;
+                }
+            }
+
+            // NetBIOS Session Service (port 139) / SMB (port 445)
+            139 | 445 => {
+                // Look for SMB signatures and scrub usernames/share names
+                // SMB1: \xFFSMB
+                // SMB2: \xFESMB
+
+                let mut offset = 0;
+
+                // For port 139, skip NetBIOS session header (4 bytes)
+                if port == 139 && payload.len() >= 4 {
+                    offset = 4;
+                }
+
+                if offset + 4 > payload.len() {
+                    return (modified, 0);
+                }
+
+                // Check for SMB signature
+                let is_smb1 = payload.len() > offset + 4 &&
+                    payload[offset] == 0xFF &&
+                    payload[offset + 1] == b'S' &&
+                    payload[offset + 2] == b'M' &&
+                    payload[offset + 3] == b'B';
+
+                let is_smb2 = payload.len() > offset + 4 &&
+                    payload[offset] == 0xFE &&
+                    payload[offset + 1] == b'S' &&
+                    payload[offset + 2] == b'M' &&
+                    payload[offset + 3] == b'B';
+
+                if is_smb1 {
+                    // SMB1: Look for Session Setup, Tree Connect commands
+                    // Simple approach: find and redact ASCII strings that look like usernames/paths
+                    if let Some(count) = self.scrub_smb_strings(&mut modified, offset) {
+                        scrubbed += count;
+                    }
+                } else if is_smb2 {
+                    // SMB2/3: Similar approach
+                    if let Some(count) = self.scrub_smb_strings(&mut modified, offset) {
+                        scrubbed += count;
+                    }
+                }
+            }
+
+            // NetBIOS Datagram Service (port 138)
+            138 => {
+                // Similar to NBNS, contains computer names
+                if payload.len() < 14 {
+                    return (modified, 0);
+                }
+
+                // Source name starts at offset 14 (after header)
+                let offset = 14;
+                if offset + 34 <= modified.len() {
+                    // Encoded NetBIOS name (34 bytes including length and terminator)
+                    let name_len = modified[offset] as usize;
+                    if name_len == 32 {
+                        for i in 0..32 {
+                            modified[offset + 1 + i] = if i % 2 == 0 { b'C' } else { b'A' };
+                        }
+                        scrubbed += 1;
+                    }
+                }
+            }
+
+            _ => {}
+        }
+
+        (modified, scrubbed)
+    }
+
+    /// Helper to scrub strings in SMB packets
+    fn scrub_smb_strings(&mut self, data: &mut [u8], start_offset: usize) -> Option<usize> {
+        let mut count = 0;
+        let mut i = start_offset + 32; // Skip SMB header (at least 32 bytes)
+
+        // Look for common SMB string patterns and redact them
+        // This is a heuristic approach - we look for null-terminated strings
+        // that appear to be usernames, domains, or share paths
+
+        while i + 2 < data.len() {
+            // Look for patterns like \\server\share or DOMAIN\USER
+            if data[i] == b'\\' && data[i + 1] == b'\\' {
+                // Found UNC path start - redact until null or end
+                let path_start = i;
+                while i < data.len() && data[i] != 0 {
+                    if data[i].is_ascii_alphanumeric() || data[i] == b'\\' || data[i] == b'.' || data[i] == b'-' || data[i] == b'_' {
+                        if data[i].is_ascii_alphanumeric() {
+                            data[i] = b'X';
+                        }
+                    }
+                    i += 1;
+                }
+                if i > path_start + 2 {
+                    count += 1;
+                }
+                continue;
+            }
+
+            // Look for DOMAIN\USER pattern (backslash not at start of UNC)
+            if data[i] == b'\\' && i > start_offset + 32 {
+                // Check if there's ASCII before the backslash
+                let mut has_text_before = false;
+                if i > 0 && data[i - 1].is_ascii_alphanumeric() {
+                    has_text_before = true;
+                }
+
+                if has_text_before {
+                    // Redact the text after backslash (username)
+                    let user_start = i + 1;
+                    i += 1;
+                    while i < data.len() && data[i] != 0 && data[i].is_ascii_graphic() {
+                        if data[i].is_ascii_alphanumeric() {
+                            data[i] = b'X';
+                        }
+                        i += 1;
+                    }
+                    if i > user_start {
+                        count += 1;
+                    }
+                    continue;
+                }
+            }
+
+            i += 1;
+        }
+
+        if count > 0 {
+            Some(count)
+        } else {
+            None
+        }
+    }
+
     /// Anonymize a single packet's data, returning modified data
     pub fn anonymize_packet(&mut self, data: &[u8], stats: &mut PcapStats) -> Vec<u8> {
         let mut modified = data.to_vec();
@@ -1671,6 +1856,56 @@ impl PcapAnonymizer {
                                         was_modified = true;
                                         needs_checksum_recalc = true;
                                         stats.dhcp_options_anonymized += count;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // NetBIOS/SMB scrubbing (ports 137, 138, 139, 445)
+                if self.config.scrub_netbios_smb {
+                    if let Some(transport) = &parsed.transport {
+                        let (src_port, dst_port) = match transport {
+                            TransportSlice::Tcp(tcp) => (tcp.source_port(), tcp.destination_port()),
+                            TransportSlice::Udp(udp) => (udp.source_port(), udp.destination_port()),
+                            _ => (0, 0),
+                        };
+
+                        let netbios_port = if [137, 138, 139, 445].contains(&src_port) {
+                            Some(src_port)
+                        } else if [137, 138, 139, 445].contains(&dst_port) {
+                            Some(dst_port)
+                        } else {
+                            None
+                        };
+
+                        if let Some(port) = netbios_port {
+                            if let Some(ip_off) = ip_offset {
+                                let transport_offset = if is_ipv6 {
+                                    ip_off + 40
+                                } else {
+                                    let ihl = (modified[ip_off] & 0x0f) as usize * 4;
+                                    ip_off + ihl
+                                };
+
+                                let header_len = match transport {
+                                    TransportSlice::Tcp(tcp) => tcp.data_offset() as usize * 4,
+                                    TransportSlice::Udp(_) => 8,
+                                    _ => 0,
+                                };
+
+                                let payload_start = transport_offset + header_len;
+                                if payload_start < modified.len() {
+                                    let smb_payload = modified[payload_start..].to_vec();
+                                    let (anon_payload, count) = self.scrub_netbios_smb(&smb_payload, port);
+
+                                    if count > 0 {
+                                        modified.truncate(payload_start);
+                                        modified.extend_from_slice(&anon_payload);
+                                        was_modified = true;
+                                        needs_checksum_recalc = true;
+                                        stats.netbios_smb_scrubbed += count;
                                     }
                                 }
                             }
@@ -2594,6 +2829,55 @@ pub fn pre_analyze_pcap(data: &[u8]) -> Result<PcapAnalysisReport, String> {
         }
     }
 
+    // Detect NetBIOS/SMB traffic
+    let mut has_netbios = false;
+    let mut has_smb = false;
+    let mut has_tls_certs = false;
+
+    for pkt_data in &packets {
+        if let Ok(parsed) = SlicedPacket::from_ethernet(pkt_data) {
+            if let Some(transport) = &parsed.transport {
+                let (src_port, dst_port) = match transport {
+                    TransportSlice::Tcp(tcp) => (tcp.source_port(), tcp.destination_port()),
+                    TransportSlice::Udp(udp) => (udp.source_port(), udp.destination_port()),
+                    _ => (0, 0),
+                };
+
+                // Check for NetBIOS/SMB ports
+                if [137, 138, 139].contains(&src_port) || [137, 138, 139].contains(&dst_port) {
+                    has_netbios = true;
+                }
+                if src_port == 445 || dst_port == 445 {
+                    has_smb = true;
+                }
+
+                // Check for TLS Certificate messages on HTTPS traffic
+                if src_port == 443 || dst_port == 443 {
+                    // Get payload
+                    let payload = match transport {
+                        TransportSlice::Tcp(tcp) => tcp.payload(),
+                        _ => &[],
+                    };
+
+                    // Look for TLS Certificate message
+                    // TLS record type 0x16 (handshake), followed by version, length
+                    // Then handshake type 0x0b (certificate)
+                    if payload.len() > 10 && payload[0] == 0x16 {
+                        // This is a TLS handshake record
+                        let record_len = u16::from_be_bytes([payload[3], payload[4]]) as usize;
+                        if payload.len() >= 5 + record_len && record_len > 4 {
+                            // Check handshake type (offset 5)
+                            if payload[5] == 0x0b {
+                                // Certificate message found
+                                has_tls_certs = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Convert sets to sorted vectors
     let mut ipv4_vec: Vec<String> = ipv4_set.into_iter().collect();
     ipv4_vec.sort();
@@ -2632,6 +2916,271 @@ pub fn pre_analyze_pcap(data: &[u8]) -> Result<PcapAnalysisReport, String> {
     if report.protocols.dns > 0 {
         report.sensitive_indicators.push("DNS traffic detected (reveals browsing activity)".to_string());
     }
+    if has_netbios {
+        report.sensitive_indicators.push("NetBIOS traffic detected (computer names exposed)".to_string());
+    }
+    if has_smb {
+        report.sensitive_indicators.push("SMB/CIFS traffic detected (may contain usernames, share paths)".to_string());
+    }
+    if has_tls_certs {
+        report.sensitive_indicators.push("TLS certificates detected (may reveal organization names)".to_string());
+    }
 
     Ok(report)
+}
+
+/// Packet comparison result
+#[derive(Debug, Serialize)]
+pub struct PacketComparison {
+    pub index: usize,
+    pub original_hex: String,
+    pub modified_hex: String,
+    pub original_ascii: String,
+    pub modified_ascii: String,
+    pub changed: bool,
+    pub summary: String,
+}
+
+/// Get packet-level comparison data
+pub fn get_packet_comparison(data: &[u8], config: PcapConfig, max_packets: usize) -> Result<Vec<PacketComparison>, String> {
+    let mut comparisons = Vec::new();
+    let mut anonymizer = PcapAnonymizer::new(config);
+    let mut stats = PcapStats::default();
+
+    // Extract packets
+    let packets: Vec<Vec<u8>> = if is_pcapng(data) {
+        let cursor = Cursor::new(data);
+        let mut reader = PcapNgReader::new(cursor)
+            .map_err(|e| format!("Failed to read PCAPNG: {}", e))?;
+
+        let mut pkts = Vec::new();
+        while let Some(block) = reader.next_block() {
+            if let Ok(block) = block {
+                match block {
+                    Block::EnhancedPacket(epb) => pkts.push(epb.data.to_vec()),
+                    Block::SimplePacket(spb) => pkts.push(spb.data.to_vec()),
+                    _ => {}
+                }
+            }
+            if pkts.len() >= max_packets {
+                break;
+            }
+        }
+        pkts
+    } else {
+        let cursor = Cursor::new(data);
+        let mut reader = PcapReader::new(cursor)
+            .map_err(|e| format!("Failed to read PCAP: {}", e))?;
+
+        let mut pkts = Vec::new();
+        while let Some(pkt) = reader.next_packet() {
+            if let Ok(pkt) = pkt {
+                pkts.push(pkt.data.to_vec());
+            }
+            if pkts.len() >= max_packets {
+                break;
+            }
+        }
+        pkts
+    };
+
+    for (i, original) in packets.iter().enumerate() {
+        let modified = anonymizer.anonymize_packet(original, &mut stats);
+        let changed = original != &modified;
+
+        // Generate hex dump (first 64 bytes)
+        let orig_hex = bytes_to_hex(&original[..original.len().min(64)]);
+        let mod_hex = bytes_to_hex(&modified[..modified.len().min(64)]);
+
+        // Generate ASCII representation
+        let orig_ascii = bytes_to_ascii(&original[..original.len().min(64)]);
+        let mod_ascii = bytes_to_ascii(&modified[..modified.len().min(64)]);
+
+        // Generate summary
+        let summary = get_packet_summary(original);
+
+        comparisons.push(PacketComparison {
+            index: i,
+            original_hex: orig_hex,
+            modified_hex: mod_hex,
+            original_ascii: orig_ascii,
+            modified_ascii: mod_ascii,
+            changed,
+            summary,
+        });
+    }
+
+    Ok(comparisons)
+}
+
+/// Search result
+#[derive(Debug, Serialize)]
+pub struct SearchResult {
+    pub packet_index: usize,
+    pub offset: usize,
+    pub context: String,
+    pub summary: String,
+}
+
+/// Search packets for content
+pub fn search_packets(data: &[u8], search_term: &str, max_results: usize) -> Result<Vec<SearchResult>, String> {
+    let mut results = Vec::new();
+    let search_bytes = search_term.as_bytes();
+    let search_lower = search_term.to_lowercase();
+
+    // Extract packets
+    let packets: Vec<Vec<u8>> = if is_pcapng(data) {
+        let cursor = Cursor::new(data);
+        let mut reader = PcapNgReader::new(cursor)
+            .map_err(|e| format!("Failed to read PCAPNG: {}", e))?;
+
+        let mut pkts = Vec::new();
+        while let Some(block) = reader.next_block() {
+            if let Ok(block) = block {
+                match block {
+                    Block::EnhancedPacket(epb) => pkts.push(epb.data.to_vec()),
+                    Block::SimplePacket(spb) => pkts.push(spb.data.to_vec()),
+                    _ => {}
+                }
+            }
+        }
+        pkts
+    } else {
+        let cursor = Cursor::new(data);
+        let mut reader = PcapReader::new(cursor)
+            .map_err(|e| format!("Failed to read PCAP: {}", e))?;
+
+        let mut pkts = Vec::new();
+        while let Some(pkt) = reader.next_packet() {
+            if let Ok(pkt) = pkt {
+                pkts.push(pkt.data.to_vec());
+            }
+        }
+        pkts
+    };
+
+    for (i, pkt) in packets.iter().enumerate() {
+        // Search in raw bytes
+        if let Some(offset) = find_bytes(pkt, search_bytes) {
+            let context = get_context(pkt, offset, 32);
+            let summary = get_packet_summary(pkt);
+            results.push(SearchResult {
+                packet_index: i,
+                offset,
+                context,
+                summary,
+            });
+            if results.len() >= max_results {
+                break;
+            }
+            continue;
+        }
+
+        // Search in ASCII interpretation (case-insensitive)
+        let ascii = bytes_to_ascii(pkt);
+        if let Some(pos) = ascii.to_lowercase().find(&search_lower) {
+            let context = get_context(pkt, pos, 32);
+            let summary = get_packet_summary(pkt);
+            results.push(SearchResult {
+                packet_index: i,
+                offset: pos,
+                context,
+                summary,
+            });
+            if results.len() >= max_results {
+                break;
+            }
+        }
+    }
+
+    Ok(results)
+}
+
+/// Convert bytes to hex string
+fn bytes_to_hex(data: &[u8]) -> String {
+    data.iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<Vec<_>>()
+        .chunks(2)
+        .map(|c| c.join(""))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Convert bytes to ASCII with non-printable replaced by dots
+fn bytes_to_ascii(data: &[u8]) -> String {
+    data.iter()
+        .map(|&b| {
+            if b >= 0x20 && b < 0x7f {
+                b as char
+            } else {
+                '.'
+            }
+        })
+        .collect()
+}
+
+/// Find bytes in data
+fn find_bytes(data: &[u8], pattern: &[u8]) -> Option<usize> {
+    if pattern.is_empty() || pattern.len() > data.len() {
+        return None;
+    }
+    data.windows(pattern.len())
+        .position(|window| window == pattern)
+}
+
+/// Get context around an offset
+fn get_context(data: &[u8], offset: usize, radius: usize) -> String {
+    let start = offset.saturating_sub(radius);
+    let end = (offset + radius).min(data.len());
+    bytes_to_ascii(&data[start..end])
+}
+
+/// Get a summary of a packet (protocol, ports, etc.)
+fn get_packet_summary(data: &[u8]) -> String {
+    if data.len() < 14 {
+        return "Unknown".to_string();
+    }
+
+    let ethertype = u16::from_be_bytes([data[12], data[13]]);
+
+    match ethertype {
+        0x0806 => "ARP".to_string(),
+        0x0800 => {
+            // IPv4
+            if data.len() < 34 {
+                return "IPv4".to_string();
+            }
+            let proto = data[23];
+            let ihl = (data[14] & 0x0f) as usize * 4;
+            let transport_start = 14 + ihl;
+
+            match proto {
+                1 => "IPv4/ICMP".to_string(),
+                6 => {
+                    // TCP
+                    if data.len() >= transport_start + 4 {
+                        let src = u16::from_be_bytes([data[transport_start], data[transport_start + 1]]);
+                        let dst = u16::from_be_bytes([data[transport_start + 2], data[transport_start + 3]]);
+                        format!("TCP {}→{}", src, dst)
+                    } else {
+                        "TCP".to_string()
+                    }
+                }
+                17 => {
+                    // UDP
+                    if data.len() >= transport_start + 4 {
+                        let src = u16::from_be_bytes([data[transport_start], data[transport_start + 1]]);
+                        let dst = u16::from_be_bytes([data[transport_start + 2], data[transport_start + 3]]);
+                        format!("UDP {}→{}", src, dst)
+                    } else {
+                        "UDP".to_string()
+                    }
+                }
+                _ => format!("IPv4/Proto{}", proto),
+            }
+        }
+        0x86dd => "IPv6".to_string(),
+        _ => format!("Ether 0x{:04x}", ethertype),
+    }
 }

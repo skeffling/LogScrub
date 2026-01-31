@@ -813,3 +813,27 @@ pub fn pre_analyze_pcap(data: &[u8]) -> Result<String, JsValue> {
         Err(e) => Err(JsValue::from_str(&e)),
     }
 }
+
+/// Get packet-level comparison data (original vs anonymized)
+/// Returns JSON array of packet comparisons with hex dumps
+#[wasm_bindgen]
+pub fn get_packet_comparison(data: &[u8], config_json: &str, max_packets: usize) -> Result<String, JsValue> {
+    let config: pcap::PcapConfig = serde_json::from_str(config_json).unwrap_or_default();
+
+    match pcap::get_packet_comparison(data, config, max_packets) {
+        Ok(comparison) => serde_json::to_string(&comparison)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e))),
+        Err(e) => Err(JsValue::from_str(&e)),
+    }
+}
+
+/// Search packets for content matching a pattern
+/// Returns JSON array of matching packet indices and snippets
+#[wasm_bindgen]
+pub fn search_packets(data: &[u8], search_term: &str, max_results: usize) -> Result<String, JsValue> {
+    match pcap::search_packets(data, search_term, max_results) {
+        Ok(results) => serde_json::to_string(&results)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e))),
+        Err(e) => Err(JsValue::from_str(&e)),
+    }
+}

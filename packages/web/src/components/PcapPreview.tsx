@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '../stores/useAppStore'
-import init, { analyze_pcap, anonymize_pcap_bytes, pre_analyze_pcap } from '../wasm-core/wasm_core'
+import init, { analyze_pcap, anonymize_pcap_bytes, pre_analyze_pcap, get_packet_comparison, search_packets } from '../wasm-core/wasm_core'
 
 let wasmReady: Promise<unknown> | null = null
 async function ensureWasm(): Promise<void> {
@@ -25,6 +25,7 @@ interface PcapStats {
   tls_sni_scrubbed: number
   http_headers_scrubbed: number
   dhcp_options_anonymized: number
+  netbios_smb_scrubbed: number
   filtered_by_port: number
   filtered_by_ip: number
   filtered_by_protocol: number
@@ -77,6 +78,23 @@ interface PcapPreAnalysis {
   unique_mac: string[]
   port_stats: PortStats
   sensitive_indicators: string[]
+}
+
+interface PacketComparison {
+  index: number
+  original_hex: string
+  modified_hex: string
+  original_ascii: string
+  modified_ascii: string
+  changed: boolean
+  summary: string
+}
+
+interface SearchResult {
+  packet_index: number
+  offset: number
+  context: string
+  summary: string
 }
 
 interface PortFilter {
@@ -133,7 +151,14 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
   const [analysis, setAnalysis] = useState<PcapAnalysis | null>(null)
   const [preAnalysis, setPreAnalysis] = useState<PcapPreAnalysis | null>(null)
   const [fileData, setFileData] = useState<Uint8Array | null>(null)
-  const [activeTab, setActiveTab] = useState<'analysis' | 'anonymize' | 'filter'>('analysis')
+  const [activeTab, setActiveTab] = useState<'analysis' | 'anonymize' | 'filter' | 'compare' | 'search'>('analysis')
+
+  // Comparison and search state
+  const [comparisons, setComparisons] = useState<PacketComparison[]>([])
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
+  const [isLoadingComparison, setIsLoadingComparison] = useState(false)
 
   // Anonymization options
   const [anonymizeIpv4, setAnonymizeIpv4] = useState(true)
@@ -151,6 +176,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
   const [scrubTlsSni, setScrubTlsSni] = useState(false)
   const [scrubHttpHeaders, setScrubHttpHeaders] = useState(false)
   const [anonymizeDhcp, setAnonymizeDhcp] = useState(false)
+  const [scrubNetbiosSmb, setScrubNetbiosSmb] = useState(false)
   const [breakChecksums, setBreakChecksums] = useState(false)
 
   // Filter options
@@ -235,11 +261,12 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       scrub_tls_sni: scrubTlsSni,
       scrub_http_headers: scrubHttpHeaders,
       anonymize_dhcp: anonymizeDhcp,
+      scrub_netbios_smb: scrubNetbiosSmb,
       break_checksums: breakChecksums,
       import_mappings: importedMappings,
       filter: buildFilterConfig()
     }
-  }, [anonymizeIpv4, anonymizeIpv6, anonymizeMac, preservePrivateIPs, anonymizePorts, preserveWellKnownPorts, timestampShift, payloadMaxBytes, anonymizeDns, scrubTlsSni, scrubHttpHeaders, anonymizeDhcp, breakChecksums, importedMappings, buildFilterConfig])
+  }, [anonymizeIpv4, anonymizeIpv6, anonymizeMac, preservePrivateIPs, anonymizePorts, preserveWellKnownPorts, timestampShift, payloadMaxBytes, anonymizeDns, scrubTlsSni, scrubHttpHeaders, anonymizeDhcp, scrubNetbiosSmb, breakChecksums, importedMappings, buildFilterConfig])
 
   // Load and analyze the file
   useEffect(() => {
@@ -349,6 +376,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       `TLS SNI scrubbed: ${analysis.stats.tls_sni_scrubbed}`,
       `HTTP headers scrubbed: ${analysis.stats.http_headers_scrubbed}`,
       `DHCP options anonymized: ${analysis.stats.dhcp_options_anonymized}`,
+      `NetBIOS/SMB scrubbed: ${analysis.stats.netbios_smb_scrubbed}`,
       ``,
       `## IPv4 Mappings`,
       ...Object.entries(analysis.mappings.ipv4).map(([orig, anon]) => `${orig} -> ${anon}`),
@@ -420,6 +448,48 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
     setImportedMappings(null)
     setTimeout(reanalyze, 0)
   }, [reanalyze])
+
+  // Load packet comparison data
+  const loadComparison = useCallback(async () => {
+    if (!fileData) return
+
+    setIsLoadingComparison(true)
+    try {
+      await ensureWasm()
+      const config = JSON.stringify(buildConfig())
+      const resultJson = get_packet_comparison(fileData, config, 100) // Limit to 100 packets
+      const result: PacketComparison[] = JSON.parse(resultJson)
+      setComparisons(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setIsLoadingComparison(false)
+    }
+  }, [fileData, buildConfig])
+
+  // Search packets
+  const handleSearch = useCallback(async () => {
+    if (!fileData || !searchTerm.trim()) return
+
+    setIsSearching(true)
+    try {
+      await ensureWasm()
+      const resultJson = search_packets(fileData, searchTerm.trim(), 50) // Limit to 50 results
+      const result: SearchResult[] = JSON.parse(resultJson)
+      setSearchResults(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setIsSearching(false)
+    }
+  }, [fileData, searchTerm])
+
+  // Load comparison when tab changes to compare
+  useEffect(() => {
+    if (activeTab === 'compare' && comparisons.length === 0 && fileData) {
+      loadComparison()
+    }
+  }, [activeTab, comparisons.length, fileData, loadComparison])
 
   const toggleProtocol = (proto: string) => {
     setFilterProtocols(prev =>
@@ -496,6 +566,26 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                   Active
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setActiveTab('compare')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                activeTab === 'compare'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              }`}
+            >
+              Compare
+            </button>
+            <button
+              onClick={() => setActiveTab('search')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                activeTab === 'search'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              }`}
+            >
+              Search
             </button>
           </div>
         </div>
@@ -992,6 +1082,23 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                         </label>
                         <p className="text-xs text-gray-500 ml-6">Hostnames, client identifiers</p>
                       </div>
+
+                      {/* NetBIOS/SMB */}
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer" title="Scrub NetBIOS/SMB computer names, usernames, and share names (ports 137-139, 445)">
+                          <input
+                            type="checkbox"
+                            checked={scrubNetbiosSmb}
+                            onChange={(e) => {
+                              setScrubNetbiosSmb(e.target.checked)
+                              setTimeout(reanalyze, 0)
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Scrub NetBIOS/SMB</span>
+                        </label>
+                        <p className="text-xs text-gray-500 ml-6">Computer names, usernames, shares</p>
+                      </div>
                     </div>
                   </div>
 
@@ -1097,6 +1204,14 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                           {analysis.stats.dhcp_options_anonymized}
                         </div>
                         <div className="text-xs text-gray-600 dark:text-gray-400">DHCP</div>
+                      </div>
+                    )}
+                    {analysis.stats.netbios_smb_scrubbed > 0 && (
+                      <div className="bg-fuchsia-50 dark:bg-fuchsia-900/20 rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-fuchsia-600 dark:text-fuchsia-400">
+                          {analysis.stats.netbios_smb_scrubbed}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">NetBIOS/SMB</div>
                       </div>
                     )}
                   </div>
@@ -1353,6 +1468,169 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                           <div>By protocol: {analysis.stats.filtered_by_protocol}</div>
                         )}
                       </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Compare Tab */}
+              {activeTab === 'compare' && (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Side-by-side comparison showing original vs anonymized packet data in hex and ASCII format.
+                      Changed bytes are highlighted.
+                    </p>
+                  </div>
+
+                  {isLoadingComparison ? (
+                    <div className="flex items-center justify-center py-12">
+                      <svg className="animate-spin h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <span className="ml-3 text-gray-600 dark:text-gray-400">Loading packet comparison...</span>
+                    </div>
+                  ) : comparisons.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                      <p>No packet comparison data available.</p>
+                      <button
+                        onClick={loadComparison}
+                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      >
+                        Load Comparison
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          Showing {comparisons.length} packets (max 100)
+                        </span>
+                        <button
+                          onClick={loadComparison}
+                          className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                          Refresh
+                        </button>
+                      </div>
+
+                      {comparisons.map((pkt) => (
+                        <div
+                          key={pkt.index}
+                          className={`border rounded-lg overflow-hidden ${
+                            pkt.changed
+                              ? 'border-yellow-300 dark:border-yellow-700'
+                              : 'border-gray-200 dark:border-gray-700'
+                          }`}
+                        >
+                          <div className={`px-3 py-2 flex justify-between items-center ${
+                            pkt.changed
+                              ? 'bg-yellow-100 dark:bg-yellow-900/30'
+                              : 'bg-gray-100 dark:bg-gray-700'
+                          }`}>
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Packet #{pkt.index + 1}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {pkt.summary}
+                            </span>
+                            {pkt.changed && (
+                              <span className="px-2 py-0.5 text-xs font-medium bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded">
+                                Modified
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
+                            <div className="p-3">
+                              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Original</div>
+                              <div className="font-mono text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto">
+                                <div className="text-red-600 dark:text-red-400 whitespace-pre">{pkt.original_hex}</div>
+                                <div className="text-gray-500 dark:text-gray-500 mt-1 whitespace-pre border-t border-gray-200 dark:border-gray-700 pt-1">{pkt.original_ascii}</div>
+                              </div>
+                            </div>
+                            <div className="p-3">
+                              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Anonymized</div>
+                              <div className="font-mono text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto">
+                                <div className="text-green-600 dark:text-green-400 whitespace-pre">{pkt.modified_hex}</div>
+                                <div className="text-gray-500 dark:text-gray-500 mt-1 whitespace-pre border-t border-gray-200 dark:border-gray-700 pt-1">{pkt.modified_ascii}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Search Tab */}
+              {activeTab === 'search' && (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Search for content within packet payloads. Matches are shown with context.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                      placeholder="Enter search term (e.g., password, GET /api, 192.168)"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                    />
+                    <button
+                      onClick={handleSearch}
+                      disabled={isSearching || !searchTerm.trim()}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isSearching && (
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                      )}
+                      Search
+                    </button>
+                  </div>
+
+                  {searchResults.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Found {searchResults.length} matches (max 50 shown)
+                      </div>
+
+                      {searchResults.map((result, idx) => (
+                        <div
+                          key={`${result.packet_index}-${result.offset}-${idx}`}
+                          className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+                        >
+                          <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Packet #{result.packet_index + 1} @ offset {result.offset}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {result.summary}
+                            </span>
+                          </div>
+                          <div className="p-3">
+                            <div className="font-mono text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto whitespace-pre">
+                              {result.context}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : searchTerm.trim() && !isSearching ? (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      No matches found for "{searchTerm}"
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      Enter a search term to find content in packet payloads
                     </div>
                   )}
                 </div>

@@ -11,10 +11,15 @@ use std::io::Cursor;
 pub struct PcapStats {
     pub packets_processed: usize,
     pub packets_modified: usize,
+    pub packets_filtered: usize,
     pub ipv4_replaced: usize,
     pub ipv6_replaced: usize,
     pub mac_replaced: usize,
     pub errors: Vec<String>,
+    // Filter breakdown
+    pub filtered_by_port: usize,
+    pub filtered_by_ip: usize,
+    pub filtered_by_protocol: usize,
 }
 
 /// Result of PCAP anonymization
@@ -33,6 +38,270 @@ pub struct PcapMappings {
     pub mac: HashMap<String, String>,
 }
 
+/// Port filter specification
+#[derive(Debug, Deserialize, Default, Clone)]
+pub struct PortFilter {
+    /// Single ports to filter
+    #[serde(default)]
+    pub ports: Vec<u16>,
+    /// Port ranges to filter (start, end) inclusive
+    #[serde(default)]
+    pub ranges: Vec<(u16, u16)>,
+}
+
+impl PortFilter {
+    pub fn matches(&self, port: u16) -> bool {
+        if self.ports.contains(&port) {
+            return true;
+        }
+        for (start, end) in &self.ranges {
+            if port >= *start && port <= *end {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.ports.is_empty() && self.ranges.is_empty()
+    }
+}
+
+/// IP filter specification (supports CIDR notation)
+#[derive(Debug, Deserialize, Default, Clone)]
+pub struct IpFilter {
+    /// IPv4 addresses or CIDR blocks (e.g., "192.168.1.0/24")
+    #[serde(default)]
+    pub ipv4: Vec<String>,
+    /// IPv6 addresses or CIDR blocks
+    #[serde(default)]
+    pub ipv6: Vec<String>,
+}
+
+impl IpFilter {
+    pub fn matches_ipv4(&self, ip: &[u8; 4]) -> bool {
+        for filter in &self.ipv4 {
+            if let Some((network, prefix_len)) = parse_ipv4_cidr(filter) {
+                if ipv4_matches_cidr(ip, &network, prefix_len) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    pub fn matches_ipv6(&self, ip: &[u8; 16]) -> bool {
+        for filter in &self.ipv6 {
+            if let Some((network, prefix_len)) = parse_ipv6_cidr(filter) {
+                if ipv6_matches_cidr(ip, &network, prefix_len) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.ipv4.is_empty() && self.ipv6.is_empty()
+    }
+}
+
+/// Parse IPv4 CIDR notation (e.g., "192.168.1.0/24" or "192.168.1.1")
+fn parse_ipv4_cidr(cidr: &str) -> Option<([u8; 4], u8)> {
+    let parts: Vec<&str> = cidr.split('/').collect();
+    let ip_str = parts[0];
+    let prefix_len = if parts.len() > 1 {
+        parts[1].parse().ok()?
+    } else {
+        32 // Single IP = /32
+    };
+
+    let octets: Vec<u8> = ip_str.split('.').filter_map(|s| s.parse().ok()).collect();
+    if octets.len() != 4 {
+        return None;
+    }
+
+    Some(([octets[0], octets[1], octets[2], octets[3]], prefix_len))
+}
+
+/// Parse IPv6 CIDR notation
+fn parse_ipv6_cidr(cidr: &str) -> Option<([u8; 16], u8)> {
+    let parts: Vec<&str> = cidr.split('/').collect();
+    let ip_str = parts[0];
+    let prefix_len = if parts.len() > 1 {
+        parts[1].parse().ok()?
+    } else {
+        128 // Single IP = /128
+    };
+
+    // Simple IPv6 parsing (full form only for now)
+    let mut result = [0u8; 16];
+    let segments: Vec<&str> = ip_str.split(':').collect();
+
+    // Handle :: expansion
+    if ip_str.contains("::") {
+        let parts: Vec<&str> = ip_str.split("::").collect();
+        let left: Vec<u16> = parts[0].split(':').filter(|s| !s.is_empty())
+            .filter_map(|s| u16::from_str_radix(s, 16).ok()).collect();
+        let right: Vec<u16> = if parts.len() > 1 {
+            parts[1].split(':').filter(|s| !s.is_empty())
+                .filter_map(|s| u16::from_str_radix(s, 16).ok()).collect()
+        } else {
+            vec![]
+        };
+
+        let zeros_needed = 8 - left.len() - right.len();
+        let mut full: Vec<u16> = left;
+        full.extend(vec![0u16; zeros_needed]);
+        full.extend(right);
+
+        for (i, seg) in full.iter().enumerate() {
+            result[i * 2] = (*seg >> 8) as u8;
+            result[i * 2 + 1] = (*seg & 0xff) as u8;
+        }
+    } else if segments.len() == 8 {
+        for (i, seg) in segments.iter().enumerate() {
+            if let Ok(val) = u16::from_str_radix(seg, 16) {
+                result[i * 2] = (val >> 8) as u8;
+                result[i * 2 + 1] = (val & 0xff) as u8;
+            }
+        }
+    } else {
+        return None;
+    }
+
+    Some((result, prefix_len))
+}
+
+/// Check if IPv4 matches CIDR
+fn ipv4_matches_cidr(ip: &[u8; 4], network: &[u8; 4], prefix_len: u8) -> bool {
+    if prefix_len == 0 {
+        return true;
+    }
+    if prefix_len > 32 {
+        return false;
+    }
+
+    let ip_u32 = u32::from_be_bytes(*ip);
+    let net_u32 = u32::from_be_bytes(*network);
+    let mask = if prefix_len == 32 { !0u32 } else { !0u32 << (32 - prefix_len) };
+
+    (ip_u32 & mask) == (net_u32 & mask)
+}
+
+/// Check if IPv6 matches CIDR
+fn ipv6_matches_cidr(ip: &[u8; 16], network: &[u8; 16], prefix_len: u8) -> bool {
+    if prefix_len == 0 {
+        return true;
+    }
+    if prefix_len > 128 {
+        return false;
+    }
+
+    let full_bytes = (prefix_len / 8) as usize;
+    let remaining_bits = prefix_len % 8;
+
+    // Check full bytes
+    if ip[..full_bytes] != network[..full_bytes] {
+        return false;
+    }
+
+    // Check remaining bits
+    if remaining_bits > 0 && full_bytes < 16 {
+        let mask = !0u8 << (8 - remaining_bits);
+        if (ip[full_bytes] & mask) != (network[full_bytes] & mask) {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Protocol filter
+#[derive(Debug, Deserialize, Default, Clone)]
+pub struct ProtocolFilter {
+    /// Filter specific IP protocols by number (6=TCP, 17=UDP, 1=ICMP, etc.)
+    #[serde(default)]
+    pub ip_protocols: Vec<u8>,
+    /// Filter by well-known protocol names
+    #[serde(default)]
+    pub named_protocols: Vec<String>,
+    /// Remove non-IP traffic (ARP, etc.)
+    #[serde(default)]
+    pub remove_non_ip: bool,
+}
+
+impl ProtocolFilter {
+    pub fn should_filter_ip_proto(&self, proto: u8) -> bool {
+        if self.ip_protocols.contains(&proto) {
+            return true;
+        }
+        // Check named protocols
+        for name in &self.named_protocols {
+            let proto_num = match name.to_lowercase().as_str() {
+                "tcp" => 6,
+                "udp" => 17,
+                "icmp" => 1,
+                "icmpv6" => 58,
+                "gre" => 47,
+                "esp" => 50,
+                "ah" => 51,
+                "sctp" => 132,
+                _ => continue,
+            };
+            if proto == proto_num {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.ip_protocols.is_empty() && self.named_protocols.is_empty() && !self.remove_non_ip
+    }
+}
+
+/// Packet filter configuration
+#[derive(Debug, Deserialize, Default, Clone)]
+pub struct PacketFilter {
+    /// Filter by source port
+    #[serde(default)]
+    pub src_port: PortFilter,
+    /// Filter by destination port
+    #[serde(default)]
+    pub dst_port: PortFilter,
+    /// Filter by either source or destination port
+    #[serde(default)]
+    pub any_port: PortFilter,
+    /// Filter by source IP
+    #[serde(default)]
+    pub src_ip: IpFilter,
+    /// Filter by destination IP
+    #[serde(default)]
+    pub dst_ip: IpFilter,
+    /// Filter by either source or destination IP
+    #[serde(default)]
+    pub any_ip: IpFilter,
+    /// Filter by protocol
+    #[serde(default)]
+    pub protocol: ProtocolFilter,
+    /// Invert filter (keep only matching packets instead of removing them)
+    #[serde(default)]
+    pub invert: bool,
+}
+
+impl PacketFilter {
+    pub fn is_empty(&self) -> bool {
+        self.src_port.is_empty()
+            && self.dst_port.is_empty()
+            && self.any_port.is_empty()
+            && self.src_ip.is_empty()
+            && self.dst_ip.is_empty()
+            && self.any_ip.is_empty()
+            && self.protocol.is_empty()
+    }
+}
+
 /// Configuration for PCAP anonymization
 #[derive(Debug, Deserialize, Default)]
 pub struct PcapConfig {
@@ -44,6 +313,9 @@ pub struct PcapConfig {
     pub anonymize_mac: bool,
     #[serde(default)]
     pub preserve_private_ips: bool,
+    /// Packet filtering options
+    #[serde(default)]
+    pub filter: PacketFilter,
 }
 
 fn default_true() -> bool {
@@ -341,6 +613,124 @@ impl PcapAnonymizer {
         modified
     }
 
+    /// Check if a packet should be filtered out
+    /// Returns (should_filter, filter_reason) where filter_reason is "port", "ip", or "protocol"
+    pub fn should_filter(&self, data: &[u8]) -> (bool, Option<&'static str>) {
+        let filter = &self.config.filter;
+
+        // If no filters are set, don't filter anything
+        if filter.is_empty() {
+            return (false, None);
+        }
+
+        // Try to parse the packet
+        match SlicedPacket::from_ethernet(data) {
+            Ok(parsed) => {
+                let mut matches = false;
+                let mut reason: Option<&'static str> = None;
+
+                // Check protocol filter
+                if !filter.protocol.is_empty() {
+                    match &parsed.net {
+                        Some(NetSlice::Ipv4(ipv4)) => {
+                            let proto = ipv4.header().protocol().0;
+                            if filter.protocol.should_filter_ip_proto(proto) {
+                                matches = true;
+                                reason = Some("protocol");
+                            }
+                        }
+                        Some(NetSlice::Ipv6(ipv6)) => {
+                            let proto = ipv6.header().next_header().0;
+                            if filter.protocol.should_filter_ip_proto(proto) {
+                                matches = true;
+                                reason = Some("protocol");
+                            }
+                        }
+                        None => {
+                            // Non-IP traffic
+                            if filter.protocol.remove_non_ip {
+                                matches = true;
+                                reason = Some("protocol");
+                            }
+                        }
+                    }
+                }
+
+                // Check IP filter
+                if !matches {
+                    match &parsed.net {
+                        Some(NetSlice::Ipv4(ipv4)) => {
+                            let src_ip = ipv4.header().source();
+                            let dst_ip = ipv4.header().destination();
+
+                            if filter.src_ip.matches_ipv4(&src_ip)
+                                || filter.dst_ip.matches_ipv4(&dst_ip)
+                                || filter.any_ip.matches_ipv4(&src_ip)
+                                || filter.any_ip.matches_ipv4(&dst_ip)
+                            {
+                                matches = true;
+                                reason = Some("ip");
+                            }
+                        }
+                        Some(NetSlice::Ipv6(ipv6)) => {
+                            let src_ip = ipv6.header().source();
+                            let dst_ip = ipv6.header().destination();
+
+                            if filter.src_ip.matches_ipv6(&src_ip)
+                                || filter.dst_ip.matches_ipv6(&dst_ip)
+                                || filter.any_ip.matches_ipv6(&src_ip)
+                                || filter.any_ip.matches_ipv6(&dst_ip)
+                            {
+                                matches = true;
+                                reason = Some("ip");
+                            }
+                        }
+                        None => {}
+                    }
+                }
+
+                // Check port filter
+                if !matches {
+                    if let Some(transport) = &parsed.transport {
+                        let (src_port, dst_port) = match transport {
+                            TransportSlice::Tcp(tcp) => {
+                                (tcp.source_port(), tcp.destination_port())
+                            }
+                            TransportSlice::Udp(udp) => {
+                                (udp.source_port(), udp.destination_port())
+                            }
+                            _ => (0, 0),
+                        };
+
+                        if src_port > 0 || dst_port > 0 {
+                            if filter.src_port.matches(src_port)
+                                || filter.dst_port.matches(dst_port)
+                                || filter.any_port.matches(src_port)
+                                || filter.any_port.matches(dst_port)
+                            {
+                                matches = true;
+                                reason = Some("port");
+                            }
+                        }
+                    }
+                }
+
+                // Apply inversion if set
+                let should_filter = if filter.invert { !matches } else { matches };
+
+                (should_filter, if should_filter { reason } else { None })
+            }
+            Err(_) => {
+                // Can't parse packet - check if we should filter non-IP
+                if filter.protocol.remove_non_ip {
+                    (true, Some("protocol"))
+                } else {
+                    (false, None)
+                }
+            }
+        }
+    }
+
     /// Get the mapping tables for the report
     pub fn get_mappings(&self) -> PcapMappings {
         let mut mappings = PcapMappings::default();
@@ -605,6 +995,20 @@ pub fn anonymize_pcap_legacy(data: &[u8], config: PcapConfig) -> Result<PcapResu
     // Process each packet
     while let Some(pkt) = reader.next_packet() {
         let pkt = pkt.map_err(|e| format!("Failed to read packet: {}", e))?;
+
+        // Check if packet should be filtered
+        let (should_filter, filter_reason) = anonymizer.should_filter(&pkt.data);
+        if should_filter {
+            stats.packets_filtered += 1;
+            match filter_reason {
+                Some("port") => stats.filtered_by_port += 1,
+                Some("ip") => stats.filtered_by_ip += 1,
+                Some("protocol") => stats.filtered_by_protocol += 1,
+                _ => {}
+            }
+            continue; // Skip this packet
+        }
+
         let anon_data = anonymizer.anonymize_packet(&pkt.data, &mut stats);
 
         packets.push(PcapPacket {
@@ -683,21 +1087,34 @@ pub fn anonymize_pcapng(data: &[u8], config: PcapConfig) -> Result<PcapResult, S
         }
     }
 
-    // Second pass: anonymize packets
+    // Second pass: filter and anonymize packets
     let mut anonymizer = PcapAnonymizer::new(config);
     let mut stats = PcapStats::default();
 
     let anonymized_packets: Vec<StoredPacket> = packets
         .into_iter()
-        .map(|pkt| {
+        .filter_map(|pkt| {
+            // Check if packet should be filtered
+            let (should_filter, filter_reason) = anonymizer.should_filter(&pkt.data);
+            if should_filter {
+                stats.packets_filtered += 1;
+                match filter_reason {
+                    Some("port") => stats.filtered_by_port += 1,
+                    Some("ip") => stats.filtered_by_ip += 1,
+                    Some("protocol") => stats.filtered_by_protocol += 1,
+                    _ => {}
+                }
+                return None; // Filter out this packet
+            }
+
             let anon_data = anonymizer.anonymize_packet(&pkt.data, &mut stats);
-            StoredPacket {
+            Some(StoredPacket {
                 interface_id: pkt.interface_id,
                 timestamp: pkt.timestamp,
                 original_len: pkt.original_len,
                 data: anon_data,
                 is_enhanced: pkt.is_enhanced,
-            }
+            })
         })
         .collect();
 

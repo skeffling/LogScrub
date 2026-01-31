@@ -6,21 +6,229 @@
   <title>LogScrub Features - PII Removal & Data Anonymization Tool</title>
   <meta name="description" content="LogScrub is a free, browser-based PII removal tool that anonymizes sensitive data in log files, PCAP captures, JSON, CSV, PDF, Office documents, and more. No data leaves your browser.">
   <meta name="keywords" content="PII removal, data anonymization, log scrubber, PCAP anonymizer, JSON redaction, CSV sanitizer, PDF anonymizer, GDPR compliance, privacy tool">
+  <link rel="icon" type="image/svg+xml" href="/shield.svg">
   <style>
-    :root { color-scheme: light dark; }
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 2rem;
-      line-height: 1.6;
-      background: #fff;
-      color: #333;
+    :root {
+      --sidebar-width: 260px;
+      --bg: #ffffff;
+      --sidebar-bg: #f8f9fa;
+      --text: #404040;
+      --text-light: #6c757d;
+      --heading: #1a1a1a;
+      --border: #e5e7eb;
+      --accent: #667eea;
+      --accent-hover: #5a6fd6;
+      --accent-light: #f0f4ff;
+      --card-bg: #fafafa;
     }
-    h1 { margin-bottom: 0.5rem; }
-    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
-    a.back { display: inline-block; margin-bottom: 1rem; }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a2e;
+        --sidebar-bg: #16162a;
+        --text: #d1d5db;
+        --text-light: #9ca3af;
+        --heading: #f9fafb;
+        --border: #374151;
+        --accent: #818cf8;
+        --accent-hover: #a5b4fc;
+        --accent-light: #252540;
+        --card-bg: #252540;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+    }
 
+    /* Layout */
+    .layout { display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      overflow-y: auto;
+      z-index: 100;
+    }
+    .sidebar-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-header h1 {
+      font-size: 1.25rem;
+      color: var(--heading);
+      margin-bottom: 0.25rem;
+    }
+    .sidebar-header .subtitle {
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
+    .sidebar-header .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--accent);
+      text-decoration: none;
+      margin-top: 0.75rem;
+    }
+    .sidebar-header .back-link:hover { text-decoration: underline; }
+
+    /* Search */
+    .sidebar-search {
+      padding: 0.75rem 1rem;
+      position: relative;
+    }
+    .sidebar-search input {
+      width: 100%;
+      padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.85rem;
+    }
+    .sidebar-search input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .sidebar-search input::placeholder { color: var(--text-light); }
+    .search-icon {
+      position: absolute;
+      left: 1.6rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1rem;
+      height: 1rem;
+      color: var(--text-light);
+    }
+
+    /* Navigation */
+    .sidebar-nav { padding: 1rem 0; }
+    .nav-section { margin-bottom: 0.5rem; }
+    .nav-section-title {
+      padding: 0.5rem 1.5rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-light);
+    }
+    .nav-section a {
+      display: block;
+      padding: 0.4rem 1.5rem;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.9rem;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+    .nav-section a:hover {
+      color: var(--accent);
+      background: var(--accent-light);
+    }
+    .nav-section a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: var(--accent-light);
+      font-weight: 500;
+    }
+
+    .sidebar-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
+    .sidebar-footer a { color: var(--accent); text-decoration: none; }
+    .sidebar-footer a:hover { text-decoration: underline; }
+
+    /* Main content */
+    .main {
+      flex: 1;
+      margin-left: var(--sidebar-width);
+      min-width: 0;
+    }
+    .content {
+      max-width: 900px;
+      padding: 2rem 3rem 4rem;
+      margin: 0 auto;
+    }
+
+    /* Mobile */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--sidebar-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem;
+      z-index: 200;
+    }
+    .mobile-header h1 { font-size: 1.1rem; color: var(--heading); }
+    .menu-toggle {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 99;
+    }
+
+    @media (max-width: 800px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .main { margin-left: 0; }
+      .mobile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .content { padding: 5rem 1.5rem 3rem; }
+    }
+
+    /* Typography */
+    h2 {
+      font-size: 1.5rem;
+      color: var(--heading);
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--accent);
+    }
+    h2:first-child { margin-top: 0; }
+    h3 {
+      font-size: 1.1rem;
+      color: var(--heading);
+      margin: 1.5rem 0 0.75rem;
+    }
+    p { margin-bottom: 1rem; }
+    ul { margin: 0 0 1rem 1.5rem; }
+    li { margin-bottom: 0.5rem; }
+    a { color: var(--accent); }
+
+    /* Hero */
     .hero {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
@@ -29,27 +237,31 @@
       margin-bottom: 2rem;
       text-align: center;
     }
-    .hero h1 { color: white; margin: 0; font-size: 2rem; }
+    .hero h1 { color: white; margin: 0; font-size: 1.75rem; }
     .hero p { margin: 1rem 0 0; opacity: 0.9; }
+    @media (prefers-color-scheme: dark) {
+      .hero { background: linear-gradient(135deg, #1e3a5f 0%, #2d1b4e 100%); }
+    }
 
+    /* Cards */
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.5rem;
-      margin: 2rem 0;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
     }
     .card {
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 1.5rem;
-      background: #fafafa;
+      padding: 1.25rem;
+      background: var(--card-bg);
       transition: border-color 0.2s, transform 0.2s;
       text-decoration: none;
       color: inherit;
       display: block;
     }
     .card:hover {
-      border-color: #667eea;
+      border-color: var(--accent);
       transform: translateY(-2px);
     }
     .card h3 {
@@ -57,24 +269,21 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      font-size: 1rem;
     }
-    .card p { margin: 0; color: #666; font-size: 0.95rem; }
-    .card .icon { font-size: 1.5rem; }
-
+    .card p { margin: 0; color: var(--text-light); font-size: 0.9rem; }
     .tag {
       display: inline-block;
-      font-size: 0.7rem;
-      padding: 0.15rem 0.5rem;
+      font-size: 0.65rem;
+      padding: 0.1rem 0.4rem;
       border-radius: 3px;
-      background: #e8e8e8;
-      color: #555;
-      margin-left: 0.5rem;
+      background: var(--border);
+      color: var(--text-light);
       text-transform: uppercase;
       font-weight: 600;
     }
 
-    h2 { margin-top: 3rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
-
+    /* Benefits */
     .benefit-list {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -88,143 +297,226 @@
     }
     .benefit .check {
       color: #22c55e;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       flex-shrink: 0;
     }
+    .benefit strong { color: var(--heading); }
 
+    /* CTA */
     .cta {
       text-align: center;
       padding: 2rem;
-      background: #f0f4ff;
+      background: var(--accent-light);
       border-radius: 12px;
-      margin: 3rem 0;
+      margin: 2rem 0;
     }
-    .cta a {
+    .cta h3 { margin-bottom: 0.5rem; }
+    .cta p { margin-bottom: 1rem; }
+    .cta a.btn {
       display: inline-block;
-      background: #667eea;
+      background: var(--accent);
       color: white;
       padding: 0.75rem 2rem;
       border-radius: 6px;
       text-decoration: none;
       font-weight: 600;
-      margin-top: 1rem;
     }
-    .cta a:hover { background: #5a6fd6; }
-
-    /* Dark mode */
-    @media (prefers-color-scheme: dark) {
-      body { background: #1a1a2e; color: #eee; }
-      a { color: #6eb5ff; }
-      code { background: #2d2d44; }
-      .subtitle { color: #aaa; }
-      .hero { background: linear-gradient(135deg, #1e3a5f 0%, #2d1b4e 100%); }
-      .card { background: #252540; border-color: #3d3d5c; }
-      .card:hover { border-color: #6eb5ff; }
-      .card p { color: #aaa; }
-      .tag { background: #3d3d5c; color: #ccc; }
-      .cta { background: #252540; }
-    }
+    .cta a.btn:hover { background: var(--accent-hover); }
   </style>
 </head>
 <body>
-  <a href="./" class="back">&larr; Back to LogScrub</a>
-
-  <div class="hero">
+  <header class="mobile-header">
     <h1>LogScrub Features</h1>
-    <p>Free, browser-based PII removal and data anonymization for multiple file formats</p>
+    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">☰</button>
+  </header>
+
+  <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>LogScrub</h1>
+        <div class="subtitle">Features & Formats</div>
+        <a href="./" class="back-link">&larr; Back to App</a>
+      </div>
+
+      <div class="sidebar-search">
+        <input type="text" id="search-input" placeholder="Search..." aria-label="Search">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="M21 21l-4.35-4.35"></path>
+        </svg>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">File Formats</div>
+          <a href="#formats">All Formats</a>
+          <a href="#pcap">PCAP / Network</a>
+          <a href="#text-logs">Text & Logs</a>
+          <a href="#json">JSON</a>
+          <a href="#csv">CSV</a>
+          <a href="#pdf">PDF</a>
+          <a href="#office">Office Documents</a>
+          <a href="#gps">GPS & Fitness</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Features</div>
+          <a href="#key-features">Key Features</a>
+          <a href="#use-cases">Use Cases</a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Resources</div>
+          <a href="help.html">Full Documentation</a>
+          <a href="changelog.html">Changelog</a>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <p><a href="help.html">Need help? Read the docs</a></p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="content">
+        <div class="hero">
+          <h1>LogScrub Features</h1>
+          <p>Free, browser-based PII removal and data anonymization for multiple file formats</p>
+        </div>
+
+        <p>LogScrub helps you remove personally identifiable information (PII) and sensitive data from files before sharing them. Everything runs in your browser &mdash; <strong>no data is ever uploaded to any server</strong>.</p>
+
+        <section id="formats">
+          <h2>Supported File Formats</h2>
+          <div class="features-grid">
+            <a href="scrub-pcap-anonymizer.html" class="card" id="pcap">
+              <h3>PCAP Files <span class="tag">Network</span></h3>
+              <p>Anonymize network captures: IP addresses, MAC addresses, DNS queries, HTTP headers, TLS SNI, and more.</p>
+            </a>
+
+            <a href="scrub-log-file-cleaner.html" class="card" id="text-logs">
+              <h3>Text &amp; Log Files</h3>
+              <p>Scrub log files with 90+ built-in patterns for IPs, emails, phone numbers, API keys, and custom patterns.</p>
+            </a>
+
+            <a href="scrub-json-anonymizer.html" class="card" id="json">
+              <h3>JSON Files</h3>
+              <p>Context-aware detection of secrets in JSON logs. Finds sensitive values by key names like "password" or "token".</p>
+            </a>
+
+            <a href="scrub-csv-sanitizer.html" class="card" id="csv">
+              <h3>CSV Files</h3>
+              <p>Sanitize tabular data with column-aware processing. Perfect for database exports and analytics data.</p>
+            </a>
+
+            <a href="scrub-pdf-redaction.html" class="card" id="pdf">
+              <h3>PDF Documents</h3>
+              <p>Extract and anonymize text from PDF files while preserving document structure.</p>
+            </a>
+
+            <a href="scrub-word-document-anonymizer.html" class="card" id="office">
+              <h3>Word Documents <span class="tag">DOCX/ODT</span></h3>
+              <p>Scrub Microsoft Word and LibreOffice documents. Removes PII from document text and metadata.</p>
+            </a>
+
+            <a href="scrub-excel-spreadsheet-anonymizer.html" class="card">
+              <h3>Spreadsheets <span class="tag">XLSX/ODS</span></h3>
+              <p>Anonymize Excel and LibreOffice Calc spreadsheets. Process multiple sheets with cell-level precision.</p>
+            </a>
+
+            <a href="scrub-gps-location-anonymizer.html" class="card" id="gps">
+              <h3>GPS &amp; Fitness <span class="tag">GPX/FIT</span></h3>
+              <p>Anonymize GPS tracks from fitness apps and devices. Strip heart rate, timestamps, and other personal data.</p>
+            </a>
+          </div>
+        </section>
+
+        <section id="key-features">
+          <h2>Key Features</h2>
+          <div class="benefit-list">
+            <div class="benefit">
+              <span class="check">✓</span>
+              <div><strong>100% Browser-Based</strong><br>All processing happens locally. Your data never leaves your device.</div>
+            </div>
+            <div class="benefit">
+              <span class="check">✓</span>
+              <div><strong>90+ Detection Patterns</strong><br>Pre-built rules for IPs, emails, phone numbers, SSNs, credit cards, API keys, and more.</div>
+            </div>
+            <div class="benefit">
+              <span class="check">✓</span>
+              <div><strong>Consistent Replacements</strong><br>Same value always maps to same placeholder, preserving data relationships.</div>
+            </div>
+            <div class="benefit">
+              <span class="check">✓</span>
+              <div><strong>Custom Regex Rules</strong><br>Add your own patterns for company-specific identifiers or data formats.</div>
+            </div>
+            <div class="benefit">
+              <span class="check">✓</span>
+              <div><strong>Mapping Export</strong><br>Download the original→replacement mapping for reverse lookups when needed.</div>
+            </div>
+            <div class="benefit">
+              <span class="check">✓</span>
+              <div><strong>High Performance</strong><br>Rust/WebAssembly engine processes files at native speed.</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="use-cases">
+          <h2>Common Use Cases</h2>
+          <ul>
+            <li><strong>Support Ticket Attachments</strong> &mdash; Remove customer PII before sharing logs with vendors</li>
+            <li><strong>Bug Reports</strong> &mdash; Sanitize network captures and logs before posting to issue trackers</li>
+            <li><strong>Security Audits</strong> &mdash; Anonymize data for third-party security assessments</li>
+            <li><strong>GDPR/Privacy Compliance</strong> &mdash; Redact personal data before data processing</li>
+            <li><strong>Training Data Preparation</strong> &mdash; Remove PII from datasets used for ML/AI training</li>
+            <li><strong>Documentation Examples</strong> &mdash; Create sanitized examples from real production data</li>
+          </ul>
+        </section>
+
+        <div class="cta">
+          <h3>Ready to anonymize your data?</h3>
+          <p>No installation required. Just open LogScrub and drop your files.</p>
+          <a href="./" class="btn">Launch LogScrub</a>
+        </div>
+      </div>
+    </main>
   </div>
 
-  <p>LogScrub helps you remove personally identifiable information (PII) and sensitive data from files before sharing them. Everything runs in your browser &mdash; <strong>no data is ever uploaded to any server</strong>.</p>
+  <script>
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.querySelector('.sidebar-overlay').classList.toggle('open');
+    }
 
-  <h2>Supported File Formats</h2>
+    // Simple search functionality
+    const searchInput = document.getElementById('search-input');
+    const navLinks = document.querySelectorAll('.nav-section a');
 
-  <div class="features-grid">
-    <a href="scrub-pcap-anonymizer.html" class="card">
-      <h3>PCAP Files <span class="tag">Network</span></h3>
-      <p>Anonymize network captures: IP addresses, MAC addresses, DNS queries, HTTP headers, TLS SNI, and more.</p>
-    </a>
+    searchInput.addEventListener('input', function() {
+      const query = this.value.toLowerCase().trim();
+      navLinks.forEach(link => {
+        const text = link.textContent.toLowerCase();
+        link.style.display = query === '' || text.includes(query) ? '' : 'none';
+      });
+    });
 
-    <a href="scrub-log-file-cleaner.html" class="card">
-      <h3>Text &amp; Log Files</h3>
-      <p>Scrub log files with 90+ built-in patterns for IPs, emails, phone numbers, API keys, and custom patterns.</p>
-    </a>
+    // Highlight current section on scroll
+    const sections = document.querySelectorAll('section[id]');
+    const observerOptions = { rootMargin: '-20% 0px -70% 0px' };
 
-    <a href="scrub-json-anonymizer.html" class="card">
-      <h3>JSON Files</h3>
-      <p>Context-aware detection of secrets in JSON logs. Finds sensitive values by key names like "password" or "token".</p>
-    </a>
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navLinks.forEach(link => {
+            link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id);
+          });
+        }
+      });
+    }, observerOptions);
 
-    <a href="scrub-csv-sanitizer.html" class="card">
-      <h3>CSV Files</h3>
-      <p>Sanitize tabular data with column-aware processing. Perfect for database exports and analytics data.</p>
-    </a>
-
-    <a href="scrub-pdf-redaction.html" class="card">
-      <h3>PDF Documents</h3>
-      <p>Extract and anonymize text from PDF files while preserving document structure.</p>
-    </a>
-
-    <a href="scrub-word-document-anonymizer.html" class="card">
-      <h3>Word Documents <span class="tag">DOCX/ODT</span></h3>
-      <p>Scrub Microsoft Word and LibreOffice documents. Removes PII from document text and metadata.</p>
-    </a>
-
-    <a href="scrub-excel-spreadsheet-anonymizer.html" class="card">
-      <h3>Spreadsheets <span class="tag">XLSX/ODS</span></h3>
-      <p>Anonymize Excel and LibreOffice Calc spreadsheets. Process multiple sheets with cell-level precision.</p>
-    </a>
-
-    <a href="scrub-gps-location-anonymizer.html" class="card">
-      <h3>GPS &amp; Fitness Files <span class="tag">GPX/FIT</span></h3>
-      <p>Anonymize GPS tracks from fitness apps and devices. Remove or shift coordinates, protect your home location.</p>
-    </a>
-  </div>
-
-  <h2>Key Features</h2>
-
-  <div class="benefit-list">
-    <div class="benefit">
-      <span class="check">✓</span>
-      <div><strong>100% Browser-Based</strong><br>All processing happens locally. Your data never leaves your device.</div>
-    </div>
-    <div class="benefit">
-      <span class="check">✓</span>
-      <div><strong>90+ Detection Patterns</strong><br>Pre-built rules for IPs, emails, phone numbers, SSNs, credit cards, API keys, and more.</div>
-    </div>
-    <div class="benefit">
-      <span class="check">✓</span>
-      <div><strong>Consistent Replacements</strong><br>Same value always maps to same placeholder, preserving data relationships.</div>
-    </div>
-    <div class="benefit">
-      <span class="check">✓</span>
-      <div><strong>Custom Regex Rules</strong><br>Add your own patterns for company-specific identifiers or data formats.</div>
-    </div>
-    <div class="benefit">
-      <span class="check">✓</span>
-      <div><strong>Mapping Export</strong><br>Download the original→replacement mapping for reverse lookups when needed.</div>
-    </div>
-    <div class="benefit">
-      <span class="check">✓</span>
-      <div><strong>High Performance</strong><br>Rust/WebAssembly engine processes files at native speed.</div>
-    </div>
-  </div>
-
-  <h2>Common Use Cases</h2>
-
-  <ul>
-    <li><strong>Support Ticket Attachments</strong> &mdash; Remove customer PII before sharing logs with vendors</li>
-    <li><strong>Bug Reports</strong> &mdash; Sanitize network captures and logs before posting to issue trackers</li>
-    <li><strong>Security Audits</strong> &mdash; Anonymize data for third-party security assessments</li>
-    <li><strong>GDPR/Privacy Compliance</strong> &mdash; Redact personal data before data processing</li>
-    <li><strong>Training Data Preparation</strong> &mdash; Remove PII from datasets used for ML/AI training</li>
-    <li><strong>Documentation Examples</strong> &mdash; Create sanitized examples from real production data</li>
-  </ul>
-
-  <div class="cta">
-    <h3>Ready to anonymize your data?</h3>
-    <p>No installation required. Just open LogScrub and drop your files.</p>
-    <a href="./">Launch LogScrub</a>
-  </div>
-
+    sections.forEach(section => observer.observe(section));
+  </script>
 </body>
 </html>

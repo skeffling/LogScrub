@@ -56,8 +56,53 @@ export function getLoadingState(): { state: NERLoadingState; error: string | nul
 }
 
 /**
+ * Configuration for self-hosted models
+ */
+export interface ModelHostConfig {
+  /** Base URL where models are hosted (e.g., "https://your-cdn.com/models") */
+  baseUrl: string
+  /** Whether to use the local path format (baseUrl/model-name/) vs HF format */
+  useLocalPathFormat?: boolean
+}
+
+let modelHostConfig: ModelHostConfig | null = null
+
+/**
+ * Configure self-hosted model location.
+ * Call this before loadNERPipeline to use your own hosted models.
+ *
+ * @example
+ * // Host models at https://your-cdn.com/models/Xenova/bert-base-NER/
+ * setModelHost({ baseUrl: 'https://your-cdn.com/models' })
+ *
+ * // Then load as normal
+ * await loadNERPipeline('Xenova/bert-base-NER')
+ */
+export function setModelHost(config: ModelHostConfig | null): void {
+  modelHostConfig = config
+}
+
+/**
+ * Get current model host configuration
+ */
+export function getModelHost(): ModelHostConfig | null {
+  return modelHostConfig
+}
+
+/**
  * Load the NER pipeline with the specified model.
  * The model and tokenizer are cached in IndexedDB after first download.
+ *
+ * Models can be loaded from:
+ * 1. Hugging Face Hub (default) - e.g., "Xenova/bert-base-NER"
+ * 2. Self-hosted server - call setModelHost() first
+ *
+ * To self-host models:
+ * 1. Download model files from https://huggingface.co/Xenova/bert-base-NER/tree/main
+ * 2. Host files at: {baseUrl}/Xenova/bert-base-NER/
+ *    Required files: config.json, tokenizer.json, tokenizer_config.json, model.onnx (or quantized variants)
+ * 3. Enable CORS headers on your server
+ * 4. Call setModelHost({ baseUrl: 'https://your-server.com/models' })
  */
 export async function loadNERPipeline(modelId: string = DEFAULT_MODEL_ID): Promise<void> {
   // If already loading or ready with the same model, return
@@ -78,8 +123,16 @@ export async function loadNERPipeline(modelId: string = DEFAULT_MODEL_ID): Promi
     const { pipeline: createPipeline, env } = await import('@huggingface/transformers')
 
     // Configure Transformers.js for browser usage
-    env.allowLocalModels = false
     env.useBrowserCache = true
+
+    // Configure for self-hosted models if set
+    if (modelHostConfig) {
+      env.allowLocalModels = true
+      env.remoteHost = modelHostConfig.baseUrl
+      env.remotePathTemplate = '{model}/'  // e.g., baseUrl/Xenova/bert-base-NER/
+    } else {
+      env.allowLocalModels = false
+    }
 
     // Create the token-classification pipeline with progress tracking
     pipeline = await createPipeline('token-classification', modelId, {

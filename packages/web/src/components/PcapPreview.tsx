@@ -20,6 +20,7 @@ interface PcapStats {
   ports_anonymized: number
   payloads_truncated: number
   timestamps_shifted: number
+  dns_names_anonymized: number
   filtered_by_port: number
   filtered_by_ip: number
   filtered_by_protocol: number
@@ -31,6 +32,7 @@ interface PcapMappings {
   ipv6: Record<string, string>
   mac: Record<string, string>
   ports: Record<number, number>
+  domains: Record<string, string>
 }
 
 interface PcapAnalysis {
@@ -99,6 +101,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
   const [anonymizeMac, setAnonymizeMac] = useState(true)
   const [anonymizePorts, setAnonymizePorts] = useState(false)
   const [preserveWellKnownPorts, setPreserveWellKnownPorts] = useState(true)
+  const [anonymizeDns, setAnonymizeDns] = useState(false)
 
   // Advanced options
   const [timestampShift, setTimestampShift] = useState(0)
@@ -179,9 +182,10 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       preserve_well_known_ports: preserveWellKnownPorts,
       timestamp_shift_secs: timestampShift,
       payload_max_bytes: payloadMaxBytes,
+      anonymize_dns: anonymizeDns,
       filter: buildFilterConfig()
     }
-  }, [anonymizeIpv4, anonymizeIpv6, anonymizeMac, preservePrivateIPs, anonymizePorts, preserveWellKnownPorts, timestampShift, payloadMaxBytes, buildFilterConfig])
+  }, [anonymizeIpv4, anonymizeIpv6, anonymizeMac, preservePrivateIPs, anonymizePorts, preserveWellKnownPorts, timestampShift, payloadMaxBytes, anonymizeDns, buildFilterConfig])
 
   // Load and analyze the file
   useEffect(() => {
@@ -280,6 +284,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       `Ports anonymized: ${analysis.stats.ports_anonymized}`,
       `Payloads truncated: ${analysis.stats.payloads_truncated}`,
       `Timestamps shifted: ${analysis.stats.timestamps_shifted}`,
+      `DNS names anonymized: ${analysis.stats.dns_names_anonymized}`,
       ``,
       `## IPv4 Mappings`,
       ...Object.entries(analysis.mappings.ipv4).map(([orig, anon]) => `${orig} -> ${anon}`),
@@ -292,6 +297,9 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       ``,
       `## Port Mappings`,
       ...Object.entries(analysis.mappings.ports).map(([orig, anon]) => `${orig} -> ${anon}`),
+      ``,
+      `## Domain Mappings`,
+      ...Object.entries(analysis.mappings.domains).map(([orig, anon]) => `${orig} -> ${anon}`),
     ].join('\n')
 
     const blob = new Blob([report], { type: 'text/plain' })
@@ -474,6 +482,23 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                         )}
                       </div>
 
+                      {/* DNS Anonymization */}
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={anonymizeDns}
+                            onChange={(e) => {
+                              setAnonymizeDns(e.target.checked)
+                              setTimeout(reanalyze, 0)
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Anonymize DNS</span>
+                        </label>
+                        <p className="text-xs text-gray-500 ml-6">Replace domain names with anonXXXXX.example.com</p>
+                      </div>
+
                       {/* Payload Truncation */}
                       <div className="space-y-2">
                         <label className="block text-sm text-gray-700 dark:text-gray-300">
@@ -577,6 +602,14 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                           {analysis.stats.timestamps_shifted}
                         </div>
                         <div className="text-xs text-gray-600 dark:text-gray-400">Time Shifted</div>
+                      </div>
+                    )}
+                    {analysis.stats.dns_names_anonymized > 0 && (
+                      <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
+                          {analysis.stats.dns_names_anonymized}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">DNS Names</div>
                       </div>
                     )}
                   </div>
@@ -695,6 +728,28 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                         )}
                       </div>
                     </div>
+
+                    {/* Domains */}
+                    {Object.keys(analysis.mappings.domains).length > 0 && (
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden md:col-span-2">
+                        <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Domains ({Object.keys(analysis.mappings.domains).length})
+                        </div>
+                        <div className="max-h-40 overflow-auto">
+                          <table className="w-full text-xs">
+                            <tbody>
+                              {Object.entries(analysis.mappings.domains).map(([orig, anon]) => (
+                                <tr key={orig} className="border-t border-gray-100 dark:border-gray-700">
+                                  <td className="px-2 py-1 font-mono text-red-600 dark:text-red-400 break-all">{orig}</td>
+                                  <td className="text-gray-400">→</td>
+                                  <td className="px-2 py-1 font-mono text-green-600 dark:text-green-400">{anon}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

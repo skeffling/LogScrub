@@ -18,6 +18,7 @@ pub struct PcapStats {
     pub ports_anonymized: usize,
     pub payloads_truncated: usize,
     pub timestamps_shifted: usize,
+    pub dns_names_anonymized: usize,
     pub errors: Vec<String>,
     // Filter breakdown
     pub filtered_by_port: usize,
@@ -40,6 +41,7 @@ pub struct PcapMappings {
     pub ipv6: HashMap<String, String>,
     pub mac: HashMap<String, String>,
     pub ports: HashMap<u16, u16>,
+    pub domains: HashMap<String, String>,
 }
 
 /// Port filter specification
@@ -333,6 +335,9 @@ pub struct PcapConfig {
     /// Keeps link layer + IP + transport headers, truncates application data
     #[serde(default)]
     pub payload_max_bytes: usize,
+    /// Anonymize DNS domain names in queries and responses
+    #[serde(default)]
+    pub anonymize_dns: bool,
 }
 
 fn default_true() -> bool {
@@ -346,10 +351,12 @@ pub struct PcapAnonymizer {
     ipv6_map: HashMap<[u8; 16], [u8; 16]>,
     mac_map: HashMap<[u8; 6], [u8; 6]>,
     port_map: HashMap<u16, u16>,
+    domain_map: HashMap<String, String>,
     ipv4_counter: u32,
     ipv6_counter: u128,
     mac_counter: u64,
     port_counter: u16,
+    domain_counter: u32,
 }
 
 impl PcapAnonymizer {
@@ -360,12 +367,14 @@ impl PcapAnonymizer {
             ipv6_map: HashMap::new(),
             mac_map: HashMap::new(),
             port_map: HashMap::new(),
+            domain_map: HashMap::new(),
             // Start counters at 1 to avoid 0.0.0.0
             ipv4_counter: 1,
             ipv6_counter: 1,
             mac_counter: 1,
             // Start port counter at 49152 (ephemeral port range)
             port_counter: 49152,
+            domain_counter: 1,
         }
     }
 
@@ -530,6 +539,208 @@ impl PcapAnonymizer {
         })
     }
 
+    /// Get or create anonymized domain name
+    /// Uses format: anonXXXXX.example.com
+    fn get_anon_domain(&mut self, original: &str) -> String {
+        // Don't anonymize empty domains or root
+        if original.is_empty() || original == "." {
+            return original.to_string();
+        }
+
+        // Normalize to lowercase for consistent mapping
+        let normalized = original.to_lowercase();
+
+        self.domain_map
+            .entry(normalized.clone())
+            .or_insert_with(|| {
+                let n = self.domain_counter;
+                self.domain_counter += 1;
+                format!("anon{:05}.example.com", n)
+            })
+            .clone()
+    }
+
+    /// Anonymize DNS packet payload
+    /// Returns the modified payload and count of names anonymized
+    fn anonymize_dns_payload(&mut self, payload: &[u8]) -> (Vec<u8>, usize) {
+        // DNS header is 12 bytes minimum
+        if payload.len() < 12 {
+            return (payload.to_vec(), 0);
+        }
+
+        let mut modified = payload.to_vec();
+        let mut names_anonymized = 0;
+
+        // Parse DNS header
+        let qdcount = u16::from_be_bytes([payload[4], payload[5]]) as usize;
+        let ancount = u16::from_be_bytes([payload[6], payload[7]]) as usize;
+        let nscount = u16::from_be_bytes([payload[8], payload[9]]) as usize;
+        let arcount = u16::from_be_bytes([payload[10], payload[11]]) as usize;
+
+        let mut offset = 12;
+
+        // Process questions
+        for _ in 0..qdcount {
+            if let Some((name, name_end)) = self.read_dns_name(&payload, offset) {
+                if !name.is_empty() {
+                    let anon_name = self.get_anon_domain(&name);
+                    if let Some(new_modified) = self.replace_dns_name(&modified, offset, &anon_name) {
+                        modified = new_modified;
+                        names_anonymized += 1;
+                    }
+                }
+                offset = name_end;
+                // Skip QTYPE (2) and QCLASS (2)
+                offset += 4;
+            } else {
+                break;
+            }
+        }
+
+        // Process answers, authority, and additional records
+        let total_rrs = ancount + nscount + arcount;
+        for _ in 0..total_rrs {
+            if offset >= modified.len() {
+                break;
+            }
+            if let Some((name, name_end)) = self.read_dns_name(&payload, offset) {
+                if !name.is_empty() {
+                    let anon_name = self.get_anon_domain(&name);
+                    if let Some(new_modified) = self.replace_dns_name(&modified, offset, &anon_name) {
+                        modified = new_modified;
+                        names_anonymized += 1;
+                    }
+                }
+                offset = name_end;
+
+                // Skip TYPE (2), CLASS (2), TTL (4)
+                offset += 8;
+
+                if offset + 2 > modified.len() {
+                    break;
+                }
+
+                // Read RDLENGTH
+                let rdlength = u16::from_be_bytes([modified[offset], modified[offset + 1]]) as usize;
+                offset += 2;
+
+                // Skip RDATA
+                offset += rdlength;
+            } else {
+                break;
+            }
+        }
+
+        (modified, names_anonymized)
+    }
+
+    /// Read a DNS name from the packet, handling compression
+    /// Returns (name, end_offset) where end_offset is after the name in the original position
+    fn read_dns_name(&self, data: &[u8], start: usize) -> Option<(String, usize)> {
+        let mut name_parts: Vec<String> = Vec::new();
+        let mut offset = start;
+        let mut end_offset = start;
+        let mut followed_pointer = false;
+        let mut jumps = 0;
+        const MAX_JUMPS: usize = 10; // Prevent infinite loops
+
+        loop {
+            if offset >= data.len() || jumps > MAX_JUMPS {
+                return None;
+            }
+
+            let len = data[offset] as usize;
+
+            if len == 0 {
+                // End of name
+                if !followed_pointer {
+                    end_offset = offset + 1;
+                }
+                break;
+            }
+
+            if (len & 0xC0) == 0xC0 {
+                // Compression pointer
+                if offset + 1 >= data.len() {
+                    return None;
+                }
+                if !followed_pointer {
+                    end_offset = offset + 2;
+                    followed_pointer = true;
+                }
+                let pointer = ((len & 0x3F) << 8) | (data[offset + 1] as usize);
+                offset = pointer;
+                jumps += 1;
+                continue;
+            }
+
+            // Regular label
+            if offset + 1 + len > data.len() {
+                return None;
+            }
+
+            if let Ok(label) = std::str::from_utf8(&data[offset + 1..offset + 1 + len]) {
+                name_parts.push(label.to_string());
+            } else {
+                return None;
+            }
+
+            offset += 1 + len;
+            if !followed_pointer {
+                end_offset = offset;
+            }
+        }
+
+        Some((name_parts.join("."), end_offset))
+    }
+
+    /// Replace a DNS name at the given offset with a new name
+    /// This simplified version only works for non-compressed names
+    fn replace_dns_name(&self, data: &[u8], start: usize, new_name: &str) -> Option<Vec<u8>> {
+        // First, find the end of the original name (without following pointers)
+        let mut offset = start;
+        while offset < data.len() {
+            let len = data[offset] as usize;
+            if len == 0 {
+                break;
+            }
+            if (len & 0xC0) == 0xC0 {
+                // Compression pointer - we can't easily replace these
+                // Just return None to skip this replacement
+                return None;
+            }
+            offset += 1 + len;
+        }
+
+        if offset >= data.len() {
+            return None;
+        }
+
+        let original_name_end = offset + 1; // Include the null terminator
+
+        // Encode the new name
+        let mut encoded_name: Vec<u8> = Vec::new();
+        for label in new_name.split('.') {
+            if label.is_empty() {
+                continue;
+            }
+            if label.len() > 63 {
+                return None; // Label too long
+            }
+            encoded_name.push(label.len() as u8);
+            encoded_name.extend_from_slice(label.as_bytes());
+        }
+        encoded_name.push(0); // Null terminator
+
+        // Build the new packet
+        let mut result = Vec::new();
+        result.extend_from_slice(&data[..start]);
+        result.extend_from_slice(&encoded_name);
+        result.extend_from_slice(&data[original_name_end..]);
+
+        Some(result)
+    }
+
     /// Anonymize a single packet's data, returning modified data
     pub fn anonymize_packet(&mut self, data: &[u8], stats: &mut PcapStats) -> Vec<u8> {
         let mut modified = data.to_vec();
@@ -675,6 +886,72 @@ impl PcapAnonymizer {
                                 }
                             }
                             _ => {}
+                        }
+                    }
+                }
+
+                // DNS anonymization
+                if self.config.anonymize_dns {
+                    if let Some(transport) = &parsed.transport {
+                        // Check if this is DNS (port 53)
+                        let (src_port, dst_port) = match transport {
+                            TransportSlice::Udp(udp) => (udp.source_port(), udp.destination_port()),
+                            TransportSlice::Tcp(tcp) => (tcp.source_port(), tcp.destination_port()),
+                            _ => (0, 0),
+                        };
+
+                        if src_port == 53 || dst_port == 53 {
+                            if let Some(ip_off) = ip_offset {
+                                let transport_offset = if is_ipv6 {
+                                    ip_off + 40
+                                } else {
+                                    let ihl = (modified[ip_off] & 0x0f) as usize * 4;
+                                    ip_off + ihl
+                                };
+
+                                let (header_len, payload_start) = match transport {
+                                    TransportSlice::Udp(_) => (8, transport_offset + 8),
+                                    TransportSlice::Tcp(tcp) => {
+                                        let hdr_len = tcp.data_offset() as usize * 4;
+                                        (hdr_len, transport_offset + hdr_len)
+                                    }
+                                    _ => (0, 0),
+                                };
+
+                                if payload_start > 0 && payload_start < modified.len() {
+                                    let dns_payload = &modified[payload_start..].to_vec();
+                                    let (anon_payload, count) = self.anonymize_dns_payload(dns_payload);
+
+                                    if count > 0 {
+                                        // Replace the payload
+                                        modified.truncate(payload_start);
+                                        modified.extend_from_slice(&anon_payload);
+                                        was_modified = true;
+                                        needs_checksum_recalc = true;
+                                        stats.dns_names_anonymized += count;
+
+                                        // Update UDP length if applicable
+                                        if let TransportSlice::Udp(_) = transport {
+                                            let new_udp_len = (header_len + anon_payload.len()) as u16;
+                                            if modified.len() >= transport_offset + 6 {
+                                                modified[transport_offset + 4..transport_offset + 6]
+                                                    .copy_from_slice(&new_udp_len.to_be_bytes());
+                                            }
+                                        }
+
+                                        // Update IP total length
+                                        if !is_ipv6 {
+                                            let new_total_len = (modified.len() - ip_off) as u16;
+                                            modified[ip_off + 2..ip_off + 4]
+                                                .copy_from_slice(&new_total_len.to_be_bytes());
+                                        } else {
+                                            let new_payload_len = (modified.len() - ip_off - 40) as u16;
+                                            modified[ip_off + 4..ip_off + 6]
+                                                .copy_from_slice(&new_payload_len.to_be_bytes());
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -900,6 +1177,10 @@ impl PcapAnonymizer {
 
         for (orig, anon) in &self.port_map {
             mappings.ports.insert(*orig, *anon);
+        }
+
+        for (orig, anon) in &self.domain_map {
+            mappings.domains.insert(orig.clone(), anon.clone());
         }
 
         mappings

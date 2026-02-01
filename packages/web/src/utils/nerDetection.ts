@@ -314,6 +314,8 @@ export async function runNER(text: string): Promise<NERResult> {
       const textLower = text.toLowerCase()
       const usedForThisWord = usedPositions.get(searchWord) || []
 
+      console.log('[ML NER] Searching for:', JSON.stringify(searchWord), 'in text starting:', JSON.stringify(textLower.slice(0, 100)))
+
       // Find the next occurrence that hasn't been used yet
       let searchFrom = 0
       let idx = -1
@@ -338,8 +340,28 @@ export async function runNER(text: string): Promise<NERResult> {
         usedPositions.set(searchWord, usedForThisWord)
       } else {
         // Can't find any more occurrences in text - skip this entity
-        console.log('[ML NER] Skipped (not found in text):', fullWord)
-        continue
+        // Try searching for individual words as fallback
+        const words = agg.words
+        if (words.length > 1) {
+          // Try to find the first word and last word to get the span
+          const firstWord = words[0].toLowerCase()
+          const lastWord = words[words.length - 1].toLowerCase()
+          const firstIdx = textLower.indexOf(firstWord)
+          if (firstIdx !== -1) {
+            // Search for last word after first word
+            const lastIdx = textLower.indexOf(lastWord, firstIdx + firstWord.length)
+            if (lastIdx !== -1) {
+              start = firstIdx
+              end = lastIdx + lastWord.length
+              console.log('[ML NER] Found via word-by-word search:', { firstWord, lastWord, start, end })
+            }
+          }
+        }
+
+        if (start === undefined || end === undefined) {
+          console.log('[ML NER] Skipped (not found in text):', fullWord)
+          continue
+        }
       }
     }
 

@@ -269,6 +269,10 @@ export async function runNER(text: string): Promise<NERResult> {
   // Convert to final format and find positions in text
   const entities: NEREntity[] = []
 
+  // Track positions we've already used to avoid duplicates
+  // Key: word (lowercase), Value: array of start positions already used
+  const usedPositions: Map<string, number[]> = new Map()
+
   for (const agg of aggregatedEntities) {
     // Reconstruct the full text (join words with spaces)
     const fullWord = agg.words.join(' ')
@@ -292,15 +296,35 @@ export async function runNER(text: string): Promise<NERResult> {
     let end = agg.end
 
     if (start === undefined || end === undefined) {
-      // Search for the word in the text
+      // Search for the word in the text, avoiding already-used positions
       const searchWord = fullWord.toLowerCase()
       const textLower = text.toLowerCase()
-      const idx = textLower.indexOf(searchWord)
+      const usedForThisWord = usedPositions.get(searchWord) || []
+
+      // Find the next occurrence that hasn't been used yet
+      let searchFrom = 0
+      let idx = -1
+      while (true) {
+        idx = textLower.indexOf(searchWord, searchFrom)
+        if (idx === -1) break
+
+        // Check if this position is already used
+        if (!usedForThisWord.includes(idx)) {
+          break // Found an unused position
+        }
+
+        // Try searching from after this position
+        searchFrom = idx + 1
+      }
+
       if (idx !== -1) {
         start = idx
         end = idx + fullWord.length
+        // Mark this position as used
+        usedForThisWord.push(idx)
+        usedPositions.set(searchWord, usedForThisWord)
       } else {
-        // Can't find exact match in text - skip this entity
+        // Can't find any more occurrences in text - skip this entity
         continue
       }
     }

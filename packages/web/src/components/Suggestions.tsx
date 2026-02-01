@@ -10,6 +10,7 @@ export function Suggestions() {
     activeMatches,
     unmatchedRules,
     showSuggestions,
+    suggestionsInitialTab,
     dismissSuggestions,
     enableSuggestedRule,
     disableActiveMatch,
@@ -32,7 +33,10 @@ export function Suggestions() {
   // Auto-select the most relevant tab only when modal first opens
   useEffect(() => {
     if (showSuggestions) {
-      if (suggestions.length > 0) {
+      // If a specific tab was requested, use that
+      if (suggestionsInitialTab) {
+        setActiveTab(suggestionsInitialTab)
+      } else if (suggestions.length > 0) {
         setActiveTab('suggestions')
       } else if (activeMatches.length > 0) {
         setActiveTab('active')
@@ -41,7 +45,7 @@ export function Suggestions() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSuggestions]) // Only trigger on modal open, not on count changes
+  }, [showSuggestions, suggestionsInitialTab]) // Only trigger on modal open, not on count changes
 
   // Auto-load ML model when ML tab is selected (if cached, loads instantly)
   useEffect(() => {

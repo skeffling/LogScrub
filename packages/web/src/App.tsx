@@ -31,7 +31,9 @@ function App() {
     timeShift, setTimeShift,
     setStats, setMatches, setReplacements,
     documentType, lineCountWarning, syntaxError, syntaxValidFormat,
-    rules, toggleRule, setRuleStrategy, customRules, addCustomRule
+    rules, toggleRule, setRuleStrategy, customRules, addCustomRule,
+    // ML state
+    mlLoadingState, mlNameDetectionEnabled, setShowSuggestions
   } = useAppStore()
   const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
   const [rulePanelWidth, setRulePanelWidth] = useState(() => loadUiPreference('rulePanelWidth', 320))
@@ -934,6 +936,18 @@ function App() {
                   </svg>
                   <span className="text-green-800 dark:text-green-200 text-sm">
                     No PII detected.
+                    {(mlLoadingState !== 'ready' || !mlNameDetectionEnabled) && (
+                      <>
+                        {' '}
+                        <button
+                          onClick={() => setShowSuggestions(true, 'ml')}
+                          className="underline hover:no-underline font-medium"
+                        >
+                          Try ML Analysis
+                        </button>
+                        {' '}to detect names and locations.
+                      </>
+                    )}
                   </span>
                   <button
                     onClick={clearAnalysis}

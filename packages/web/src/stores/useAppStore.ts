@@ -6,7 +6,7 @@ const DEFAULT_ML_MODEL_ID = 'Xenova/distilbert-base-NER'
 import type { FileEntry, AggregatedStats, BatchProgress } from '../types/multiFile'
 import { createEmptyFileEntry, MAX_FILES, MAX_TOTAL_SIZE } from '../types/multiFile'
 
-export type ReplacementStrategy = 'label' | 'fake' | 'redact' | 'template'
+export type ReplacementStrategy = 'label' | 'realistic' | 'redact' | 'template'
 export type ThemeMode = 'light' | 'dark' | 'auto'
 export type DocumentType = 'pdf' | 'xlsx' | 'docx' | 'odt' | 'ods' | null
 export type MLLoadingState = 'idle' | 'loading' | 'ready' | 'error'
@@ -113,6 +113,7 @@ interface AppState {
   activeMatches: RuleSuggestion[]
   unmatchedRules: Array<{ id: string; label: string }>
   showSuggestions: boolean
+  suggestionsInitialTab: 'active' | 'suggestions' | 'ml' | 'context' | null
   analysisLogs: string[]
   contextMatches: ContextMatch[]
   terminalStyle: boolean
@@ -149,6 +150,7 @@ interface AppState {
   analyzeText: (text: string) => Promise<void>
   clearAnalysis: () => void
   dismissSuggestions: () => void
+  setShowSuggestions: (show: boolean, initialTab?: 'active' | 'suggestions' | 'ml' | 'context') => void
   enableSuggestedRule: (id: string) => void
   disableActiveMatch: (id: string) => void
   enableAllSuggested: () => void
@@ -543,6 +545,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeMatches: [],
   unmatchedRules: [],
   showSuggestions: false,
+  suggestionsInitialTab: null,
   analysisLogs: [],
   contextMatches: [],
   terminalStyle: loadTerminalStyleFromStorage(),
@@ -934,10 +937,27 @@ export const useAppStore = create<AppState>((set, get) => ({
 
               counters[piiType]++
               const strategy = currentRules[piiType]?.strategy || 'label'
+              const template = currentRules[piiType]?.template || get().globalTemplate
 
               let replacement: string
               if (strategy === 'redact') {
                 replacement = '█'.repeat(originalText.length)
+              } else if (strategy === 'realistic') {
+                // Use WASM to generate realistic fake data
+                try {
+                  const { generate_realistic_fake } = await import('../wasm-core/wasm_core')
+                  replacement = generate_realistic_fake(piiType, originalText)
+                } catch {
+                  // Fallback to label if WASM call fails
+                  const typeLabel = piiType.replace('ml_', '').toUpperCase()
+                  replacement = `${currentLabelFormat.prefix}${typeLabel}-${counters[piiType]}${currentLabelFormat.suffix}`
+                }
+              } else if (strategy === 'template' && template) {
+                const typeLabel = piiType.replace('ml_', '').toUpperCase()
+                replacement = template
+                  .replace(/\{TYPE\}|\{T\}/gi, typeLabel)
+                  .replace(/\{n\}|\{N\}/gi, String(counters[piiType]))
+                  .replace(/\{len\}|\{LEN\}/gi, String(originalText.length))
               } else {
                 const typeLabel = piiType.replace('ml_', '').toUpperCase()
                 replacement = `${currentLabelFormat.prefix}${typeLabel}-${counters[piiType]}${currentLabelFormat.suffix}`
@@ -1307,7 +1327,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   clearAnalysis: () => set({ analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, suggestions: [], activeMatches: [], unmatchedRules: [], showSuggestions: false, contextMatches: [] }),
 
-  dismissSuggestions: () => set({ showSuggestions: false }),
+  dismissSuggestions: () => set({ showSuggestions: false, suggestionsInitialTab: null }),
+  setShowSuggestions: (show, initialTab) => set({ showSuggestions: show, suggestionsInitialTab: initialTab ?? null }),
 
   enableSuggestedRule: (id) => {
     const { rules, customRules, plainTextPatterns, suggestions, activeMatches } = get()

@@ -175,6 +175,9 @@ export async function runNER(text: string): Promise<NERResult> {
 
   const startTime = performance.now()
 
+  // Debug: log input text sample
+  console.log('NER input text length:', text.length, 'sample:', text.slice(0, 200).replace(/\n/g, '\\n'))
+
   // Run inference - model returns raw tokens
   const rawEntities = await pipeline(text)
 

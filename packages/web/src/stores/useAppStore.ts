@@ -1116,7 +1116,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         // Run ML NER if enabled and model is ready
         const { mlNameDetectionEnabled, mlLoadingState } = get()
-        console.log('[ML NER] Check:', { mlNameDetectionEnabled, mlLoadingState })
         if (mlNameDetectionEnabled && mlLoadingState === 'ready') {
           try {
             const { runNER } = await import('../utils/nerDetection')
@@ -1132,13 +1131,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
             // Track unique values to avoid duplicates
             const seenValues = new Set<string>()
-
-            // Debug: log all entities returned by the model
-            console.log('[ML NER] Raw entities from model:', nerResult.entities.map(e => ({
-              word: e.word,
-              type: e.entityGroup,
-              score: e.score.toFixed(3)
-            })))
 
             for (const entity of nerResult.entities) {
               // Skip low-confidence detections (lowered from 0.85 to 0.7)
@@ -1175,12 +1167,39 @@ export const useAppStore = create<AppState>((set, get) => ({
                 mlMatches[piiType].push(originalText)
               }
 
+              // Get the rule's strategy
+              const rule = rules[piiType]
+              const strategy = rule?.strategy || 'label'
+              const matchIndex = mlMatches[piiType].length
+
+              // Generate replacement based on strategy
+              let replacement: string
+              if (strategy === 'redact') {
+                replacement = '█'.repeat(Math.max(8, originalText.length))
+              } else if (strategy === 'realistic') {
+                try {
+                  const { generate_realistic_fake } = await import('../wasm-core/wasm_core')
+                  replacement = generate_realistic_fake(piiType, originalText)
+                } catch {
+                  // Fallback to label if WASM call fails
+                  replacement = `[${piiType.toUpperCase().replace('ML_', '')}-${matchIndex}]`
+                }
+              } else if (strategy === 'template' && rule?.template) {
+                replacement = rule.template
+                  .replace('{n}', String(matchIndex))
+                  .replace('{TYPE}', piiType.toUpperCase().replace('ML_', ''))
+                  .replace('{type}', piiType.replace('ml_', ''))
+              } else {
+                // Default: label
+                replacement = `[${piiType.toUpperCase().replace('ML_', '')}-${matchIndex}]`
+              }
+
               // Add to replacements
               mlReplacements.push({
                 start: entity.start,
                 end: entity.end,
                 original: originalText,
-                replacement: `[${piiType.toUpperCase().replace('ML_', '')}-${mlMatches[piiType].length}]`,
+                replacement,
                 pii_type: piiType
               })
             }

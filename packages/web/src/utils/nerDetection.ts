@@ -178,9 +178,6 @@ export async function runNER(text: string): Promise<NERResult> {
   // Run inference - model returns raw tokens
   const rawEntities = await pipeline(text)
 
-  // Debug: log raw output from model
-  console.log('[ML NER] Raw pipeline output:', rawEntities)
-
   // Raw token format from model:
   // { entity: "B-PER", score: 0.99, index: 7, word: "ami" }
   // { entity: "B-PER", score: 0.97, index: 8, word: "##t" }  (WordPiece continuation)
@@ -276,27 +273,17 @@ export async function runNER(text: string): Promise<NERResult> {
   // Key: word (lowercase), Value: array of start positions already used
   const usedPositions: Map<string, number[]> = new Map()
 
-  console.log('[ML NER] Aggregated entities before filtering:', aggregatedEntities)
-
   for (const agg of aggregatedEntities) {
     // Reconstruct the full text (join words with spaces)
     const fullWord = agg.words.join(' ')
     const avgScore = agg.scores.reduce((a, b) => a + b, 0) / agg.scores.length
 
-    console.log('[ML NER] Processing entity:', { fullWord, avgScore: avgScore.toFixed(3), type: agg.type })
-
     // Skip low confidence
-    if (avgScore < 0.5) {
-      console.log('[ML NER] Skipped (low confidence):', fullWord)
-      continue
-    }
+    if (avgScore < 0.5) continue
 
     // Skip very short words - single letters/chars are almost always false positives
     // Real names, locations, and organizations are at least 2 characters
-    if (fullWord.length < 2) {
-      console.log('[ML NER] Skipped (too short):', fullWord)
-      continue
-    }
+    if (fullWord.length < 2) continue
 
     // Map entity type
     let entityGroup: NEREntity['entityGroup'] = 'MISC'
@@ -313,8 +300,6 @@ export async function runNER(text: string): Promise<NERResult> {
       const searchWord = fullWord.toLowerCase()
       const textLower = text.toLowerCase()
       const usedForThisWord = usedPositions.get(searchWord) || []
-
-      console.log('[ML NER] Searching for:', JSON.stringify(searchWord), 'in text starting:', JSON.stringify(textLower.slice(0, 100)))
 
       // Find the next occurrence that hasn't been used yet
       let searchFrom = 0
@@ -339,8 +324,8 @@ export async function runNER(text: string): Promise<NERResult> {
         usedForThisWord.push(idx)
         usedPositions.set(searchWord, usedForThisWord)
       } else {
-        // Can't find any more occurrences in text - skip this entity
-        // Try searching for individual words as fallback
+        // Can't find joined word - try searching for individual words as fallback
+        // This handles cases where the text has different whitespace than expected
         const words = agg.words
         if (words.length > 1) {
           // Try to find the first word and last word to get the span
@@ -353,32 +338,23 @@ export async function runNER(text: string): Promise<NERResult> {
             if (lastIdx !== -1) {
               start = firstIdx
               end = lastIdx + lastWord.length
-              console.log('[ML NER] Found via word-by-word search:', { firstWord, lastWord, start, end })
             }
           }
         }
 
         if (start === undefined || end === undefined) {
-          console.log('[ML NER] Skipped (not found in text):', fullWord)
           continue
         }
       }
     }
 
     // Validate span
-    if (start === undefined || end === undefined) {
-      console.log('[ML NER] Skipped (undefined span):', fullWord)
-      continue
-    }
-    if (end - start > 100 || end - start <= 0) {
-      console.log('[ML NER] Skipped (invalid span):', fullWord, { start, end })
-      continue
-    }
+    if (start === undefined || end === undefined) continue
+    if (end - start > 100 || end - start <= 0) continue
 
     // Use actual text at position
     const actualWord = text.slice(start, end)
 
-    console.log('[ML NER] Adding entity:', { actualWord, entityGroup, score: avgScore.toFixed(3), start, end })
     entities.push({
       entity: agg.type,
       word: actualWord,

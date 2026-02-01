@@ -145,7 +145,7 @@ export function Suggestions() {
           <button
             onClick={dismissSuggestions}
             className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            title="Close"
+            title="Continue"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -353,7 +353,7 @@ export function Suggestions() {
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Press <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">Esc</kbd> or click outside to close
+            Press <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">Esc</kbd> or click outside to continue
           </p>
           <div className="flex items-center gap-3">
             {activeTab === 'suggestions' && suggestions.length > 0 && (
@@ -368,7 +368,7 @@ export function Suggestions() {
               onClick={dismissSuggestions}
               className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors"
             >
-              Close
+              Continue
             </button>
           </div>
         </div>

@@ -538,6 +538,14 @@ export function RulePanel() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [showGlobalTemplateConfig])
 
+  // Auto-load ML model on page refresh if it was previously enabled
+  // The model is cached in IndexedDB so this is fast after first download
+  useEffect(() => {
+    if (mlNameDetectionEnabled && mlLoadingState === 'idle') {
+      loadMlModel()
+    }
+  }, []) // Only run once on mount
+
   const testResults = useMemo(() => {
     if (!testText.trim()) return []
     return testPatternAgainstText(testText, BUILTIN_PATTERNS, rules, customRules)

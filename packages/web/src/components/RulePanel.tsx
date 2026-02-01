@@ -82,7 +82,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Identity (US)': ['ssn', 'us_itin', 'passport', 'drivers_license'],
   'Identity (UK)': ['uk_nhs', 'uk_nino'],
   'Identity (Intl)': ['au_tfn', 'in_pan', 'sg_nric'],
-  'Financial': ['credit_card', 'iban', 'btc_address', 'eth_address', 'money'],
+  'Financial': ['credit_card', 'iban', 'uk_sort_code', 'uk_bank_account', 'btc_address', 'eth_address', 'money'],
   'Tokens & Keys': ['jwt', 'bearer_token', 'aws_access_key', 'aws_secret_key', 'stripe_key', 'gcp_api_key', 'github_token', 'slack_token', 'openai_key', 'anthropic_key', 'xai_key', 'cerebras_key'],
   'Secrets': ['generic_secret', 'high_entropy_secret', 'private_key', 'basic_auth', 'url_credentials', 'session_id'],
   'Location': ['gps_coordinates', 'postcode_uk', 'postcode_us'],

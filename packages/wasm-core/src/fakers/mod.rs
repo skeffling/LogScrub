@@ -441,6 +441,21 @@ pub fn generate_realistic(
             let nums: String = (0..6).map(|_| (b'0' + (rng.gen::<u8>() % 10)) as char).collect();
             format!("{}{}{}{}", first, second, nums, suffix)
         }
+        "uk_sort_code" => {
+            let mut rng = get_seeded_rng("sort_code", original);
+            let d1: u8 = rng.gen::<u8>() % 10;
+            let d2: u8 = rng.gen::<u8>() % 10;
+            let d3: u8 = rng.gen::<u8>() % 10;
+            let d4: u8 = rng.gen::<u8>() % 10;
+            let d5: u8 = rng.gen::<u8>() % 10;
+            let d6: u8 = rng.gen::<u8>() % 10;
+            format!("{}{}-{}{}-{}{}", d1, d2, d3, d4, d5, d6)
+        }
+        "uk_bank_account" => {
+            let mut rng = get_seeded_rng("bank_account", original);
+            let digits: String = (0..8).map(|_| (b'0' + (rng.gen::<u8>() % 10)) as char).collect();
+            digits
+        }
 
         // Default: return a generic anonymized value
         _ => format!("[ANON-{}-{}]", pii_type.to_uppercase(), count),

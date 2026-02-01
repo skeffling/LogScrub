@@ -230,6 +230,8 @@ const DEFAULT_RULES: Record<string, Rule> = {
   us_itin: { label: 'US ITIN', enabled: false, strategy: 'label' },
   uk_nhs: { label: 'UK NHS Number', enabled: false, strategy: 'label' },
   uk_nino: { label: 'UK National Insurance', enabled: false, strategy: 'label' },
+  uk_sort_code: { label: 'UK Sort Code', enabled: false, strategy: 'label' },
+  uk_bank_account: { label: 'UK Bank Account', enabled: false, strategy: 'label' },
   au_tfn: { label: 'AU Tax File Number', enabled: false, strategy: 'label' },
   in_pan: { label: 'India PAN', enabled: false, strategy: 'label' },
   sg_nric: { label: 'Singapore NRIC', enabled: false, strategy: 'label' },

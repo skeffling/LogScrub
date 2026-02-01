@@ -8,12 +8,73 @@ pub struct Match {
     pub value: String,
     pub start: usize,
     pub end: usize,
+    /// Priority for conflict resolution (higher = more preferred)
+    pub priority: u8,
 }
 
 struct PatternDef {
     id: &'static str,
     regex: &'static Lazy<Regex>,
     validator: Option<fn(&str) -> bool>,
+}
+
+/// Get priority for a pattern type (higher = preferred over lower priority matches)
+/// Priority levels:
+/// 100 = highest (validated financial IDs: credit cards with Luhn, IBANs with mod-97)
+/// 90 = very high (validated national IDs: SSN, NHS, TFN, NRIC, NIF/NIE)
+/// 80 = high (IPs, MAC addresses, crypto addresses)
+/// 70 = above average (emails, URLs, UUIDs, JWTs)
+/// 60 = average (phone numbers, hostnames, postcodes)
+/// 50 = below average (API keys, secrets, file paths)
+/// 40 = low (dates, times, timestamps)
+/// 30 = very low (SQL patterns, generic patterns)
+fn get_pattern_priority(id: &str) -> u8 {
+    match id {
+        // Highest priority: validated financial patterns
+        "credit_card" | "iban" => 100,
+
+        // Very high: validated national IDs
+        "ssn" | "uk_nhs" | "uk_nino" | "au_tfn" | "sg_nric" | "es_nif" | "es_nie" | "us_itin" | "in_pan" => 90,
+
+        // High: network identifiers
+        "ipv4" | "ipv6" | "mac_address" | "btc_address" | "eth_address" => 80,
+
+        // Above average: common identifiers
+        "email" | "email_message_id" | "url" | "url_credentials" | "uuid" | "jwt" | "session_id" => 70,
+
+        // Average: contact info and location
+        "phone_us" | "phone_uk" | "phone_intl" | "hostname" | "postcode_uk" | "postcode_us"
+        | "gps_coordinates" | "passport" | "drivers_license" | "money"
+        | "uk_sort_code" | "uk_bank_account" => 60,
+
+        // Below average: API keys and secrets
+        "aws_access_key" | "aws_secret_key" | "stripe_key" | "gcp_api_key" | "github_token"
+        | "bearer_token" | "slack_token" | "npm_token" | "sendgrid_key" | "twilio_key"
+        | "openai_key" | "anthropic_key" | "xai_key" | "cerebras_key" | "private_key"
+        | "generic_secret" | "high_entropy_secret" | "db_connection" | "basic_auth" => 50,
+
+        // Low: file paths
+        "file_path_unix" | "file_path_windows" => 45,
+
+        // Low: dates and times (often false positives)
+        "date_mdy" | "date_dmy" | "date_iso" | "time" | "datetime_iso" | "datetime_clf"
+        | "timestamp_unix" => 40,
+
+        // Very low: application-specific patterns
+        "exim_subject" | "exim_sender" | "exim_auth" | "exim_user" | "exim_dn"
+        | "postfix_from" | "postfix_to" | "postfix_relay" | "postfix_sasl"
+        | "dovecot_user" | "dovecot_rip" | "dovecot_lip"
+        | "sendmail_from" | "sendmail_relay" | "sendmail_authinfo"
+        | "amavis_from" | "amavis_hits"
+        | "nginx_uri" | "nginx_server_name"
+        | "sql_tables" | "sql_strings" | "sql_identifiers" => 30,
+
+        // Hashes - lowest priority (often intentional, not PII)
+        "md5_hash" | "sha1_hash" | "sha256_hash" | "docker_container_id" => 20,
+
+        // Default for unknown patterns
+        _ => 50,
+    }
 }
 
 static EMAIL_REGEX: Lazy<Regex> =
@@ -219,6 +280,15 @@ static UK_NINO_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)\b[A-Z]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[A-D]\b").unwrap()
 });
 
+// UK Sort Code - 6 digits in XX-XX-XX format (with optional hyphens/spaces)
+static UK_SORT_CODE_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b[0-9]{2}[- ]?[0-9]{2}[- ]?[0-9]{2}\b").unwrap()
+});
+
+// UK Bank Account - 8 digits
+static UK_BANK_ACCOUNT_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[0-9]{8}\b").unwrap());
+
 // US Additional Patterns
 static US_ITIN_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\b9[0-9]{2}[- ]?(5[0-9]|6[0-5]|7[0-9]|8[0-8]|9[0-24-9])[- ]?[0-9]{4}\b").unwrap()
@@ -235,6 +305,15 @@ static IN_PAN_REGEX: Lazy<Regex> =
 // Singapore Patterns
 static SG_NRIC_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\b[STFGM][0-9]{7}[A-Z]\b").unwrap());
+
+// Spain Patterns
+// NIF/DNI: 8 digits + check letter
+static ES_NIF_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[0-9]{8}[A-Z]\b").unwrap());
+
+// NIE: X/Y/Z + 7 digits + check letter
+static ES_NIE_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b[XYZ][0-9]{7}[A-Z]\b").unwrap());
 
 // High entropy secret detection - matches potential tokens/passwords
 // Simple pattern: quoted strings 8-64 chars with mixed characters
@@ -620,6 +699,16 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
             validator: Some(validators::uk_nino_check),
         },
         PatternDef {
+            id: "uk_sort_code",
+            regex: &UK_SORT_CODE_REGEX,
+            validator: None,
+        },
+        PatternDef {
+            id: "uk_bank_account",
+            regex: &UK_BANK_ACCOUNT_REGEX,
+            validator: None,
+        },
+        PatternDef {
             id: "us_itin",
             regex: &US_ITIN_REGEX,
             validator: None,
@@ -637,7 +726,17 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
         PatternDef {
             id: "sg_nric",
             regex: &SG_NRIC_REGEX,
-            validator: None,
+            validator: Some(validators::sg_nric_check),
+        },
+        PatternDef {
+            id: "es_nif",
+            regex: &ES_NIF_REGEX,
+            validator: Some(validators::es_nif_check),
+        },
+        PatternDef {
+            id: "es_nie",
+            regex: &ES_NIE_REGEX,
+            validator: Some(validators::es_nie_check),
         },
         PatternDef {
             id: "high_entropy_secret",
@@ -909,6 +1008,7 @@ impl PiiDetector {
                     value: value.to_string(),
                     start: cap.start(),
                     end: cap.end(),
+                    priority: get_pattern_priority(pattern.id),
                 });
                 pattern_matches += 1;
             }

@@ -165,10 +165,8 @@ export function unloadNERPipeline(): void {
  * Run NER on the given text.
  * Returns detected entities with their positions and types.
  *
- * With aggregation_strategy: 'simple', the model automatically:
- * - Combines WordPiece subwords into complete words
- * - Merges adjacent tokens of the same entity type (e.g., "Steve Jobs" as one PER)
- * - Returns entity_group (PER, LOC, ORG) instead of B-PER/I-PER labels
+ * The model returns raw tokens with B-XXX/I-XXX labels and token indices.
+ * We manually aggregate these into complete entities with character positions.
  */
 export async function runNER(text: string): Promise<NERResult> {
   if (!pipeline) {
@@ -177,51 +175,154 @@ export async function runNER(text: string): Promise<NERResult> {
 
   const startTime = performance.now()
 
-  // Run inference with 'simple' aggregation - this properly combines:
-  // - WordPiece tokens (##ing, ##ly) into complete words
-  // - Adjacent tokens of same type ("Steve" + "Jobs" -> "Steve Jobs")
-  const rawEntities = await pipeline(text, {
-    aggregation_strategy: 'simple'
-  })
+  // Run inference - model returns raw tokens
+  const rawEntities = await pipeline(text)
 
-  // Raw entities from pipeline with aggregation_strategy: 'simple'
-  // Example: { entity_group: 'PER', score: 0.999, word: 'Steve Jobs', start: 26, end: 36 }
-  interface RawEntity {
-    entity_group: string  // With aggregation, uses entity_group not entity
-    word: string
+  // Raw token format from model:
+  // { entity: "B-PER", score: 0.99, index: 7, word: "ami" }
+  // { entity: "B-PER", score: 0.97, index: 8, word: "##t" }  (WordPiece continuation)
+  // { entity: "I-PER", score: 0.99, index: 9, word: "kumar" }
+  interface RawToken {
+    entity: string      // B-PER, I-PER, B-LOC, etc.
     score: number
-    start: number
-    end: number
+    index: number       // Token index (not character position)
+    word: string        // Token text (may be WordPiece like "##t")
+    start?: number      // Some models include character positions
+    end?: number
   }
 
+  // Aggregate tokens into entities
+  // B-XXX starts a new entity, I-XXX continues it, ##xxx is a WordPiece continuation
+  const aggregatedEntities: Array<{
+    type: string
+    words: string[]
+    scores: number[]
+    start?: number
+    end?: number
+  }> = []
+
+  let currentEntity: typeof aggregatedEntities[0] | null = null
+
+  for (const token of rawEntities as unknown as RawToken[]) {
+    const entity = token.entity || ''
+    const isBegin = entity.startsWith('B-')
+    const isInside = entity.startsWith('I-')
+    const entityType = entity.replace(/^[BI]-/, '')
+
+    // WordPiece continuation (##xxx) - append to current word
+    if (token.word.startsWith('##') && currentEntity) {
+      const lastIdx = currentEntity.words.length - 1
+      if (lastIdx >= 0) {
+        currentEntity.words[lastIdx] += token.word.slice(2) // Remove ## prefix
+        currentEntity.scores.push(token.score)
+        if (token.end !== undefined) currentEntity.end = token.end
+      }
+      continue
+    }
+
+    // B-XXX starts a new entity
+    if (isBegin) {
+      // Save previous entity if exists
+      if (currentEntity) {
+        aggregatedEntities.push(currentEntity)
+      }
+      currentEntity = {
+        type: entityType,
+        words: [token.word],
+        scores: [token.score],
+        start: token.start,
+        end: token.end
+      }
+      continue
+    }
+
+    // I-XXX continues current entity (if same type)
+    if (isInside && currentEntity && currentEntity.type === entityType) {
+      currentEntity.words.push(token.word)
+      currentEntity.scores.push(token.score)
+      if (token.end !== undefined) currentEntity.end = token.end
+      continue
+    }
+
+    // Different entity type or no current entity - start new
+    if (currentEntity) {
+      aggregatedEntities.push(currentEntity)
+    }
+    if (isInside || isBegin) {
+      currentEntity = {
+        type: entityType,
+        words: [token.word],
+        scores: [token.score],
+        start: token.start,
+        end: token.end
+      }
+    } else {
+      currentEntity = null
+    }
+  }
+
+  // Don't forget last entity
+  if (currentEntity) {
+    aggregatedEntities.push(currentEntity)
+  }
+
+  // Convert to final format and find positions in text
   const entities: NEREntity[] = []
 
-  for (const e of rawEntities as unknown as RawEntity[]) {
-    // Map entity_group to our entityGroup type
+  for (const agg of aggregatedEntities) {
+    // Reconstruct the full text (join words with spaces)
+    const fullWord = agg.words.join(' ')
+    const avgScore = agg.scores.reduce((a, b) => a + b, 0) / agg.scores.length
+
+    // Skip low confidence
+    if (avgScore < 0.5) continue
+
+    // Map entity type
     let entityGroup: NEREntity['entityGroup'] = 'MISC'
-    const group = String(e.entity_group || '')
-    if (group === 'PER' || group.includes('PER')) entityGroup = 'PER'
-    else if (group === 'LOC' || group.includes('LOC')) entityGroup = 'LOC'
-    else if (group === 'ORG' || group.includes('ORG')) entityGroup = 'ORG'
+    if (agg.type === 'PER') entityGroup = 'PER'
+    else if (agg.type === 'LOC') entityGroup = 'LOC'
+    else if (agg.type === 'ORG') entityGroup = 'ORG'
 
-    // Basic sanity check - skip unreasonably large spans
-    const spanLength = e.end - e.start
-    if (spanLength <= 0 || spanLength > 100) continue
+    // Find position in text (case-insensitive search)
+    let start = agg.start
+    let end = agg.end
 
-    // Use actual text from source to ensure accurate extraction
-    const word = text.slice(e.start, e.end)
+    if (start === undefined || end === undefined) {
+      // Search for the word in the text
+      const searchWord = fullWord.toLowerCase()
+      const textLower = text.toLowerCase()
+      const idx = textLower.indexOf(searchWord)
+      if (idx !== -1) {
+        start = idx
+        end = idx + fullWord.length
+      } else {
+        // Can't find exact match in text - skip this entity
+        continue
+      }
+    }
+
+    // Validate span
+    if (start === undefined || end === undefined) continue
+    if (end - start > 100 || end - start <= 0) continue
+
+    // Use actual text at position
+    const actualWord = text.slice(start, end)
 
     entities.push({
-      entity: group,
-      word,
-      score: e.score,
-      start: e.start,
-      end: e.end,
+      entity: agg.type,
+      word: actualWord,
+      score: avgScore,
+      start,
+      end,
       entityGroup
     })
   }
 
   const processingTimeMs = performance.now() - startTime
+
+  // Debug: log results
+  console.log('NER aggregated:', aggregatedEntities.map(e => ({ type: e.type, word: e.words.join(' '), score: (e.scores.reduce((a,b)=>a+b,0)/e.scores.length).toFixed(2) })))
+  console.log('NER final entities:', entities)
 
   return {
     entities,

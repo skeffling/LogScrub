@@ -164,6 +164,11 @@ export function unloadNERPipeline(): void {
 /**
  * Run NER on the given text.
  * Returns detected entities with their positions and types.
+ *
+ * With aggregation_strategy: 'simple', the model automatically:
+ * - Combines WordPiece subwords into complete words
+ * - Merges adjacent tokens of the same entity type (e.g., "Steve Jobs" as one PER)
+ * - Returns entity_group (PER, LOC, ORG) instead of B-PER/I-PER labels
  */
 export async function runNER(text: string): Promise<NERResult> {
   if (!pipeline) {
@@ -172,102 +177,54 @@ export async function runNER(text: string): Promise<NERResult> {
 
   const startTime = performance.now()
 
-  // Run inference with aggregation to combine word pieces
-  // Using 'average' strategy which typically works better for merging subwords
+  // Run inference with 'simple' aggregation - this properly combines:
+  // - WordPiece tokens (##ing, ##ly) into complete words
+  // - Adjacent tokens of same type ("Steve" + "Jobs" -> "Steve Jobs")
   const rawEntities = await pipeline(text, {
-    aggregation_strategy: 'average'
+    aggregation_strategy: 'simple'
   })
 
-  // Post-process to merge adjacent entities of the same type
-  // Some models don't fully aggregate multi-word names like "Steve Bull"
-  const mergedEntities: NEREntity[] = []
-
-  // Raw entities from pipeline have slightly different shape
+  // Raw entities from pipeline with aggregation_strategy: 'simple'
+  // Example: { entity_group: 'PER', score: 0.999, word: 'Steve Jobs', start: 26, end: 36 }
   interface RawEntity {
-    entity?: string
-    entity_group?: string
+    entity_group: string  // With aggregation, uses entity_group not entity
     word: string
     score: number
     start: number
     end: number
   }
 
-  for (const e of rawEntities as RawEntity[]) {
-    // Extract entity group from entity label (e.g., "B-PER" -> "PER", "PER" -> "PER")
+  const entities: NEREntity[] = []
+
+  for (const e of rawEntities as unknown as RawEntity[]) {
+    // Map entity_group to our entityGroup type
     let entityGroup: NEREntity['entityGroup'] = 'MISC'
-    const entityLabel = String(e.entity || e.entity_group || '')
-    if (entityLabel.includes('PER')) entityGroup = 'PER'
-    else if (entityLabel.includes('LOC')) entityGroup = 'LOC'
-    else if (entityLabel.includes('ORG')) entityGroup = 'ORG'
+    const group = String(e.entity_group || '')
+    if (group === 'PER' || group.includes('PER')) entityGroup = 'PER'
+    else if (group === 'LOC' || group.includes('LOC')) entityGroup = 'LOC'
+    else if (group === 'ORG' || group.includes('ORG')) entityGroup = 'ORG'
 
-    // Skip WordPiece continuation tokens that weren't aggregated
-    const word = String(e.word || '')
-    if (word.startsWith('##')) continue
-
-    // Validate positions are reasonable
+    // Basic sanity check - skip unreasonably large spans
     const spanLength = e.end - e.start
-    if (spanLength <= 0 || spanLength > 100) {
-      // Skip entities with invalid or unreasonably large spans
-      // Names, locations, orgs are typically < 100 chars
-      continue
-    }
+    if (spanLength <= 0 || spanLength > 100) continue
 
-    // Use the actual text at the position, not the model's word
-    // This ensures positions are accurate
-    const actualText = text.slice(e.start, e.end)
+    // Use actual text from source to ensure accurate extraction
+    const word = text.slice(e.start, e.end)
 
-    // Skip if the extracted text doesn't look like the entity
-    // (basic sanity check - at least some overlap)
-    const wordLower = word.toLowerCase().replace(/\s+/g, '')
-    const actualLower = actualText.toLowerCase().replace(/\s+/g, '')
-    if (wordLower.length > 0 && actualLower.length > 0) {
-      // Check if either contains the other or they share significant overlap
-      const hasOverlap = wordLower.includes(actualLower.slice(0, 3)) ||
-                         actualLower.includes(wordLower.slice(0, 3))
-      if (!hasOverlap && wordLower !== actualLower) {
-        // Positions don't match the expected word - skip
-        continue
-      }
-    }
-
-    const current: NEREntity = {
-      entity: entityLabel,
-      word: actualText, // Use actual text from source
+    entities.push({
+      entity: group,
+      word,
       score: e.score,
       start: e.start,
       end: e.end,
       entityGroup
-    }
-
-    // Check if we should merge with the previous entity
-    // Only merge adjacent words that form multi-word names like "Steve Bull"
-    const prev = mergedEntities[mergedEntities.length - 1]
-    if (prev && prev.entityGroup === current.entityGroup) {
-      const gap = current.start - prev.end
-      // Only merge if:
-      // 1. Gap is exactly 1 character (a space between words)
-      // 2. The gap character is whitespace
-      // 3. The merged result won't be too long (max ~50 chars for a name)
-      // 4. Previous entity isn't already too long from prior merges
-      if (gap === 1 && prev.end - prev.start < 40) {
-        const gapChar = text.slice(prev.end, current.start)
-        if (gapChar === ' ') {
-          // Merge: extend previous entity to include current
-          prev.end = current.end
-          prev.word = text.slice(prev.start, prev.end)
-          prev.score = Math.min(prev.score, current.score)
-          continue
-        }
-      }
-    }
-
-    mergedEntities.push(current)
+    })
   }
 
   const processingTimeMs = performance.now() - startTime
 
   return {
-    entities: mergedEntities,
+    entities,
     processingTimeMs
   }
 }

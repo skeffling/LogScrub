@@ -204,9 +204,35 @@ export async function runNER(text: string): Promise<NERResult> {
     const word = String(e.word || '')
     if (word.startsWith('##')) continue
 
+    // Validate positions are reasonable
+    const spanLength = e.end - e.start
+    if (spanLength <= 0 || spanLength > 100) {
+      // Skip entities with invalid or unreasonably large spans
+      // Names, locations, orgs are typically < 100 chars
+      continue
+    }
+
+    // Use the actual text at the position, not the model's word
+    // This ensures positions are accurate
+    const actualText = text.slice(e.start, e.end)
+
+    // Skip if the extracted text doesn't look like the entity
+    // (basic sanity check - at least some overlap)
+    const wordLower = word.toLowerCase().replace(/\s+/g, '')
+    const actualLower = actualText.toLowerCase().replace(/\s+/g, '')
+    if (wordLower.length > 0 && actualLower.length > 0) {
+      // Check if either contains the other or they share significant overlap
+      const hasOverlap = wordLower.includes(actualLower.slice(0, 3)) ||
+                         actualLower.includes(wordLower.slice(0, 3))
+      if (!hasOverlap && wordLower !== actualLower) {
+        // Positions don't match the expected word - skip
+        continue
+      }
+    }
+
     const current: NEREntity = {
       entity: entityLabel,
-      word: word,
+      word: actualText, // Use actual text from source
       score: e.score,
       start: e.start,
       end: e.end,

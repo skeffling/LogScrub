@@ -277,6 +277,10 @@ export async function runNER(text: string): Promise<NERResult> {
     // Skip low confidence
     if (avgScore < 0.5) continue
 
+    // Skip very short words - single letters/chars are almost always false positives
+    // Real names, locations, and organizations are at least 2 characters
+    if (fullWord.length < 2) continue
+
     // Map entity type
     let entityGroup: NEREntity['entityGroup'] = 'MISC'
     if (agg.type === 'PER') entityGroup = 'PER'
@@ -321,8 +325,9 @@ export async function runNER(text: string): Promise<NERResult> {
   const processingTimeMs = performance.now() - startTime
 
   // Debug: log results
-  console.log('NER aggregated:', aggregatedEntities.map(e => ({ type: e.type, word: e.words.join(' '), score: (e.scores.reduce((a,b)=>a+b,0)/e.scores.length).toFixed(2) })))
-  console.log('NER final entities:', entities)
+  console.log('NER raw tokens sample:', (rawEntities as unknown as RawToken[]).slice(0, 5).map(t => ({ entity: t.entity, word: t.word, start: t.start, end: t.end })))
+  console.log('NER aggregated:', aggregatedEntities.map(e => ({ type: e.type, word: e.words.join(' '), score: (e.scores.reduce((a,b)=>a+b,0)/e.scores.length).toFixed(2), start: e.start, end: e.end })))
+  console.log('NER final entities:', entities.map(e => ({ entityGroup: e.entityGroup, word: e.word, start: e.start, end: e.end, score: e.score.toFixed(2) })))
 
   return {
     entities,

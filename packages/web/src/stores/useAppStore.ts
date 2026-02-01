@@ -901,6 +901,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             for (const entity of nerResult.entities) {
               if (entity.score < 0.85) continue
 
+              // Skip very short words - single letters are false positives
+              if (entity.word.length < 2) continue
+
               let piiType: string
               switch (entity.entityGroup) {
                 case 'PER':
@@ -1113,6 +1116,9 @@ export const useAppStore = create<AppState>((set, get) => ({
               // Skip low-confidence detections
               if (entity.score < 0.85) continue
 
+              // Skip very short words - single letters are false positives
+              if (entity.word.length < 2) continue
+
               // Skip if we've already seen this exact value at this position
               const key = `${entity.word}-${entity.start}-${entity.end}`
               if (seenValues.has(key)) continue
@@ -1161,6 +1167,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
             // Merge replacements (sort by position to handle overlaps)
             allReplacements = [...allReplacements, ...mlReplacements].sort((a, b) => a.start - b.start)
+
+            // Debug: log ML replacements
+            console.log('ML replacements created:', mlReplacements.length, mlReplacements)
           } catch (err) {
             console.warn('ML NER failed:', err)
             // Continue with WASM-only results
@@ -1260,12 +1269,24 @@ export const useAppStore = create<AppState>((set, get) => ({
         })
 
         // Use allReplacements (includes ML) not just result.replacements (WASM only)
+        // Debug: log ML rule status
+        console.log('ML rules enabled status:', {
+          ml_person_name: rules.ml_person_name?.enabled,
+          ml_location: rules.ml_location?.enabled,
+          ml_organization: rules.ml_organization?.enabled
+        })
+        console.log('All replacements before filter:', allReplacements.length, 'ML count:', allReplacements.filter(r => r.pii_type.startsWith('ml_')).length)
+
         const enabledReplacements = allReplacements.filter(r => {
           const rule = rules[r.pii_type]
           const customRule = customRules.find(cr => cr.id === r.pii_type)
           const plainText = plainTextPatterns.find(p => p.id === r.pii_type)
           return (rule?.enabled) || (customRule?.enabled) || (plainText?.enabled)
         })
+
+        // Debug: log enabled ML replacements
+        const enabledMlReplacements = enabledReplacements.filter(r => r.pii_type.startsWith('ml_'))
+        console.log('Enabled replacements after filter:', enabledReplacements.length, 'ML count:', enabledMlReplacements.length, enabledMlReplacements)
 
         const enabledStats: DetectionStats = {}
         const enabledMatches: DetectionMatches = {}

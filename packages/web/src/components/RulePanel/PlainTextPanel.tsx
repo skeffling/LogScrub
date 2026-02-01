@@ -24,8 +24,8 @@ export const PlainTextPanel = memo(function PlainTextPanel({
   if (patterns.length === 0) return null
 
   const enabledCount = patterns.filter(p => p.enabled).length
-  // Plain text patterns don't support 'fake' or 'template' strategies
-  const filteredOptions = strategyOptions.filter(opt => opt.value !== 'fake' && opt.value !== 'template')
+  // Plain text patterns don't support 'realistic' or 'template' strategies
+  const filteredOptions = strategyOptions.filter(opt => opt.value !== 'realistic' && opt.value !== 'template')
 
   return (
     <div className="border-b dark:border-gray-700 pb-3">

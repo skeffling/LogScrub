@@ -1116,6 +1116,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         // Run ML NER if enabled and model is ready
         const { mlNameDetectionEnabled, mlLoadingState } = get()
+        console.log('[ML NER] Check:', { mlNameDetectionEnabled, mlLoadingState })
         if (mlNameDetectionEnabled && mlLoadingState === 'ready') {
           try {
             const { runNER } = await import('../utils/nerDetection')
@@ -1132,9 +1133,16 @@ export const useAppStore = create<AppState>((set, get) => ({
             // Track unique values to avoid duplicates
             const seenValues = new Set<string>()
 
+            // Debug: log all entities returned by the model
+            console.log('[ML NER] Raw entities from model:', nerResult.entities.map(e => ({
+              word: e.word,
+              type: e.entityGroup,
+              score: e.score.toFixed(3)
+            })))
+
             for (const entity of nerResult.entities) {
-              // Skip low-confidence detections
-              if (entity.score < 0.85) continue
+              // Skip low-confidence detections (lowered from 0.85 to 0.7)
+              if (entity.score < 0.7) continue
 
               // Skip very short words - single letters are false positives
               if (entity.word.length < 2) continue

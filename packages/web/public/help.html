@@ -759,7 +759,7 @@
             <div class="strategy-card">
               <h4>Fake</h4>
               <p>Replaces with realistic fake data.</p>
-              <code>john@example.com</code> → <code>user42@redacted.net</code>
+              <code>john@example.com</code> → <code>maria.wilson@example.org</code>
             </div>
             <div class="strategy-card">
               <h4>Redact</h4>
@@ -771,6 +771,44 @@
               <p>Custom replacement format using variables.</p>
               <code>{TYPE}</code>, <code>{n}</code>, <code>{len}</code>
             </div>
+          </div>
+
+          <h3>Fake Data Generation</h3>
+          <p>The <strong>Fake</strong> strategy uses a Rust-based data generation library to create realistic-looking replacements. This makes your scrubbed output look natural while still protecting sensitive information. Fake data is generated deterministically — the same input always produces the same fake output, ensuring consistency.</p>
+
+          <div class="table-wrapper">
+            <table>
+              <tr><th>PII Type</th><th>Fake Data Generated</th><th>Example</th></tr>
+              <tr><td><strong>Email</strong></td><td>Realistic email addresses</td><td><code>maria.wilson@example.org</code></td></tr>
+              <tr><td><strong>Person Names (ML)</strong></td><td>Full names from name database</td><td><code>James Rodriguez</code></td></tr>
+              <tr><td><strong>Locations (ML)</strong></td><td>City names</td><td><code>Portland</code></td></tr>
+              <tr><td><strong>Organizations (ML)</strong></td><td>Company names</td><td><code>Acme Industries</code></td></tr>
+              <tr><td><strong>IPv4</strong></td><td>Valid IPv4 addresses</td><td><code>142.58.201.33</code></td></tr>
+              <tr><td><strong>IPv6</strong></td><td>Valid IPv6 addresses</td><td><code>2001:db8:85a3::8a2e:370:7334</code></td></tr>
+              <tr><td><strong>MAC Address</strong></td><td>Valid MAC addresses</td><td><code>4A:3B:2C:1D:5E:6F</code></td></tr>
+              <tr><td><strong>Phone Numbers</strong></td><td>Formatted phone numbers</td><td><code>(555) 842-9173</code></td></tr>
+              <tr><td><strong>Hostname</strong></td><td>Realistic hostnames</td><td><code>server42.internal.net</code></td></tr>
+              <tr><td><strong>URL</strong></td><td>Valid URLs with paths</td><td><code>https://demo.io/api/4821</code></td></tr>
+              <tr><td><strong>UUID</strong></td><td>Valid UUID v4 format</td><td><code>a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d</code></td></tr>
+              <tr><td><strong>Credit Card</strong></td><td>Luhn-valid card numbers</td><td><code>4111-1111-1111-1234</code></td></tr>
+              <tr><td><strong>SSN</strong></td><td>Valid format (not real)</td><td><code>284-17-5932</code></td></tr>
+              <tr><td><strong>IBAN</strong></td><td>Plausible IBAN format</td><td><code>DE89370400440532013000</code></td></tr>
+              <tr><td><strong>UK NHS Number</strong></td><td>Check-digit valid format</td><td><code>485 293 7164</code></td></tr>
+              <tr><td><strong>UK NINO</strong></td><td>Valid NI number format</td><td><code>AB123456C</code></td></tr>
+              <tr><td><strong>UK Postcode</strong></td><td>Valid UK postcode format</td><td><code>SW1A 2AA</code></td></tr>
+              <tr><td><strong>US Zip Code</strong></td><td>5-digit zip codes</td><td><code>90210</code></td></tr>
+              <tr><td><strong>GPS Coordinates</strong></td><td>Valid lat/long pairs</td><td><code>51.5074, -0.1278</code></td></tr>
+              <tr><td><strong>File Paths</strong></td><td>Realistic file paths</td><td><code>/home/user/data.json</code></td></tr>
+              <tr><td><strong>Dates</strong></td><td>Valid dates (randomized)</td><td><code>2019-07-15</code></td></tr>
+              <tr><td><strong>Hashes (MD5/SHA)</strong></td><td>Random hex strings</td><td><code>5d41402abc4b2a76...</code></td></tr>
+              <tr><td><strong>API Keys</strong></td><td>Format-matching tokens</td><td><code>sk_test_Abc123xyz...</code></td></tr>
+              <tr><td><strong>Crypto Addresses</strong></td><td>Valid format addresses</td><td><code>1A1zP1eP5QGefi2DMPTfTL...</code></td></tr>
+            </table>
+          </div>
+
+          <div class="callout info">
+            <div class="callout-title">Deterministic Generation</div>
+            <p>Fake data is generated using a seeded random number generator based on the original value. This means the same input (e.g., <code>john@example.com</code>) will always produce the same fake output across multiple runs. Combined with Consistency Mode, this ensures your scrubbed data maintains referential integrity.</p>
           </div>
 
           <h3>Consistency Mode</h3>
@@ -1824,7 +1862,7 @@ This log has been sanitized using LogScrub...
 | Type | Strategy | Example Replacement | Count |
 |------|----------|---------------------|-------|
 | Email | Label | `[EMAIL-1]` | 5 |
-| IPv4 | Fake | `192.0.2.1` | 12 |
+| IPv4 | Fake | `142.58.201.33` | 12 |
 | Hostname | Template | `&lt;HOSTNAME-1&gt;` | 3 |</code></pre>
           </div>
 

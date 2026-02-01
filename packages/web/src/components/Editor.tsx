@@ -1011,7 +1011,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     const strategyDescription = (strategy: string) => {
       switch (strategy) {
         case 'label': return 'Label'
-        case 'fake': return 'Fake'
+        case 'realistic': return 'Fake'
         case 'redact': return 'Redact'
         case 'template': return 'Template'
         default: return strategy
@@ -1035,8 +1035,8 @@ This ${docTypeLabel} has been sanitized using LogScrub to remove personally iden
 `
     }
 
-    if (strategies.has('fake')) {
-      explanation += `- **Fake data**: Some values are replaced with realistic but fake data (e.g., \`user1@example.com\`, \`192.0.2.x\` IP addresses).
+    if (strategies.has('realistic')) {
+      explanation += `- **Fake data**: Some values are replaced with realistic but fake data (e.g., \`maria.wilson@example.org\`, \`142.58.201.33\` IP addresses).
 `
     }
 
@@ -1045,7 +1045,7 @@ This ${docTypeLabel} has been sanitized using LogScrub to remove personally iden
 `
     }
 
-    if (consistencyMode && (strategies.has('label') || strategies.has('template') || strategies.has('fake'))) {
+    if (consistencyMode && (strategies.has('label') || strategies.has('template') || strategies.has('realistic'))) {
       explanation += `
 **Consistency mode is ON**: The same original value always maps to the same replacement. For example, if you see the same token or fake value multiple times, it refers to the same original data throughout the ${docTypeShort}.
 `
@@ -1067,38 +1067,31 @@ This ${docTypeLabel} has been sanitized using LogScrub to remove personally iden
       })
     }
 
-    // Add real examples from the session
+    // Add examples of replacement tokens (without revealing originals)
     if (activeReplacements.length > 0) {
       explanation += `
-### Actual Replacements from This Session
+### Replacement Tokens in This ${docTypeLabel}
 
-Here are examples of actual replacements made in this ${docTypeShort}:
+The following replacement tokens appear in this ${docTypeShort}. When you see these, they represent redacted sensitive data:
 
-| Original Value | Replaced With |
-|----------------|---------------|
 `
-      // Get unique replacements, limit to ~10 examples
-      const uniqueReplacements = new Map<string, string>()
+      // Get unique replacement tokens, limit to ~10 examples
+      const uniqueTokens = new Set<string>()
       for (const rep of activeReplacements) {
-        if (uniqueReplacements.size >= 10) break
-        const key = rep.replacement
-        if (!uniqueReplacements.has(key)) {
-          uniqueReplacements.set(key, rep.original)
-        }
+        if (uniqueTokens.size >= 10) break
+        uniqueTokens.add(rep.replacement)
       }
 
-      uniqueReplacements.forEach((original, replacement) => {
-        // Truncate long values for readability
-        const truncOrig = original.length > 30 ? original.slice(0, 27) + '...' : original
-        const truncRepl = replacement.length > 30 ? replacement.slice(0, 27) + '...' : replacement
-        explanation += `| \`${truncOrig}\` | \`${truncRepl}\` |\n`
+      uniqueTokens.forEach(token => {
+        const truncToken = token.length > 40 ? token.slice(0, 37) + '...' : token
+        explanation += `- \`${truncToken}\`\n`
       })
     }
 
     explanation += `
 ### Interpretation Guidelines
 
-1. **References**: When referring to specific replaced values, use the actual replacements shown above rather than describing generically.
+1. **References**: When referring to redacted values, use the replacement tokens shown above (e.g., reference "[EMAIL-1]" rather than describing it generically as "an email").
 
 2. **Correlations**: ${consistencyMode ? 'You CAN correlate replacements - same replacement = same original value.' : 'Each occurrence is replaced independently, so similar replacements might refer to different original values.'}
 
@@ -2711,8 +2704,8 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                   const upperType = type.toUpperCase()
                   let example: string
                   switch (strategy) {
-                    case 'fake':
-                      example = type === 'email' ? 'user1@example.com' : type === 'ipv4' ? '192.0.2.1' : `[fake ${type}]`
+                    case 'realistic':
+                      example = type === 'email' ? 'maria.wilson@example.org' : type === 'ipv4' ? '142.58.201.33' : `[fake ${type}]`
                       break
                     case 'redact':
                       example = '████████'

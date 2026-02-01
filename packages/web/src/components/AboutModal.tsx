@@ -44,7 +44,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
           <ol className="text-sm list-decimal list-inside space-y-1">
             <li>Paste text or upload a file (txt, log, csv, json, sql, pdf, docx, xlsx, odt, ods, gpx, zip, gz)</li>
             <li>Select which PII types to detect</li>
-            <li>Choose replacement strategy per type (label, fake data, or redact)</li>
+            <li>Choose replacement strategy per type (label, realistic fake data, or redact)</li>
             <li>Click "Scrub" to process</li>
             <li>Download or copy the scrubbed output</li>
           </ol>

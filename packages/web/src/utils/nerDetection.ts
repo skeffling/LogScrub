@@ -178,6 +178,9 @@ export async function runNER(text: string): Promise<NERResult> {
   // Run inference - model returns raw tokens
   const rawEntities = await pipeline(text)
 
+  // Debug: log raw output from model
+  console.log('[ML NER] Raw pipeline output:', rawEntities)
+
   // Raw token format from model:
   // { entity: "B-PER", score: 0.99, index: 7, word: "ami" }
   // { entity: "B-PER", score: 0.97, index: 8, word: "##t" }  (WordPiece continuation)

@@ -331,6 +331,54 @@ fn generate_fake(pii_type: &str, _original: &str, count: usize) -> String {
     }
 }
 
+/// Generate realistic fake data for a given PII type
+/// This is exported for use by JS when handling ML-detected entities
+#[wasm_bindgen]
+pub fn generate_realistic_fake(pii_type: &str, original: &str) -> String {
+    // Use a thread-local cache for consistency within a session
+    thread_local! {
+        static CACHE: std::cell::RefCell<HashMap<String, String>> = std::cell::RefCell::new(HashMap::new());
+        static COUNTER: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
+    }
+
+    // Create a cache key from type + original
+    let cache_key = format!("{}:{}", pii_type, original);
+
+    // Check cache first for consistency
+    let cached = CACHE.with(|c| c.borrow().get(&cache_key).cloned());
+    if let Some(val) = cached {
+        return val;
+    }
+
+    let count = COUNTER.with(|c| {
+        let mut counter = c.borrow_mut();
+        *counter += 1;
+        *counter
+    });
+
+    let result = CACHE.with(|cache| {
+        fakers::generate_realistic(pii_type, original, count, &mut cache.borrow_mut())
+    });
+
+    // Store in cache
+    CACHE.with(|c| {
+        c.borrow_mut().insert(cache_key, result.clone());
+    });
+
+    result
+}
+
+/// Reset the realistic fake data cache (call between sessions if needed)
+#[wasm_bindgen]
+pub fn reset_realistic_cache() {
+    thread_local! {
+        static CACHE: std::cell::RefCell<HashMap<String, String>> = std::cell::RefCell::new(HashMap::new());
+        static COUNTER: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
+    }
+    CACHE.with(|c| c.borrow_mut().clear());
+    COUNTER.with(|c| *c.borrow_mut() = 0);
+}
+
 #[wasm_bindgen]
 pub fn decompress_gzip(data: &[u8]) -> Result<String, JsValue> {
     let mut decoder = GzDecoder::new(data);

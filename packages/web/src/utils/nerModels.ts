@@ -10,9 +10,19 @@ export interface NERModel {
   size: string // Approximate download size
   accuracy: 'high' | 'medium' | 'low'
   speed: 'fast' | 'medium' | 'slow'
+  recommended?: boolean
 }
 
 export const AVAILABLE_MODELS: NERModel[] = [
+  {
+    id: 'Xenova/distilbert-base-NER',
+    name: 'DistilBERT NER',
+    description: 'Good balance of speed and accuracy',
+    size: '~250 MB',
+    accuracy: 'medium',
+    speed: 'medium',
+    recommended: true
+  },
   {
     id: 'Xenova/bert-base-NER',
     name: 'BERT Base NER',
@@ -20,14 +30,6 @@ export const AVAILABLE_MODELS: NERModel[] = [
     size: '~420 MB',
     accuracy: 'high',
     speed: 'slow'
-  },
-  {
-    id: 'Xenova/distilbert-base-NER',
-    name: 'DistilBERT NER',
-    description: 'Good balance of speed and accuracy',
-    size: '~250 MB',
-    accuracy: 'medium',
-    speed: 'medium'
   },
   {
     id: 'Xenova/bert-base-NER-uncased',

@@ -16,7 +16,7 @@ interface RuleRowProps {
 
 const DEFAULT_STRATEGY_OPTIONS: { value: ReplacementStrategy; label: string }[] = [
   { value: 'label', label: 'Label' },
-  { value: 'fake', label: 'Fake' },
+  { value: 'realistic', label: 'Fake' },
   { value: 'redact', label: 'Redact' },
   { value: 'template', label: 'Template' },
 ]

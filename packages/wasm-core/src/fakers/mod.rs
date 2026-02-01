@@ -2,12 +2,12 @@
 //!
 //! This module provides functions to generate realistic-looking fake data
 //! for various PII types, making anonymized output look more natural.
+//! Format preservation ensures fake data matches the original's structure.
 
 use fake::faker::address::en::{CityName, CountryName, StreetName, ZipCode};
 use fake::faker::company::en::CompanyName;
-use fake::faker::internet::en::{IPv4, IPv6, MACAddress, SafeEmail, Username};
+use fake::faker::internet::en::{IPv4, IPv6, SafeEmail, Username};
 use fake::faker::name::en::{FirstName, LastName, Name};
-use fake::faker::phone_number::en::PhoneNumber;
 use fake::Fake;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use std::collections::HashMap;
@@ -28,6 +28,60 @@ fn get_seeded_rng(pii_type: &str, original: &str) -> SmallRng {
         seed = seed.wrapping_mul(31).wrapping_add(byte as u64);
     }
     SmallRng::seed_from_u64(seed)
+}
+
+/// Preserve the format of the original string while replacing digits with fake digits
+/// Non-digit characters (separators like -, ., spaces) are preserved in place
+fn preserve_digit_format(original: &str, rng: &mut SmallRng) -> String {
+    original
+        .chars()
+        .map(|c| {
+            if c.is_ascii_digit() {
+                // Replace digit with random digit
+                char::from_digit(rng.gen_range(0..10), 10).unwrap()
+            } else {
+                // Preserve separators and other characters
+                c
+            }
+        })
+        .collect()
+}
+
+/// Preserve format while replacing hex digits
+fn preserve_hex_format(original: &str, rng: &mut SmallRng) -> String {
+    original
+        .chars()
+        .map(|c| {
+            if c.is_ascii_hexdigit() {
+                let val = rng.gen_range(0..16);
+                if c.is_ascii_uppercase() {
+                    char::from_digit(val, 16).unwrap().to_ascii_uppercase()
+                } else {
+                    char::from_digit(val, 16).unwrap()
+                }
+            } else {
+                c
+            }
+        })
+        .collect()
+}
+
+/// Preserve format while replacing alphanumeric characters
+fn preserve_alphanum_format(original: &str, rng: &mut SmallRng) -> String {
+    original
+        .chars()
+        .map(|c| {
+            if c.is_ascii_digit() {
+                char::from_digit(rng.gen_range(0..10), 10).unwrap()
+            } else if c.is_ascii_uppercase() {
+                (b'A' + rng.gen_range(0..26)) as char
+            } else if c.is_ascii_lowercase() {
+                (b'a' + rng.gen_range(0..26)) as char
+            } else {
+                c
+            }
+        })
+        .collect()
 }
 
 /// Generate a realistic fake email address
@@ -74,16 +128,16 @@ pub fn fake_ipv6(original: &str) -> String {
     IPv6().fake_with_rng(&mut rng)
 }
 
-/// Generate a realistic fake MAC address
+/// Generate a realistic fake MAC address preserving the original format
 pub fn fake_mac_address(original: &str) -> String {
     let mut rng = get_seeded_rng("mac", original);
-    MACAddress().fake_with_rng(&mut rng)
+    preserve_hex_format(original, &mut rng)
 }
 
-/// Generate a realistic fake phone number
+/// Generate a realistic fake phone number preserving the original format
 pub fn fake_phone(original: &str) -> String {
     let mut rng = get_seeded_rng("phone", original);
-    PhoneNumber().fake_with_rng(&mut rng)
+    preserve_digit_format(original, &mut rng)
 }
 
 /// Generate a realistic fake company name
@@ -119,21 +173,29 @@ pub fn fake_country(original: &str) -> String {
     CountryName().fake_with_rng(&mut rng)
 }
 
-/// Generate a realistic fake credit card number (Luhn-valid)
-pub fn fake_credit_card(_original: &str, count: usize) -> String {
-    // Generate a Luhn-valid credit card number
-    // Using a deterministic approach based on count
-    let base = 4111111111110000u64 + (count as u64 % 10000);
-    let digits: Vec<u8> = format!("{:016}", base)
-        .chars()
-        .filter_map(|c| c.to_digit(10).map(|d| d as u8))
+/// Generate a realistic fake credit card number preserving format (Luhn-valid)
+pub fn fake_credit_card(original: &str, _count: usize) -> String {
+    let mut rng = get_seeded_rng("credit_card", original);
+
+    // Count digits in original to determine card length
+    let digit_count = original.chars().filter(|c| c.is_ascii_digit()).count();
+
+    // Generate random digits (all but last which is check digit)
+    let mut digits: Vec<u8> = (0..digit_count.saturating_sub(1))
+        .map(|_| rng.gen_range(0..10))
         .collect();
+
+    // Keep first digit as 4 (Visa) for validity appearance
+    if !digits.is_empty() {
+        digits[0] = 4;
+    }
 
     // Calculate Luhn check digit
     let mut sum = 0u32;
-    for (i, &d) in digits[..15].iter().enumerate() {
+    for (i, &d) in digits.iter().enumerate() {
         let mut val = d as u32;
-        if i % 2 == 0 {
+        // Double every second digit from the right (starting from position before check digit)
+        if (digits.len() - i) % 2 == 0 {
             val *= 2;
             if val > 9 {
                 val -= 9;
@@ -141,51 +203,42 @@ pub fn fake_credit_card(_original: &str, count: usize) -> String {
         }
         sum += val;
     }
-    let check_digit = (10 - (sum % 10)) % 10;
+    let check_digit = ((10 - (sum % 10)) % 10) as u8;
+    digits.push(check_digit);
 
-    format!(
-        "{}{}{}{}-{}{}{}{}-{}{}{}{}-{}{}{}{}",
-        digits[0], digits[1], digits[2], digits[3],
-        digits[4], digits[5], digits[6], digits[7],
-        digits[8], digits[9], digits[10], digits[11],
-        digits[12], digits[13], digits[14], check_digit
-    )
+    // Apply digits to original format, preserving separators
+    let mut digit_iter = digits.iter();
+    original
+        .chars()
+        .map(|c| {
+            if c.is_ascii_digit() {
+                digit_iter.next().map(|&d| char::from_digit(d as u32, 10).unwrap()).unwrap_or(c)
+            } else {
+                c
+            }
+        })
+        .collect()
 }
 
-/// Generate a realistic fake SSN (format: XXX-XX-XXXX)
-pub fn fake_ssn(_original: &str, count: usize) -> String {
-    // Generate a valid-looking SSN (avoiding invalid ranges)
-    let area = 100 + (count % 599); // 100-698, avoiding 000, 666, 900-999
-    let group = 1 + (count % 99);    // 01-99
-    let serial = 1 + (count % 9999); // 0001-9999
-    format!("{:03}-{:02}-{:04}", area, group, serial)
+/// Generate a realistic fake SSN preserving format
+pub fn fake_ssn(original: &str, _count: usize) -> String {
+    let mut rng = get_seeded_rng("ssn", original);
+    // Preserve the original format (dashes, spaces, etc.)
+    preserve_digit_format(original, &mut rng)
 }
 
-/// Generate a realistic fake UUID
+/// Generate a realistic fake UUID preserving format
 pub fn fake_uuid(original: &str) -> String {
     let mut rng = get_seeded_rng("uuid", original);
-    let bytes: [u8; 16] = rng.gen();
-
-    // Format as UUID v4
-    format!(
-        "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-4{:01x}{:02x}-{:01x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-        bytes[0], bytes[1], bytes[2], bytes[3],
-        bytes[4], bytes[5],
-        bytes[6] & 0x0F, bytes[7],
-        8 | (bytes[8] & 0x03), bytes[9],
-        bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
-    )
+    // Preserve the original format (lowercase/uppercase, dashes)
+    preserve_hex_format(original, &mut rng)
 }
 
-/// Generate a realistic fake IBAN (simplified, not fully valid)
-pub fn fake_iban(_original: &str, count: usize) -> String {
-    // Generate a plausible-looking IBAN
-    let countries = ["DE", "FR", "ES", "IT", "NL", "BE", "AT", "PT"];
-    let country = countries[count % countries.len()];
-    let check = 10 + (count % 90);
-    let bank = format!("{:08}", count % 100000000);
-    let account = format!("{:010}", (count as u64 * 7) % 10000000000u64);
-    format!("{}{}{}{}", country, check, bank, account)
+/// Generate a realistic fake IBAN preserving format
+pub fn fake_iban(original: &str, _count: usize) -> String {
+    let mut rng = get_seeded_rng("iban", original);
+    // Preserve format: letters stay as letters, digits as digits
+    preserve_alphanum_format(original, &mut rng)
 }
 
 /// Generate a realistic fake URL
@@ -266,67 +319,35 @@ pub fn generate_realistic(
         "stripe_key" => format!("sk_test_{}", fake_username(original).replace('.', "_")),
         "github_token" => format!("ghp_{}", &fake_uuid(original).replace('-', "")[..36]),
         "bearer_token" => format!("Bearer {}", &fake_uuid(original)),
-        "generic_secret" | "high_entropy_secret" => {
+        "generic_secret" | "high_entropy_secret" | "session_id" | "private_key" | "basic_auth" => {
             let mut rng = get_seeded_rng("secret", original);
-            let chars: String = (0..24)
-                .map(|_| {
-                    let idx: usize = rng.gen::<usize>() % 62;
-                    let c = if idx < 26 {
-                        (b'A' + idx as u8) as char
-                    } else if idx < 52 {
-                        (b'a' + (idx - 26) as u8) as char
-                    } else {
-                        (b'0' + (idx - 52) as u8) as char
-                    };
-                    c
-                })
-                .collect();
-            chars
+            // Preserve format - replace alphanumeric while keeping structure
+            preserve_alphanum_format(original, &mut rng)
         }
         "btc_address" => {
-            // Generate a plausible Bitcoin address
             let mut rng = get_seeded_rng("btc", original);
-            let prefix = if rng.gen::<bool>() { "1" } else { "3" };
-            let chars: String = (0..33)
-                .map(|_| {
-                    let alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-                    let idx: usize = rng.gen::<usize>() % alphabet.len();
-                    alphabet.chars().nth(idx).unwrap()
-                })
-                .collect();
-            format!("{}{}", prefix, chars)
+            // Preserve format - alphanumeric
+            preserve_alphanum_format(original, &mut rng)
         }
         "eth_address" => {
             let mut rng = get_seeded_rng("eth", original);
-            let chars: String = (0..40)
-                .map(|_| {
-                    let idx: usize = rng.gen::<usize>() % 16;
-                    "0123456789abcdef".chars().nth(idx).unwrap()
-                })
-                .collect();
-            format!("0x{}", chars)
+            // Preserve format (0x prefix and case)
+            preserve_hex_format(original, &mut rng)
         }
         "gps_coordinates" => {
             let mut rng = get_seeded_rng("gps", original);
-            let lat: f64 = (rng.gen::<f64>() * 180.0) - 90.0;
-            let lon: f64 = (rng.gen::<f64>() * 360.0) - 180.0;
-            format!("{:.6}, {:.6}", lat, lon)
+            // Preserve format - replace digits while keeping decimal points and separators
+            preserve_digit_format(original, &mut rng)
         }
         "postcode_uk" => {
             let mut rng = get_seeded_rng("postcode_uk", original);
-            let areas = ["SW", "NW", "SE", "NE", "W", "E", "N", "EC", "WC"];
-            let area = areas[rng.gen::<usize>() % areas.len()];
-            let num: u8 = 1 + (rng.gen::<u8>() % 20);
-            let num2: u8 = 1 + (rng.gen::<u8>() % 9);
-            let letters: String = (0..2)
-                .map(|_| (b'A' + (rng.gen::<u8>() % 26)) as char)
-                .collect();
-            format!("{}{} {}{}", area, num, num2, letters)
+            // Preserve format - replace alphanumeric while keeping spaces
+            preserve_alphanum_format(original, &mut rng)
         }
         "postcode_us" => {
             let mut rng = get_seeded_rng("postcode_us", original);
-            let zip: u32 = 10000 + (rng.gen::<u32>() % 90000);
-            format!("{:05}", zip)
+            // Preserve format - replace digits
+            preserve_digit_format(original, &mut rng)
         }
         "file_path_unix" => {
             let mut rng = get_seeded_rng("filepath", original);
@@ -357,104 +378,30 @@ pub fn generate_realistic(
             )
         }
 
-        // Date/time - keep format but randomize values
-        "date_mdy" => {
+        // Date/time - preserve format while randomizing digits
+        "date_mdy" | "date_dmy" | "date_iso" => {
             let mut rng = get_seeded_rng("date", original);
-            let month: u8 = 1 + (rng.gen::<u8>() % 12);
-            let day: u8 = 1 + (rng.gen::<u8>() % 28);
-            let year: u16 = 2000 + (rng.gen::<u16>() % 25);
-            format!("{:02}/{:02}/{}", month, day, year)
-        }
-        "date_dmy" => {
-            let mut rng = get_seeded_rng("date", original);
-            let day: u8 = 1 + (rng.gen::<u8>() % 28);
-            let month: u8 = 1 + (rng.gen::<u8>() % 12);
-            let year: u16 = 2000 + (rng.gen::<u16>() % 25);
-            format!("{:02}/{:02}/{}", day, month, year)
-        }
-        "date_iso" => {
-            let mut rng = get_seeded_rng("date", original);
-            let year: u16 = 2000 + (rng.gen::<u16>() % 25);
-            let month: u8 = 1 + (rng.gen::<u8>() % 12);
-            let day: u8 = 1 + (rng.gen::<u8>() % 28);
-            format!("{}-{:02}-{:02}", year, month, day)
+            preserve_digit_format(original, &mut rng)
         }
         "time" => {
             let mut rng = get_seeded_rng("time", original);
-            let hour: u8 = rng.gen::<u8>() % 24;
-            let min: u8 = rng.gen::<u8>() % 60;
-            let sec: u8 = rng.gen::<u8>() % 60;
-            format!("{:02}:{:02}:{:02}", hour, min, sec)
+            preserve_digit_format(original, &mut rng)
         }
-        "datetime_iso" => {
+        "datetime_iso" | "datetime_clf" | "timestamp_unix" => {
             let mut rng = get_seeded_rng("datetime", original);
-            let year: u16 = 2000 + (rng.gen::<u16>() % 25);
-            let month: u8 = 1 + (rng.gen::<u8>() % 12);
-            let day: u8 = 1 + (rng.gen::<u8>() % 28);
-            let hour: u8 = rng.gen::<u8>() % 24;
-            let min: u8 = rng.gen::<u8>() % 60;
-            let sec: u8 = rng.gen::<u8>() % 60;
-            format!("{}-{:02}-{:02}T{:02}:{:02}:{:02}Z", year, month, day, hour, min, sec)
+            preserve_digit_format(original, &mut rng)
         }
 
-        // Hash values - generate random-looking hashes
-        "md5_hash" => {
-            let mut rng = get_seeded_rng("md5", original);
-            let bytes: [u8; 16] = rng.gen();
-            bytes.iter().map(|b| format!("{:02x}", b)).collect()
-        }
-        "sha1_hash" => {
-            let mut rng = get_seeded_rng("sha1", original);
-            let bytes: [u8; 20] = rng.gen();
-            bytes.iter().map(|b| format!("{:02x}", b)).collect()
-        }
-        "sha256_hash" => {
-            let mut rng = get_seeded_rng("sha256", original);
-            let bytes: [u8; 32] = rng.gen();
-            bytes.iter().map(|b| format!("{:02x}", b)).collect()
+        // Hash values - preserve format (hex)
+        "md5_hash" | "sha1_hash" | "sha256_hash" | "docker_container_id" => {
+            let mut rng = get_seeded_rng("hash", original);
+            preserve_hex_format(original, &mut rng)
         }
 
-        // National IDs - generate format-valid but fake
-        "uk_nhs" => {
-            let mut rng = get_seeded_rng("nhs", original);
-            let digits: Vec<u8> = (0..9).map(|_| rng.gen::<u8>() % 10).collect();
-            // Calculate NHS check digit
-            let weights = [10, 9, 8, 7, 6, 5, 4, 3, 2];
-            let sum: u32 = digits.iter().zip(weights.iter()).map(|(&d, &w)| d as u32 * w).sum();
-            let remainder = sum % 11;
-            let check = if remainder == 0 { 0 } else { 11 - remainder };
-            if check == 10 {
-                // Invalid check digit, regenerate
-                format!("{}{}{} {}{}{} {}{}{}{}", digits[0], digits[1], digits[2], digits[3], digits[4], digits[5], digits[6], digits[7], digits[8], 0)
-            } else {
-                format!("{}{}{} {}{}{} {}{}{}{}", digits[0], digits[1], digits[2], digits[3], digits[4], digits[5], digits[6], digits[7], digits[8], check)
-            }
-        }
-        "uk_nino" => {
-            let mut rng = get_seeded_rng("nino", original);
-            let first_chars = "ABCEGHJKLMNPRSTWXYZ"; // Valid first letters
-            let second_chars = "ABCEGHJKLMNPRSTWXYZ"; // Valid second letters
-            let suffix_chars = "ABCD";
-            let first = first_chars.chars().nth(rng.gen::<usize>() % first_chars.len()).unwrap();
-            let second = second_chars.chars().nth(rng.gen::<usize>() % second_chars.len()).unwrap();
-            let suffix = suffix_chars.chars().nth(rng.gen::<usize>() % suffix_chars.len()).unwrap();
-            let nums: String = (0..6).map(|_| (b'0' + (rng.gen::<u8>() % 10)) as char).collect();
-            format!("{}{}{}{}", first, second, nums, suffix)
-        }
-        "uk_sort_code" => {
-            let mut rng = get_seeded_rng("sort_code", original);
-            let d1: u8 = rng.gen::<u8>() % 10;
-            let d2: u8 = rng.gen::<u8>() % 10;
-            let d3: u8 = rng.gen::<u8>() % 10;
-            let d4: u8 = rng.gen::<u8>() % 10;
-            let d5: u8 = rng.gen::<u8>() % 10;
-            let d6: u8 = rng.gen::<u8>() % 10;
-            format!("{}{}-{}{}-{}{}", d1, d2, d3, d4, d5, d6)
-        }
-        "uk_bank_account" => {
-            let mut rng = get_seeded_rng("bank_account", original);
-            let digits: String = (0..8).map(|_| (b'0' + (rng.gen::<u8>() % 10)) as char).collect();
-            digits
+        // National IDs - preserve format
+        "uk_nhs" | "uk_nino" | "uk_sort_code" | "uk_bank_account" | "us_itin" | "au_tfn" | "in_pan" | "sg_nric" | "es_nif" | "es_nie" => {
+            let mut rng = get_seeded_rng("national_id", original);
+            preserve_alphanum_format(original, &mut rng)
         }
 
         // Default: return a generic anonymized value

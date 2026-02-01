@@ -1,6 +1,5 @@
 import { useState, useRef, useMemo, memo, useEffect, useCallback } from 'react'
 import { useAppStore, type ReplacementStrategy, type RulePreset, type CustomRule, type PlainTextPattern } from '../stores/useAppStore'
-import { AVAILABLE_MODELS } from '../utils/nerModels'
 import { Modal } from './Modal'
 import { BUILTIN_PATTERNS } from '../data/patterns'
 import { BUILTIN_PRESETS, type BuiltinPreset } from '../data/presets'
@@ -70,7 +69,7 @@ function testPatternAgainstText(text: string, patterns: Record<string, string>, 
 
 const STRATEGY_OPTIONS: { value: ReplacementStrategy; label: string }[] = [
   { value: 'label', label: 'Label' },
-  { value: 'fake', label: 'Fake' },
+  { value: 'realistic', label: 'Fake' },
   { value: 'redact', label: 'Redact' },
   { value: 'template', label: 'Template' },
 ]
@@ -402,9 +401,8 @@ export function RulePanel() {
     labelFormat, setLabelFormat,
     globalTemplate, setGlobalTemplate,
     documentType,
-    // ML Name Detection
-    mlNameDetectionEnabled, setMlNameDetection, mlModelId, setMlModelId,
-    mlLoadingState, mlLoadProgress, mlError, loadMlModel
+    // ML Name Detection state (for display)
+    mlLoadingState, setShowSuggestions
   } = useAppStore()
   
   // Filter strategy options for document types (PDF only supports redact)
@@ -473,7 +471,6 @@ export function RulePanel() {
   const [showGlobalTemplateConfig, setShowGlobalTemplateConfig] = useState(false)
   const [editingGlobalTemplate, setEditingGlobalTemplate] = useState('')
   const [showPrivateIPPrompt, setShowPrivateIPPrompt] = useState(false)
-  const [showMlInfoModal, setShowMlInfoModal] = useState(false)
   const [extrasExpanded, setExtrasExpanded] = useState(false)
   const [pendingIPToggle, setPendingIPToggle] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -540,13 +537,6 @@ export function RulePanel() {
   }, [showGlobalTemplateConfig])
 
   // Auto-load ML model on page refresh if it was previously enabled
-  // The model is cached in IndexedDB so this is fast after first download
-  useEffect(() => {
-    if (mlNameDetectionEnabled && mlLoadingState === 'idle') {
-      loadMlModel()
-    }
-  }, []) // Only run once on mount
-
   const testResults = useMemo(() => {
     if (!testText.trim()) return []
     return testPatternAgainstText(testText, BUILTIN_PATTERNS, rules, customRules)
@@ -1127,7 +1117,7 @@ export function RulePanel() {
                     aria-label="Replacement strategy"
                     className="text-xs border dark:border-gray-600 rounded px-1.5 py-1 disabled:opacity-50 w-18 bg-white dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-orange-500"
                   >
-                    {filteredStrategyOptions.filter(opt => opt.value !== 'fake' && opt.value !== 'template').map((opt) => (
+                    {filteredStrategyOptions.filter(opt => opt.value !== 'realistic' && opt.value !== 'template').map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
                       </option>
@@ -1165,13 +1155,21 @@ export function RulePanel() {
                   onEnableAll={() => toggleAllInCategory(category, true)}
                   onDisableAll={() => toggleAllInCategory(category, false)}
                 >
-                  {/* ML Detection category warning */}
+                  {/* ML Detection category info */}
                   {category === 'ML Detection' && mlLoadingState !== 'ready' && (
-                    <div className="mb-2 ml-4 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-700 dark:text-amber-300">
+                    <div className="mb-2 ml-4 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-xs text-blue-700 dark:text-blue-300 flex items-center justify-between gap-2">
                       {mlLoadingState === 'loading' ? (
                         <span>Model is downloading...</span>
                       ) : (
-                        <span>Enable ML Name Detection below and download a model to use these rules.</span>
+                        <>
+                          <span>Download the ML model to detect names, locations, and organizations.</span>
+                          <button
+                            onClick={() => setShowSuggestions(true)}
+                            className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
+                          >
+                            Set Up ML
+                          </button>
+                        </>
                       )}
                     </div>
                   )}
@@ -1294,123 +1292,15 @@ export function RulePanel() {
               className="transition-transform"
             />
             Extras
-            {(mlNameDetectionEnabled || consistencyMode || preservePrivateIPs) && (
+            {(consistencyMode || preservePrivateIPs) && (
               <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500 dark:text-gray-400">
-                {[mlNameDetectionEnabled, consistencyMode, preservePrivateIPs].filter(Boolean).length} active
+                {[consistencyMode, preservePrivateIPs].filter(Boolean).length} active
               </span>
             )}
           </button>
 
           {extrasExpanded && (
             <div className="mt-3 space-y-3 pl-5 border-l-2 border-gray-200 dark:border-gray-700 ml-1">
-              {/* ML Name Detection */}
-              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="flex items-center gap-2 cursor-pointer flex-1" title="Use machine learning to detect person names, locations, and organizations">
-                    <input
-                      type="checkbox"
-                      checked={mlNameDetectionEnabled}
-                      onChange={(e) => setMlNameDetection(e.target.checked)}
-                      disabled={mlLoadingState === 'loading'}
-                      className="rounded border-purple-300 dark:border-purple-600 text-purple-600 focus:ring-purple-500 bg-white dark:bg-gray-700"
-                    />
-                    <span className="text-sm font-medium text-purple-800 dark:text-purple-200">
-                      ML Name Detection
-                    </span>
-                  </label>
-                  <button
-                    onClick={() => setShowMlInfoModal(true)}
-                    className="p-1 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded"
-                    title="Learn more about ML Name Detection"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </button>
-                  {mlLoadingState === 'ready' && (
-                    <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-full">
-                      Ready
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-xs text-purple-700 dark:text-purple-300 mt-2 ml-6">
-                  Detect names, locations, and organizations using AI. Processing happens entirely in your browser.
-                </p>
-
-                {mlNameDetectionEnabled && (
-                  <div className="mt-3 ml-6 space-y-2">
-                    <div>
-                      <label className="block text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
-                        Model
-                      </label>
-                      <select
-                        value={mlModelId}
-                        onChange={(e) => setMlModelId(e.target.value)}
-                        disabled={mlLoadingState === 'loading'}
-                        className="w-full text-sm border border-purple-300 dark:border-purple-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
-                      >
-                        {AVAILABLE_MODELS.map((model) => (
-                          <option key={model.id} value={model.id}>
-                            {model.name} ({model.size})
-                          </option>
-                        ))}
-                      </select>
-                      {AVAILABLE_MODELS.find(m => m.id === mlModelId) && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {AVAILABLE_MODELS.find(m => m.id === mlModelId)?.description}
-                        </p>
-                      )}
-                    </div>
-
-                    {mlLoadingState === 'idle' && (
-                      <button
-                        onClick={() => loadMlModel()}
-                        className="w-full px-3 py-1.5 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
-                      >
-                        Download Model
-                      </button>
-                    )}
-
-                    {mlLoadingState === 'loading' && (
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-xs text-purple-700 dark:text-purple-300">
-                          <span>Downloading model...</span>
-                          <span>{Math.round(mlLoadProgress)}%</span>
-                        </div>
-                        <div className="w-full bg-purple-200 dark:bg-purple-900 rounded-full h-2">
-                          <div
-                            className="bg-purple-600 dark:bg-purple-400 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${mlLoadProgress}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Model is cached in your browser after first download
-                        </p>
-                      </div>
-                    )}
-
-                    {mlLoadingState === 'error' && mlError && (
-                      <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-2">
-                        {mlError}
-                        <button
-                          onClick={() => loadMlModel()}
-                          className="ml-2 underline hover:no-underline"
-                        >
-                          Retry
-                        </button>
-                      </div>
-                    )}
-
-                    {mlLoadingState === 'ready' && (
-                      <p className="text-xs text-green-600 dark:text-green-400">
-                        Model loaded and ready for detection
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
               <div>
                 <label className="flex items-center gap-2 cursor-pointer" title="When enabled, identical PII values will always be replaced with the same replacement value">
                   <input
@@ -1478,50 +1368,6 @@ export function RulePanel() {
                 No, Scrub All IPs
               </button>
             </div>
-          </div>
-        </Modal>
-      )}
-
-      {showMlInfoModal && (
-        <Modal onClose={() => setShowMlInfoModal(false)} title="About ML Name Detection" variant="compact">
-          <div className="space-y-4">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              ML Name Detection uses machine learning to identify person names, locations, and organizations
-              that pattern-based detection might miss.
-            </p>
-
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-              <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Privacy First</h4>
-              <p className="text-xs text-blue-700 dark:text-blue-300">
-                All processing happens <strong>entirely in your browser</strong>. Your data never leaves your device.
-                The ML model is downloaded once and cached locally.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Technology</h4>
-              <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                <li><strong>Library:</strong> <a href="https://huggingface.co/docs/transformers.js" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Transformers.js</a> by Hugging Face</li>
-                <li><strong>Model:</strong> {AVAILABLE_MODELS.find(m => m.id === mlModelId)?.name || 'DistilBERT NER'} (ONNX format)</li>
-                <li><strong>Task:</strong> Named Entity Recognition (NER)</li>
-                <li><strong>Entities:</strong> PER (persons), LOC (locations), ORG (organizations)</li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">How It Works</h4>
-              <ol className="text-xs text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
-                <li>Text is processed by a BERT-based neural network in WebAssembly</li>
-                <li>The model identifies named entities and their positions</li>
-                <li>Results are merged with pattern-based detections</li>
-                <li>You control which entity types to scrub via the ML Detection rules</li>
-              </ol>
-            </div>
-
-            <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-              Model size: {AVAILABLE_MODELS.find(m => m.id === mlModelId)?.size || '~250 MB'}.
-              Cached in your browser's IndexedDB after first download.
-            </p>
           </div>
         </Modal>
       )}

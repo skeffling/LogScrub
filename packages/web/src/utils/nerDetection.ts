@@ -276,17 +276,27 @@ export async function runNER(text: string): Promise<NERResult> {
   // Key: word (lowercase), Value: array of start positions already used
   const usedPositions: Map<string, number[]> = new Map()
 
+  console.log('[ML NER] Aggregated entities before filtering:', aggregatedEntities)
+
   for (const agg of aggregatedEntities) {
     // Reconstruct the full text (join words with spaces)
     const fullWord = agg.words.join(' ')
     const avgScore = agg.scores.reduce((a, b) => a + b, 0) / agg.scores.length
 
+    console.log('[ML NER] Processing entity:', { fullWord, avgScore: avgScore.toFixed(3), type: agg.type })
+
     // Skip low confidence
-    if (avgScore < 0.5) continue
+    if (avgScore < 0.5) {
+      console.log('[ML NER] Skipped (low confidence):', fullWord)
+      continue
+    }
 
     // Skip very short words - single letters/chars are almost always false positives
     // Real names, locations, and organizations are at least 2 characters
-    if (fullWord.length < 2) continue
+    if (fullWord.length < 2) {
+      console.log('[ML NER] Skipped (too short):', fullWord)
+      continue
+    }
 
     // Map entity type
     let entityGroup: NEREntity['entityGroup'] = 'MISC'
@@ -328,17 +338,25 @@ export async function runNER(text: string): Promise<NERResult> {
         usedPositions.set(searchWord, usedForThisWord)
       } else {
         // Can't find any more occurrences in text - skip this entity
+        console.log('[ML NER] Skipped (not found in text):', fullWord)
         continue
       }
     }
 
     // Validate span
-    if (start === undefined || end === undefined) continue
-    if (end - start > 100 || end - start <= 0) continue
+    if (start === undefined || end === undefined) {
+      console.log('[ML NER] Skipped (undefined span):', fullWord)
+      continue
+    }
+    if (end - start > 100 || end - start <= 0) {
+      console.log('[ML NER] Skipped (invalid span):', fullWord, { start, end })
+      continue
+    }
 
     // Use actual text at position
     const actualWord = text.slice(start, end)
 
+    console.log('[ML NER] Adding entity:', { actualWord, entityGroup, score: avgScore.toFixed(3), start, end })
     entities.push({
       entity: agg.type,
       word: actualWord,

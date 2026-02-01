@@ -39,6 +39,12 @@ export default defineConfig({
     exclude: ['wasm-core']
   },
   build: {
-    target: 'esnext'
+    target: 'esnext',
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        app: resolve(__dirname, 'app.html')
+      }
+    }
   }
 })

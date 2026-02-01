@@ -237,7 +237,7 @@ export function Suggestions() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 min-h-[400px]">
           {activeTab === 'active' && (
             <div className="space-y-4">
               {activeMatches.length > 0 ? (

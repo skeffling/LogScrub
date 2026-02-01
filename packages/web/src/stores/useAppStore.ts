@@ -924,25 +924,28 @@ export const useAppStore = create<AppState>((set, get) => ({
               )
               if (overlapsWithWasm) continue // Skip - WASM already handled this region
 
+              // Use the actual text from the source, not the tokenizer's reconstruction
+              const originalText = text.slice(entity.start, entity.end)
+
               counters[piiType]++
               const strategy = currentRules[piiType]?.strategy || 'label'
 
               let replacement: string
               if (strategy === 'redact') {
-                replacement = '█'.repeat(entity.word.length)
+                replacement = '█'.repeat(originalText.length)
               } else {
                 const typeLabel = piiType.replace('ml_', '').toUpperCase()
                 replacement = `${currentLabelFormat.prefix}${typeLabel}-${counters[piiType]}${currentLabelFormat.suffix}`
               }
 
-              if (!mlMatches[piiType].includes(entity.word)) {
-                mlMatches[piiType].push(entity.word)
+              if (!mlMatches[piiType].includes(originalText)) {
+                mlMatches[piiType].push(originalText)
               }
 
               mlReplacements.push({
                 start: entity.start,
                 end: entity.end,
-                original: entity.word,
+                original: originalText,
                 replacement,
                 pii_type: piiType
               })
@@ -1128,16 +1131,19 @@ export const useAppStore = create<AppState>((set, get) => ({
                   continue // Skip MISC
               }
 
+              // Use the actual text from the source, not the tokenizer's reconstruction
+              const originalText = text.slice(entity.start, entity.end)
+
               // Add to matches
-              if (!mlMatches[piiType].includes(entity.word)) {
-                mlMatches[piiType].push(entity.word)
+              if (!mlMatches[piiType].includes(originalText)) {
+                mlMatches[piiType].push(originalText)
               }
 
               // Add to replacements
               mlReplacements.push({
                 start: entity.start,
                 end: entity.end,
-                original: entity.word,
+                original: originalText,
                 replacement: `[${piiType.toUpperCase().replace('ML_', '')}-${mlMatches[piiType].length}]`,
                 pii_type: piiType
               })
@@ -1251,12 +1257,13 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         })
 
-        const enabledReplacements = result.replacements?.filter(r => {
+        // Use allReplacements (includes ML) not just result.replacements (WASM only)
+        const enabledReplacements = allReplacements.filter(r => {
           const rule = rules[r.pii_type]
           const customRule = customRules.find(cr => cr.id === r.pii_type)
           const plainText = plainTextPatterns.find(p => p.id === r.pii_type)
           return (rule?.enabled) || (customRule?.enabled) || (plainText?.enabled)
-        }) || []
+        })
 
         const enabledStats: DetectionStats = {}
         const enabledMatches: DetectionMatches = {}

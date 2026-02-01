@@ -24,6 +24,7 @@ export function Suggestions() {
     mlLoadingState,
     mlLoadProgress,
     loadMlModel,
+    setMlNameDetection,
     analyzeText,
     input
   } = useAppStore()
@@ -434,6 +435,8 @@ export function Suggestions() {
                     <button
                       onClick={() => {
                         if (input) {
+                          // Enable ML detection before running analysis
+                          setMlNameDetection(true)
                           analyzeText(input)
                           dismissSuggestions()
                         }

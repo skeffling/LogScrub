@@ -214,16 +214,24 @@ export async function runNER(text: string): Promise<NERResult> {
     }
 
     // Check if we should merge with the previous entity
+    // Only merge adjacent words that form multi-word names like "Steve Bull"
     const prev = mergedEntities[mergedEntities.length - 1]
     if (prev && prev.entityGroup === current.entityGroup) {
-      // Check if they're adjacent or nearly adjacent (within 2 chars for spaces)
       const gap = current.start - prev.end
-      if (gap >= 0 && gap <= 2) {
-        // Merge: extend previous entity to include current
-        prev.end = current.end
-        prev.word = text.slice(prev.start, prev.end)
-        prev.score = Math.min(prev.score, current.score) // Use lower confidence
-        continue
+      // Only merge if:
+      // 1. Gap is exactly 1 character (a space between words)
+      // 2. The gap character is whitespace
+      // 3. The merged result won't be too long (max ~50 chars for a name)
+      // 4. Previous entity isn't already too long from prior merges
+      if (gap === 1 && prev.end - prev.start < 40) {
+        const gapChar = text.slice(prev.end, current.start)
+        if (gapChar === ' ') {
+          // Merge: extend previous entity to include current
+          prev.end = current.end
+          prev.word = text.slice(prev.start, prev.end)
+          prev.score = Math.min(prev.score, current.score)
+          continue
+        }
       }
     }
 

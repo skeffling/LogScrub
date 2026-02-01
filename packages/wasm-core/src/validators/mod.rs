@@ -223,6 +223,122 @@ pub fn uk_nino_check(nino: &str) -> bool {
     true
 }
 
+/// Singapore NRIC/FIN checksum validation
+/// Uses weighted sum with different check letter tables based on first letter
+pub fn sg_nric_check(nric: &str) -> bool {
+    let upper = nric.to_uppercase();
+    let chars: Vec<char> = upper.chars().collect();
+
+    if chars.len() != 9 {
+        return false;
+    }
+
+    let first = chars[0];
+    let check_letter = chars[8];
+
+    // Extract 7 digits
+    let digits: Vec<u32> = chars[1..8]
+        .iter()
+        .filter_map(|c| c.to_digit(10))
+        .collect();
+
+    if digits.len() != 7 {
+        return false;
+    }
+
+    // Weights: 2, 7, 6, 5, 4, 3, 2
+    let weights = [2, 7, 6, 5, 4, 3, 2];
+    let mut sum: u32 = digits.iter().zip(weights.iter()).map(|(d, w)| d * w).sum();
+
+    // Add offset based on first letter
+    match first {
+        'S' | 'T' => {
+            // Offset for S/T (citizens)
+            if first == 'T' {
+                sum += 4;
+            }
+            let check_letters = ['J', 'Z', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'];
+            let idx = (sum % 11) as usize;
+            check_letter == check_letters[idx]
+        }
+        'F' | 'G' => {
+            // Offset for F/G (permanent residents)
+            if first == 'G' {
+                sum += 4;
+            }
+            let check_letters = ['X', 'W', 'U', 'T', 'R', 'Q', 'P', 'N', 'M', 'L', 'K'];
+            let idx = (sum % 11) as usize;
+            check_letter == check_letters[idx]
+        }
+        'M' => {
+            // M prefix (2022+)
+            sum += 3;
+            let check_letters = ['X', 'W', 'U', 'T', 'R', 'Q', 'P', 'N', 'M', 'L', 'K'];
+            let idx = (sum % 11) as usize;
+            check_letter == check_letters[idx]
+        }
+        _ => false,
+    }
+}
+
+/// Spanish NIF (DNI) validation using mod-23 checksum
+/// Format: 8 digits + 1 check letter
+pub fn es_nif_check(nif: &str) -> bool {
+    let chars: Vec<char> = nif.chars().collect();
+
+    if chars.len() != 9 {
+        return false;
+    }
+
+    // First 8 characters should be digits
+    let digits: String = chars[..8].iter().collect();
+    let number: u32 = match digits.parse() {
+        Ok(n) => n,
+        Err(_) => return false,
+    };
+
+    let check_letter = chars[8].to_ascii_uppercase();
+    let check_letters = ['T', 'R', 'W', 'A', 'G', 'M', 'Y', 'F', 'P', 'D', 'X', 'B', 'N', 'J', 'Z', 'S', 'Q', 'V', 'H', 'L', 'C', 'K', 'E'];
+
+    let expected = check_letters[(number % 23) as usize];
+    check_letter == expected
+}
+
+/// Spanish NIE validation using mod-23 checksum
+/// Format: X/Y/Z + 7 digits + 1 check letter (X=0, Y=1, Z=2)
+pub fn es_nie_check(nie: &str) -> bool {
+    let upper = nie.to_uppercase();
+    let chars: Vec<char> = upper.chars().collect();
+
+    if chars.len() != 9 {
+        return false;
+    }
+
+    // First character determines prefix value
+    let prefix_value = match chars[0] {
+        'X' => 0,
+        'Y' => 1,
+        'Z' => 2,
+        _ => return false,
+    };
+
+    // Middle 7 characters should be digits
+    let digits: String = chars[1..8].iter().collect();
+    let middle_number: u32 = match digits.parse() {
+        Ok(n) => n,
+        Err(_) => return false,
+    };
+
+    // Combine prefix with middle digits
+    let number = prefix_value * 10_000_000 + middle_number;
+
+    let check_letter = chars[8];
+    let check_letters = ['T', 'R', 'W', 'A', 'G', 'M', 'Y', 'F', 'P', 'D', 'X', 'B', 'N', 'J', 'Z', 'S', 'Q', 'V', 'H', 'L', 'C', 'K', 'E'];
+
+    let expected = check_letters[(number % 23) as usize];
+    check_letter == expected
+}
+
 /// Check if a string has high entropy (likely a secret/password)
 /// Threshold: 3.5 bits per character (higher than ScrubDuck's 3.2 to reduce false positives)
 pub fn high_entropy_check(s: &str) -> bool {
@@ -350,5 +466,66 @@ mod tests {
 
         // Should NOT detect version numbers
         assert!(!high_entropy_check("v1.2.3.4.5.6"));
+    }
+
+    #[test]
+    fn test_valid_sg_nric() {
+        // Valid S-series NRIC (S1234567: sum=106, 106%11=7 → D)
+        assert!(sg_nric_check("S1234567D"));
+        // Valid S-series (S0000001: sum=2, 2%11=2 → I)
+        assert!(sg_nric_check("S0000001I"));
+        // Valid T-series NRIC (T0000001: sum=2+4=6, 6%11=6 → E)
+        assert!(sg_nric_check("T0000001E"));
+        // Valid F-series FIN (F1234567: sum=106, 106%11=7 → N)
+        assert!(sg_nric_check("F1234567N"));
+        // Valid G-series FIN (G1234567: sum=106+4=110, 110%11=0 → X)
+        assert!(sg_nric_check("G1234567X"));
+    }
+
+    #[test]
+    fn test_invalid_sg_nric() {
+        // Wrong check letter
+        assert!(!sg_nric_check("S1234567A"));
+        // Too short
+        assert!(!sg_nric_check("S123456D"));
+        // Too long
+        assert!(!sg_nric_check("S12345678D"));
+        // Invalid prefix
+        assert!(!sg_nric_check("A1234567D"));
+    }
+
+    #[test]
+    fn test_valid_es_nif() {
+        // Valid NIF/DNI numbers
+        assert!(es_nif_check("12345678Z"));
+        assert!(es_nif_check("00000000T"));
+    }
+
+    #[test]
+    fn test_invalid_es_nif() {
+        // Wrong check letter
+        assert!(!es_nif_check("12345678A"));
+        // Too short
+        assert!(!es_nif_check("1234567Z"));
+        // Too long
+        assert!(!es_nif_check("123456789Z"));
+    }
+
+    #[test]
+    fn test_valid_es_nie() {
+        // Valid NIE numbers
+        assert!(es_nie_check("X0000000T"));
+        assert!(es_nie_check("Y0000000Z"));
+        assert!(es_nie_check("Z0000000M"));
+    }
+
+    #[test]
+    fn test_invalid_es_nie() {
+        // Wrong check letter
+        assert!(!es_nie_check("X0000000A"));
+        // Invalid prefix
+        assert!(!es_nie_check("A0000000T"));
+        // Too short
+        assert!(!es_nie_check("X000000T"));
     }
 }

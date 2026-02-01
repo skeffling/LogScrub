@@ -1110,3 +1110,24 @@ mod ipv6_tests {
         assert!(re.is_match("64:ff9b::192.0.2.1"));
     }
 }
+
+#[cfg(test)]
+mod uk_bank_tests {
+    use super::*;
+    
+    #[test]
+    fn test_uk_sort_code() {
+        let text = "Sort Code: 30-96-35";
+        let matches: Vec<_> = UK_SORT_CODE_REGEX.find_iter(text).collect();
+        println!("Sort code matches in '{}': {:?}", text, matches);
+        assert!(!matches.is_empty(), "Should match sort code");
+    }
+    
+    #[test]
+    fn test_uk_bank_account() {
+        let text = "Account Number: 87992363";
+        let matches: Vec<_> = UK_BANK_ACCOUNT_REGEX.find_iter(text).collect();
+        println!("Bank account matches in '{}': {:?}", text, matches);
+        assert!(!matches.is_empty(), "Should match bank account");
+    }
+}

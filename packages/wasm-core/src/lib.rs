@@ -1,3 +1,4 @@
+mod fakers;
 mod fit;
 mod patterns;
 mod pcap;
@@ -109,17 +110,47 @@ fn apply_replacements(
         return (text.to_string(), Vec::new());
     }
 
+    // Sort by: start position ASC, then length DESC, then priority DESC
+    // This ensures that for overlapping matches, we prefer longer and higher-priority ones
     let mut sorted_matches = matches.to_vec();
-    sorted_matches.sort_by(|a, b| a.start.cmp(&b.start).then_with(|| b.end.cmp(&a.end)));
+    sorted_matches.sort_by(|a, b| {
+        a.start.cmp(&b.start)
+            .then_with(|| (b.end - b.start).cmp(&(a.end - a.start))) // length DESC
+            .then_with(|| b.priority.cmp(&a.priority)) // priority DESC
+    });
 
+    // Filter out overlapping matches, keeping the best one (already sorted by preference)
     let mut filtered_matches: Vec<Match> = Vec::new();
+    let mut covered_end = 0usize;
+
     for m in &sorted_matches {
-        let dominated = filtered_matches
-            .iter()
-            .any(|existing| existing.start <= m.start && existing.end >= m.end);
-        if !dominated {
-            filtered_matches.push(m.clone());
+        // Skip if this match is completely contained within a previous match
+        if m.end <= covered_end {
+            continue;
         }
+
+        // Handle partial overlap: if this match starts before the covered end,
+        // we need to decide which match to keep
+        if m.start < covered_end {
+            // The previous match already covers part of this region
+            // Check if replacing the previous match with this one is better
+            // (this shouldn't happen due to our sorting, but check anyway)
+            let prev_match = filtered_matches.last();
+            if let Some(prev) = prev_match {
+                let prev_len = prev.end - prev.start;
+                let this_len = m.end - m.start;
+
+                // Skip if previous match is longer or (same length and higher/equal priority)
+                if prev_len > this_len || (prev_len == this_len && prev.priority >= m.priority) {
+                    continue;
+                }
+                // Otherwise, this match is better - remove previous and add this one
+                filtered_matches.pop();
+            }
+        }
+
+        covered_end = m.end;
+        filtered_matches.push(m.clone());
     }
     let mut sorted_matches = filtered_matches;
 
@@ -192,6 +223,11 @@ fn generate_replacement(
     label_prefix: &str,
     label_suffix: &str,
 ) -> String {
+    // Thread-local cache for realistic fake data consistency
+    thread_local! {
+        static REALISTIC_CACHE: std::cell::RefCell<HashMap<String, String>> = std::cell::RefCell::new(HashMap::new());
+    }
+
     match strategy {
         "template" => {
             if let Some(tmpl) = template {
@@ -213,6 +249,13 @@ fn generate_replacement(
             let count = counters.entry(format!("{}_fake", pii_type)).or_insert(0);
             *count += 1;
             generate_fake(pii_type, original, *count)
+        }
+        "realistic" => {
+            let count = counters.entry(format!("{}_realistic", pii_type)).or_insert(0);
+            *count += 1;
+            REALISTIC_CACHE.with(|cache| {
+                fakers::generate_realistic(pii_type, original, *count, &mut cache.borrow_mut())
+            })
         }
         "redact" => "\u{2588}".repeat(original.len().min(16)),
         _ => format!("{}{}{}", label_prefix, pii_type.to_uppercase(), label_suffix),
@@ -264,6 +307,8 @@ fn generate_fake(pii_type: &str, _original: &str, count: usize) -> String {
         "au_tfn" => format!("{:03} {:03} {:03}", count % 1000, count % 1000, count % 1000),
         "in_pan" => format!("XXXPX{:04}X", count % 10000),
         "sg_nric" => format!("S{:07}X", count % 10000000),
+        "es_nif" => format!("{:08}X", count % 100000000),
+        "es_nie" => format!("X{:07}X", count % 10000000),
         "high_entropy_secret" => format!("[HIGH-ENTROPY-SECRET-{}]", count),
         "basic_auth" => format!("Basic XXXX{}", count),
         "url_credentials" => format!("https://user{}:****@example.com", count),

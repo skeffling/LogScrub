@@ -473,6 +473,7 @@ export function RulePanel() {
   const [showGlobalTemplateConfig, setShowGlobalTemplateConfig] = useState(false)
   const [editingGlobalTemplate, setEditingGlobalTemplate] = useState('')
   const [showPrivateIPPrompt, setShowPrivateIPPrompt] = useState(false)
+  const [showMlInfoModal, setShowMlInfoModal] = useState(false)
   const [extrasExpanded, setExtrasExpanded] = useState(false)
   const [pendingIPToggle, setPendingIPToggle] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -1317,6 +1318,15 @@ export function RulePanel() {
                       ML Name Detection
                     </span>
                   </label>
+                  <button
+                    onClick={() => setShowMlInfoModal(true)}
+                    className="p-1 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded"
+                    title="Learn more about ML Name Detection"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
                   {mlLoadingState === 'ready' && (
                     <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-full">
                       Ready
@@ -1468,6 +1478,50 @@ export function RulePanel() {
                 No, Scrub All IPs
               </button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {showMlInfoModal && (
+        <Modal onClose={() => setShowMlInfoModal(false)} title="About ML Name Detection" variant="compact">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              ML Name Detection uses machine learning to identify person names, locations, and organizations
+              that pattern-based detection might miss.
+            </p>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Privacy First</h4>
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                All processing happens <strong>entirely in your browser</strong>. Your data never leaves your device.
+                The ML model is downloaded once and cached locally.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Technology</h4>
+              <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                <li><strong>Library:</strong> <a href="https://huggingface.co/docs/transformers.js" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Transformers.js</a> by Hugging Face</li>
+                <li><strong>Model:</strong> {AVAILABLE_MODELS.find(m => m.id === mlModelId)?.name || 'DistilBERT NER'} (ONNX format)</li>
+                <li><strong>Task:</strong> Named Entity Recognition (NER)</li>
+                <li><strong>Entities:</strong> PER (persons), LOC (locations), ORG (organizations)</li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">How It Works</h4>
+              <ol className="text-xs text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
+                <li>Text is processed by a BERT-based neural network in WebAssembly</li>
+                <li>The model identifies named entities and their positions</li>
+                <li>Results are merged with pattern-based detections</li>
+                <li>You control which entity types to scrub via the ML Detection rules</li>
+              </ol>
+            </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+              Model size: {AVAILABLE_MODELS.find(m => m.id === mlModelId)?.size || '~250 MB'}.
+              Cached in your browser's IndexedDB after first download.
+            </p>
           </div>
         </Modal>
       )}

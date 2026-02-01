@@ -2316,7 +2316,7 @@ Here are examples of actual replacements made in this ${docTypeShort}:
                 <div className="font-mono text-sm space-y-2">
                   <p className="font-semibold">Getting Started:</p>
                   <p>1. Paste logs here, or use <span className="text-blue-600 dark:text-blue-400">Upload</span>/drag & drop</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 ml-3">Supports: txt, log, json, csv, pdf, docx, xlsx, odt, ods, gpx, fit, pcap, zip, gz</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 ml-3">Supports: txt, log, json, csv, sql, pdf, docx, xlsx, odt, ods, gpx, fit, pcap, zip, gz</p>
                   <p>2. Click <span className="text-purple-600 dark:text-purple-400">Analyze</span> to detect PII and get rule suggestions</p>
                   <p>3. Enable/disable rules in Detection Rules panel</p>
                   <p>4. Click <span className="text-blue-600 dark:text-blue-400">Scrub</span> to apply replacements</p>

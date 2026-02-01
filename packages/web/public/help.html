@@ -966,6 +966,18 @@ User [EMAIL-3] logged in</div>
               </table>
             </div>
             <p>SQL rules help scrub sensitive data from database queries and logs. Disabled by default to avoid false positives.</p>
+
+            <h4>SQL Dump File Support</h4>
+            <p>LogScrub processes SQL dump files from PostgreSQL (<code>pg_dump</code>), MySQL (<code>mysqldump</code>), SQLite (<code>.dump</code>), and other databases. Upload <code>.sql</code> files directly or paste SQL content.</p>
+            <p>When processing SQL dumps, LogScrub detects PII in:</p>
+            <ul style="margin-left: 1.5rem;">
+              <li><strong>INSERT statements</strong> — String literals in VALUES clauses</li>
+              <li><strong>UPDATE statements</strong> — SET clause values</li>
+              <li><strong>Comments</strong> — Both <code>--</code> and <code>/* */</code> style comments</li>
+              <li><strong>String literals</strong> — Single and double quoted strings throughout</li>
+            </ul>
+            <p style="margin-top: 0.75rem;">SQL structure is preserved — table names, column names, SQL keywords, and syntax remain untouched while only values are anonymized. This keeps your scrubbed dump valid and executable.</p>
+            <p><a href="scrub-sql-dump-anonymizer.html">Learn more about SQL dump anonymization &rarr;</a></p>
           </div>
 
           <div class="category-section">
@@ -1173,7 +1185,7 @@ User [EMAIL-3] logged in</div>
             <li><strong>Drag and drop</strong> — Drag multiple files onto the editor area</li>
             <li><strong>ZIP archive</strong> — Upload a .zip file containing text files (they will be automatically extracted)</li>
           </ul>
-          <p>Supported file types: <code>.log</code>, <code>.txt</code>, <code>.json</code>, <code>.xml</code>, <code>.csv</code>, <code>.zip</code></p>
+          <p>Supported file types: <code>.log</code>, <code>.txt</code>, <code>.json</code>, <code>.xml</code>, <code>.csv</code>, <code>.sql</code>, <code>.zip</code></p>
 
           <h3>Files Tab</h3>
           <p>When you upload multiple files, a "Files" tab appears in the sidebar alongside "Detection Rules":</p>

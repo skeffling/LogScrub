@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Dump Anonymizer - Sanitize Database Exports | LogScrub</title>
+  <meta name="description" content="Free SQL dump anonymization tool for PostgreSQL, MySQL, and other database exports. Remove PII from INSERT statements, string literals, and comments. Browser-based, no upload required.">
+  <meta name="keywords" content="SQL anonymizer, database dump sanitizer, PostgreSQL anonymizer, MySQL dump cleaner, PII removal SQL, database export privacy, SQL redaction tool">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    h1 { margin-bottom: 0.5rem; color: #667eea; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+    h2 { margin-top: 2.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+    h3 { color: #667eea; margin-top: 2rem; }
+
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .example {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+    .example-header {
+      background: #667eea;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .example-content { padding: 1rem; overflow-x: auto; }
+    .redacted { background: #dcfce7; color: #166534; }
+
+    .feature-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .screenshot-placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 3rem;
+      text-align: center;
+      color: #888;
+      margin: 1.5rem 0;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    @media (max-width: 600px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      .subtitle { color: #aaa; }
+      code, pre { background: #2d2d44; }
+      .example { background: #252540; border-color: #3d3d5c; }
+      .redacted { background: #14532d; color: #86efac; }
+      .feature-box { background: #252540; }
+      .screenshot-placeholder { background: #3d3d5c; border-color: #555; }
+      .cta { background: #252540; }
+    }
+  </style>
+</head>
+<body>
+  <a href="logscrub-features.html" class="back">&larr; Back to Features</a>
+
+  <h1>SQL Dump Anonymizer</h1>
+  <p class="subtitle">Sanitize database exports while preserving SQL structure</p>
+
+  <p>LogScrub processes SQL dump files from PostgreSQL, MySQL, SQLite, and other databases. It detects PII in INSERT statements, string literals, and comments—anonymizing sensitive data while keeping your SQL syntax valid and executable.</p>
+
+  <div class="screenshot-placeholder">
+    Screenshot placeholder: SQL dump in editor with highlighted PII in INSERT statements
+  </div>
+
+  <h2>Before &amp; After Examples</h2>
+
+  <h3>User Table Export</h3>
+  <div class="example">
+    <div class="example-header">Before Anonymization</div>
+    <div class="example-content">
+      <pre>INSERT INTO users (id, email, name, phone, ip_address, ssn) VALUES
+(1, 'john.smith@email.com', 'John Smith', '+1-555-123-4567', '192.168.1.100', '123-45-6789'),
+(2, 'jane.doe@company.org', 'Jane Doe', '+1-555-987-6543', '10.0.0.55', '987-65-4321'),
+(3, 'bob.w@example.net', 'Bob Wilson', '+44 20 7123 4567', '172.16.0.10', '456-78-9012');</pre>
+    </div>
+  </div>
+
+  <div class="example">
+    <div class="example-header">After Anonymization</div>
+    <div class="example-content">
+      <pre>INSERT INTO users (id, email, name, phone, ip_address, ssn) VALUES
+(1, '<span class="redacted">[EMAIL-1]</span>', '<span class="redacted">[NAME-1]</span>', '<span class="redacted">[PHONE-1]</span>', '<span class="redacted">[IPV4-1]</span>', '<span class="redacted">[SSN-1]</span>'),
+(2, '<span class="redacted">[EMAIL-2]</span>', '<span class="redacted">[NAME-2]</span>', '<span class="redacted">[PHONE-2]</span>', '<span class="redacted">[IPV4-2]</span>', '<span class="redacted">[SSN-2]</span>'),
+(3, '<span class="redacted">[EMAIL-3]</span>', '<span class="redacted">[NAME-3]</span>', '<span class="redacted">[PHONE-3]</span>', '<span class="redacted">[IPV4-3]</span>', '<span class="redacted">[SSN-3]</span>');</pre>
+    </div>
+  </div>
+
+  <h3>Transaction Log Table</h3>
+  <div class="example">
+    <div class="example-header">Financial Data in SQL</div>
+    <div class="example-content">
+      <div class="two-col">
+        <div>
+          <strong>Before:</strong>
+          <pre style="margin-top:0.5rem">INSERT INTO transactions
+  (card_number, amount, iban)
+VALUES
+  ('4111-1111-1111-1111', 99.99,
+   'GB82WEST12345698765432'),
+  ('5500-0000-0000-0004', 45.50,
+   'DE89370400440532013000');</pre>
+        </div>
+        <div>
+          <strong>After:</strong>
+          <pre style="margin-top:0.5rem">INSERT INTO transactions
+  (card_number, amount, iban)
+VALUES
+  ('[CC-1]', 99.99,
+   '[IBAN-1]'),
+  ('[CC-2]', 45.50,
+   '[IBAN-2]');</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Supported SQL Syntax</h2>
+
+  <div class="feature-box">
+    <div class="two-col">
+      <ul style="margin:0">
+        <li><strong>INSERT statements</strong> — Single and multi-row</li>
+        <li><strong>UPDATE statements</strong> — SET clause values</li>
+        <li><strong>String literals</strong> — Single and double quoted</li>
+        <li><strong>Comments</strong> — Both -- and /* */ styles</li>
+      </ul>
+      <ul style="margin:0">
+        <li><strong>PostgreSQL</strong> — pg_dump output</li>
+        <li><strong>MySQL</strong> — mysqldump output</li>
+        <li><strong>SQLite</strong> — .dump output</li>
+        <li><strong>Generic SQL</strong> — Standard syntax</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>PII Types Detected</h2>
+
+  <div class="feature-box">
+    <div class="two-col">
+      <ul style="margin:0">
+        <li>Email addresses</li>
+        <li>Phone numbers (all formats)</li>
+        <li>Social Security Numbers</li>
+        <li>Credit card numbers (Luhn validated)</li>
+        <li>IP addresses (IPv4 &amp; IPv6)</li>
+        <li>IBANs (mod-97 validated)</li>
+      </ul>
+      <ul style="margin:0">
+        <li>UUIDs</li>
+        <li>API keys and tokens</li>
+        <li>Hostnames and URLs</li>
+        <li>MAC addresses</li>
+        <li>GPS coordinates</li>
+        <li>Custom identifiers</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Key Features</h2>
+
+  <h3>SQL Structure Preservation</h3>
+  <p>LogScrub only modifies string literals and values—table names, column names, SQL keywords, and syntax remain untouched. Your anonymized dump stays valid and executable.</p>
+
+  <h3>Consistency Mode</h3>
+  <p>When the same email appears in multiple INSERT statements, it gets the same replacement throughout the file. This preserves referential integrity in your data.</p>
+
+  <div class="example">
+    <div class="example-header">Foreign Key Relationships Preserved</div>
+    <div class="example-content">
+      <div class="two-col">
+        <div>
+          <strong>Before:</strong>
+          <pre style="margin-top:0.5rem">INSERT INTO users (id, email)
+VALUES (1, 'john@corp.com');
+
+INSERT INTO orders (user_email)
+VALUES ('john@corp.com');
+
+INSERT INTO logs (email)
+VALUES ('john@corp.com');</pre>
+        </div>
+        <div>
+          <strong>After:</strong>
+          <pre style="margin-top:0.5rem">INSERT INTO users (id, email)
+VALUES (1, '[EMAIL-1]');
+
+INSERT INTO orders (user_email)
+VALUES ('[EMAIL-1]');
+
+INSERT INTO logs (email)
+VALUES ('[EMAIL-1]');</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Realistic Replacement Option</h3>
+  <p>Choose the "Realistic" replacement strategy to generate plausible fake data instead of labels:</p>
+
+  <div class="example">
+    <div class="example-header">Realistic Fake Data</div>
+    <div class="example-content">
+      <pre>-- Original
+INSERT INTO users VALUES ('john.smith@email.com', '192.168.1.100');
+
+-- With Labels
+INSERT INTO users VALUES ('[EMAIL-1]', '[IPV4-1]');
+
+-- With Realistic Data
+INSERT INTO users VALUES ('sarah.jones@example.net', '203.0.113.42');</pre>
+    </div>
+  </div>
+
+  <h2>Use Cases</h2>
+
+  <ul>
+    <li><strong>Database migrations</strong> — Sanitize dumps before sharing with external teams</li>
+    <li><strong>Development environments</strong> — Create anonymized copies of production data</li>
+    <li><strong>Bug reports</strong> — Share database state without exposing customer data</li>
+    <li><strong>Compliance</strong> — Prepare data for external audits</li>
+    <li><strong>Testing</strong> — Generate test fixtures from real data</li>
+    <li><strong>Documentation</strong> — Create example data for documentation</li>
+  </ul>
+
+  <h2>Output Options</h2>
+
+  <ul>
+    <li><strong>Download sanitized SQL</strong> — Get the anonymized dump file</li>
+    <li><strong>Copy to clipboard</strong> — Quick paste into other applications</li>
+    <li><strong>Export mapping</strong> — Download original-to-replacement dictionary for reference</li>
+    <li><strong>Compressed download</strong> — .zip or .gz for large dump files</li>
+  </ul>
+
+  <div class="cta">
+    <h3>Ready to anonymize your SQL dumps?</h3>
+    <p>Drop your .sql file into LogScrub to get started.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

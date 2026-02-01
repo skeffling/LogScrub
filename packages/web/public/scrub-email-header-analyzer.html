@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Header Analyzer - Visualize Mail Routing &amp; Spam Reports | LogScrub</title>
+  <meta name="description" content="Free email header analysis tool. Visualize mail server routing paths, parse SpamAssassin and rspamd reports, detect TLS encryption, and anonymize sensitive headers. Browser-based, no upload required.">
+  <meta name="keywords" content="email header analyzer, mail routing visualization, SpamAssassin parser, rspamd report viewer, email forensics, mail server trace, TLS encryption check, email header privacy">
+  <link rel="icon" type="image/svg+xml" href="/shield.svg">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    h1 { margin-bottom: 0.5rem; color: #667eea; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    a.back { display: inline-block; margin-bottom: 1rem; }
+    h2 { margin-top: 2.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+    h3 { color: #667eea; margin-top: 2rem; }
+
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .example {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+    .example-header {
+      background: #667eea;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .example-content { padding: 1rem; overflow-x: auto; }
+    .redacted { background: #dcfce7; color: #166534; }
+
+    .feature-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .diagram {
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      font-family: monospace;
+      font-size: 0.85rem;
+      line-height: 1.8;
+    }
+    .diagram .server {
+      background: #e0e7ff;
+      border: 1px solid #667eea;
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      display: inline-block;
+      margin: 0.25rem 0;
+    }
+    .diagram .arrow {
+      color: #667eea;
+      font-weight: bold;
+    }
+    .diagram .time {
+      color: #666;
+      font-size: 0.8rem;
+    }
+    .diagram .tls {
+      color: #22c55e;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 2rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      margin: 3rem 0;
+    }
+    .cta a {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    .spam-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin: 1rem 0;
+    }
+    .spam-table th, .spam-table td {
+      padding: 0.5rem;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .spam-table th { background: #f4f4f4; }
+    .spam-positive { color: #dc2626; }
+    .spam-negative { color: #22c55e; }
+
+    .tip {
+      background: #f0f4ff;
+      border-left: 4px solid #667eea;
+      padding: 1rem;
+      margin: 1.5rem 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .tip strong { color: #667eea; }
+
+    @media (max-width: 600px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a2e; color: #eee; }
+      a { color: #6eb5ff; }
+      .subtitle { color: #aaa; }
+      code, pre { background: #2d2d44; }
+      .example { background: #252540; border-color: #3d3d5c; }
+      .redacted { background: #14532d; color: #86efac; }
+      .feature-box { background: #252540; }
+      .diagram { background: #252540; border-color: #3d3d5c; }
+      .diagram .server { background: #3d3d5c; border-color: #667eea; }
+      .diagram .time { color: #aaa; }
+      .cta { background: #252540; }
+      .spam-table th { background: #2d2d44; }
+      .spam-table td { border-color: #3d3d5c; }
+      .tip { background: #252540; }
+    }
+  </style>
+</head>
+<body>
+  <a href="logscrub-features.html" class="back">&larr; Back to Features</a>
+
+  <h1>Email Header Analyzer</h1>
+  <p class="subtitle">Visualize mail routing, parse spam reports, and anonymize sensitive headers</p>
+
+  <p>LogScrub automatically detects email headers and provides powerful analysis tools. Visualize the complete routing path through mail servers, parse SpamAssassin and rspamd reports into readable tables, check TLS encryption at each hop, and anonymize sensitive information before sharing.</p>
+
+  <h2>Email Routing Visualization</h2>
+
+  <p>When you paste email headers containing <code>Received:</code> headers, LogScrub parses them and displays an interactive routing diagram showing exactly how your email traveled from sender to recipient.</p>
+
+  <div class="diagram">
+    <div style="text-align: center;">
+      <div class="server">sender-smtp.example.com</div><br>
+      <span class="arrow">↓</span> <span class="time">+0.5s</span> <span class="tls">🔒 TLSv1.3</span><br>
+      <div class="server">mx1.google.com [142.250.x.x]</div><br>
+      <span class="arrow">↓</span> <span class="time">+1.2s</span> <span class="tls">🔒 TLSv1.3</span><br>
+      <div class="server">spam-filter.google.com</div><br>
+      <span class="arrow">↓</span> <span class="time">+0.1s</span><br>
+      <div class="server">final-delivery.google.com</div>
+    </div>
+  </div>
+
+  <h3>What Gets Parsed</h3>
+
+  <div class="feature-box">
+    <div class="two-col">
+      <ul style="margin:0">
+        <li><strong>Server hostnames</strong> — From and by server names</li>
+        <li><strong>IP addresses</strong> — IPv4 and IPv6 addresses in headers</li>
+        <li><strong>Timestamps</strong> — When each server received the message</li>
+        <li><strong>Transit times</strong> — Duration between each hop</li>
+      </ul>
+      <ul style="margin:0">
+        <li><strong>TLS encryption</strong> — Version and cipher suite used</li>
+        <li><strong>Protocol</strong> — SMTP, ESMTP, LMTPS, etc.</li>
+        <li><strong>Authentication</strong> — DKIM, SPF, DMARC results</li>
+        <li><strong>Queue IDs</strong> — Server-specific message identifiers</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tip">
+    <strong>TLS Indicator:</strong> A padlock icon on connector lines shows encrypted transmission. Hover to see the TLS version (e.g., TLSv1.3) and cipher suite.
+  </div>
+
+  <h2>Spam Report Parsing</h2>
+
+  <p>LogScrub detects and parses spam filter reports from <strong>SpamAssassin</strong> and <strong>rspamd</strong>, displaying them in a sortable table instead of raw header text.</p>
+
+  <div class="example">
+    <div class="example-header">Parsed SpamAssassin Report</div>
+    <div class="example-content">
+      <table class="spam-table">
+        <tr>
+          <th>Score</th>
+          <th>Rule</th>
+          <th>Description</th>
+        </tr>
+        <tr>
+          <td class="spam-negative">-0.1</td>
+          <td>DKIM_VALID</td>
+          <td>Message has valid DKIM signature</td>
+        </tr>
+        <tr>
+          <td class="spam-negative">-0.1</td>
+          <td>DKIM_VALID_AU</td>
+          <td>DKIM signature from author's domain</td>
+        </tr>
+        <tr>
+          <td class="spam-negative">-0.0</td>
+          <td>SPF_PASS</td>
+          <td>SPF: sender matches SPF record</td>
+        </tr>
+        <tr>
+          <td class="spam-positive">+2.5</td>
+          <td>URIBL_BLOCKED</td>
+          <td>Contains URL listed in blocklist</td>
+        </tr>
+        <tr>
+          <td class="spam-positive">+1.0</td>
+          <td>HTML_MESSAGE</td>
+          <td>HTML included in message</td>
+        </tr>
+      </table>
+      <p style="margin:0.5rem 0 0;"><strong>Total Score: 3.3</strong> (Threshold: 5.0)</p>
+    </div>
+  </div>
+
+  <h3>Supported Spam Filters</h3>
+
+  <div class="feature-box">
+    <div class="two-col">
+      <div>
+        <strong>SpamAssassin</strong>
+        <ul style="margin:0.5rem 0 0">
+          <li>X-Spam-Report header parsing</li>
+          <li>Rule scores and descriptions</li>
+          <li>Total score and threshold</li>
+        </ul>
+      </div>
+      <div>
+        <strong>rspamd</strong>
+        <ul style="margin:0.5rem 0 0">
+          <li>X-Spam-Report header parsing</li>
+          <li>Symbol scores with groups</li>
+          <li>Action taken (no action, add header, reject)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <p>When both SpamAssassin and rspamd reports are present, LogScrub displays tabs to switch between them for comparison.</p>
+
+  <h2>Header Anonymization</h2>
+
+  <p>Email headers contain sensitive information that should be removed before sharing. LogScrub detects and anonymizes:</p>
+
+  <div class="example">
+    <div class="example-header">Before Anonymization</div>
+    <div class="example-content">
+      <pre>From: John Smith &lt;john.smith@company.com&gt;
+To: Jane Doe &lt;jane@example.org&gt;
+Received: from mail.company.com (192.168.1.50) by mx.example.org
+X-Originating-IP: [203.0.113.45]
+Message-ID: &lt;ABC123@mail.company.com&gt;
+X-Mailer: Microsoft Outlook 16.0</pre>
+    </div>
+  </div>
+
+  <div class="example">
+    <div class="example-header">After Anonymization</div>
+    <div class="example-content">
+      <pre>From: <span class="redacted">[NAME-1]</span> &lt;<span class="redacted">[EMAIL-1]</span>&gt;
+To: <span class="redacted">[NAME-2]</span> &lt;<span class="redacted">[EMAIL-2]</span>&gt;
+Received: from <span class="redacted">[HOSTNAME-1]</span> (<span class="redacted">[IPV4-1]</span>) by <span class="redacted">[HOSTNAME-2]</span>
+X-Originating-IP: [<span class="redacted">[IPV4-2]</span>]
+Message-ID: &lt;<span class="redacted">[MESSAGE_ID-1]</span>&gt;
+X-Mailer: Microsoft Outlook 16.0</pre>
+    </div>
+  </div>
+
+  <h3>What Gets Anonymized</h3>
+
+  <div class="feature-box">
+    <div class="two-col">
+      <ul style="margin:0">
+        <li><strong>Email addresses</strong> — From, To, Cc, Bcc, Reply-To</li>
+        <li><strong>Names</strong> — Display names in address fields</li>
+        <li><strong>IP addresses</strong> — Originating IPs, server IPs</li>
+        <li><strong>Hostnames</strong> — Mail server names</li>
+      </ul>
+      <ul style="margin:0">
+        <li><strong>Message IDs</strong> — Unique identifiers</li>
+        <li><strong>Subjects</strong> — Optional, can be preserved</li>
+        <li><strong>Custom headers</strong> — X-headers with sensitive data</li>
+        <li><strong>Authentication details</strong> — DKIM selectors, domains</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Use Cases</h2>
+
+  <ul>
+    <li><strong>Email delivery debugging</strong> — Identify where delays occur in the delivery chain</li>
+    <li><strong>Security analysis</strong> — Verify TLS encryption was used throughout the route</li>
+    <li><strong>Spam investigation</strong> — Understand why emails are marked as spam</li>
+    <li><strong>Phishing analysis</strong> — Trace the origin of suspicious emails</li>
+    <li><strong>Compliance documentation</strong> — Document that email was transmitted securely</li>
+    <li><strong>Support tickets</strong> — Share email headers without exposing addresses</li>
+  </ul>
+
+  <h2>How to Get Email Headers</h2>
+
+  <div class="feature-box">
+    <div class="two-col">
+      <div>
+        <strong>Gmail</strong>
+        <ol style="margin:0.5rem 0 0;padding-left:1.25rem">
+          <li>Open the email</li>
+          <li>Click ⋮ (More) → "Show original"</li>
+          <li>Copy the headers section</li>
+        </ol>
+      </div>
+      <div>
+        <strong>Outlook</strong>
+        <ol style="margin:0.5rem 0 0;padding-left:1.25rem">
+          <li>Open the email</li>
+          <li>File → Properties</li>
+          <li>Copy from "Internet headers"</li>
+        </ol>
+      </div>
+    </div>
+    <div class="two-col" style="margin-top:1rem">
+      <div>
+        <strong>Apple Mail</strong>
+        <ol style="margin:0.5rem 0 0;padding-left:1.25rem">
+          <li>Open the email</li>
+          <li>View → Message → Raw Source</li>
+          <li>Copy the headers section</li>
+        </ol>
+      </div>
+      <div>
+        <strong>Thunderbird</strong>
+        <ol style="margin:0.5rem 0 0;padding-left:1.25rem">
+          <li>Open the email</li>
+          <li>View → Message Source (Ctrl+U)</li>
+          <li>Copy the headers section</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <h2>Detection Rules for Email</h2>
+
+  <p>LogScrub includes specialized detection rules for email-specific patterns:</p>
+
+  <div class="feature-box">
+    <ul style="margin:0">
+      <li><strong>Email Message-ID</strong> — Matches &lt;id@domain&gt; format identifiers</li>
+      <li><strong>Email addresses</strong> — Standard email pattern detection</li>
+      <li><strong>Received header IPs</strong> — Extracts IPs from Received: headers</li>
+      <li><strong>Mail server hostnames</strong> — Detects MX and mail server names</li>
+    </ul>
+  </div>
+
+  <div class="tip">
+    <strong>Tip:</strong> Enable the "Email Message-ID" rule in the Detection Rules panel when working with email headers. It's disabled by default to avoid false positives in other content.
+  </div>
+
+  <div class="cta">
+    <h3>Ready to analyze email headers?</h3>
+    <p>Paste your email headers into LogScrub to visualize routing and anonymize sensitive data.</p>
+    <a href="./">Launch LogScrub</a>
+  </div>
+
+</body>
+</html>

@@ -629,6 +629,7 @@
           <a href="#organizing-rules">Organizing Rules</a>
           <a href="#time-shift">Time Shift</a>
           <a href="#analyze-mode">Analyze Mode</a>
+          <a href="#ml-detection">ML Name Detection</a>
           <a href="#syntax-validation">Syntax Validation</a>
           <a href="#context-aware">Context-Aware Detection</a>
           <a href="#email-headers">Email Header Analysis</a>
@@ -1382,6 +1383,94 @@ User [EMAIL-3] logged in</div>
           </div>
 
           <p>When a log format is detected, a colored banner appears above the editor with a button to load the recommended preset. You can dismiss the banner if you prefer to configure rules manually.</p>
+        </section>
+
+        <section id="ml-detection">
+          <h2>ML Name Detection</h2>
+          <p>LogScrub includes optional machine learning-based detection for identifying person names, locations, and organizations that pattern-based rules might miss.</p>
+
+          <div class="callout success">
+            <strong>Privacy First:</strong> All ML processing happens entirely in your browser. Your data never leaves your device. The model is downloaded once and cached locally in your browser's storage.
+          </div>
+
+          <h3>How It Works</h3>
+          <p>ML Name Detection uses a neural network called Named Entity Recognition (NER) to identify entities in text:</p>
+          <ul>
+            <li><strong>PER (Persons)</strong> - Names of people (e.g., "John Smith", "Dr. Sarah Johnson")</li>
+            <li><strong>LOC (Locations)</strong> - Place names (e.g., "London", "Silicon Valley")</li>
+            <li><strong>ORG (Organizations)</strong> - Company and organization names (e.g., "Microsoft", "NHS")</li>
+          </ul>
+
+          <h3>Technology</h3>
+          <ul>
+            <li><strong>Library:</strong> <a href="https://huggingface.co/docs/transformers.js" target="_blank" rel="noopener">Transformers.js</a> by Hugging Face</li>
+            <li><strong>Model:</strong> BERT-based NER models (DistilBERT or BERT Base)</li>
+            <li><strong>Format:</strong> ONNX for efficient browser execution via WebAssembly</li>
+            <li><strong>Caching:</strong> Models are cached in IndexedDB after first download</li>
+          </ul>
+
+          <h3>Enabling ML Detection</h3>
+          <ol>
+            <li>Expand the <strong>Extras</strong> section in the sidebar</li>
+            <li>Check <strong>ML Name Detection</strong></li>
+            <li>Select a model (DistilBERT recommended for balance of speed/accuracy)</li>
+            <li>Click <strong>Download Model</strong> (only required once)</li>
+            <li>Once "Ready" appears, ML will run automatically during Analyze</li>
+          </ol>
+
+          <h3>Available Models</h3>
+          <table class="rules-table">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Size</th>
+                <th>Speed</th>
+                <th>Accuracy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>DistilBERT NER</td>
+                <td>~250 MB</td>
+                <td>Fast</td>
+                <td>Good</td>
+              </tr>
+              <tr>
+                <td>BERT Base NER</td>
+                <td>~420 MB</td>
+                <td>Slower</td>
+                <td>Best</td>
+              </tr>
+              <tr>
+                <td>BERT Base NER (uncased)</td>
+                <td>~420 MB</td>
+                <td>Slower</td>
+                <td>Best (case-insensitive)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>ML Detection Rules</h3>
+          <p>When ML detection is enabled, three additional rules appear in the <strong>ML Detection</strong> category:</p>
+          <ul>
+            <li><strong>Person Names (ML)</strong> - Names identified by the neural network</li>
+            <li><strong>Locations (ML)</strong> - Place names identified by the neural network</li>
+            <li><strong>Organizations (ML)</strong> - Company/org names identified by the neural network</li>
+          </ul>
+          <p>These rules are automatically enabled when you turn on ML Name Detection, but you can disable individual entity types if needed.</p>
+
+          <h3>When to Use ML Detection</h3>
+          <p>ML detection is most useful when:</p>
+          <ul>
+            <li>Text contains person names not in email or username formats</li>
+            <li>You need to detect organization names</li>
+            <li>Location names need to be identified</li>
+            <li>Pattern-based rules are missing names in free-form text</li>
+          </ul>
+
+          <div class="callout warning">
+            <strong>Note:</strong> ML models can produce false positives (detecting non-names as names) or false negatives (missing actual names). Always review results, especially for unfamiliar text patterns.
+          </div>
         </section>
 
         <section id="syntax-validation">

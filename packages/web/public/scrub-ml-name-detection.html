@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ML Name Detection - AI-Powered PII Detection | LogScrub</title>
+  <meta name="description" content="Use machine learning to detect person names, locations, and organizations in your logs. 100% browser-based, privacy-first AI detection using Transformers.js and BERT models.">
+  <meta name="keywords" content="ML name detection, NER, named entity recognition, AI PII detection, BERT, Transformers.js, browser ML">
+  <link rel="icon" type="image/svg+xml" href="/shield.svg">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #404040;
+      --text-light: #6c757d;
+      --heading: #1a1a1a;
+      --border: #e5e7eb;
+      --accent: #8b5cf6;
+      --accent-hover: #7c3aed;
+      --accent-light: #f5f3ff;
+      --card-bg: #fafafa;
+      --success: #22c55e;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a2e;
+        --text: #d1d5db;
+        --text-light: #9ca3af;
+        --heading: #f9fafb;
+        --border: #374151;
+        --accent: #a78bfa;
+        --accent-hover: #c4b5fd;
+        --accent-light: #2d2250;
+        --card-bg: #252540;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+      color: white;
+      padding: 3rem 2rem;
+      border-radius: 16px;
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    .hero h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+    .hero p { font-size: 1.2rem; opacity: 0.9; max-width: 600px; margin: 0 auto; }
+    .hero .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      margin-top: 1.5rem;
+    }
+    @media (prefers-color-scheme: dark) {
+      .hero { background: linear-gradient(135deg, #4c1d95 0%, #312e81 100%); }
+    }
+
+    /* Navigation */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--accent);
+      text-decoration: none;
+      margin-bottom: 2rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    /* Content */
+    h2 {
+      font-size: 1.75rem;
+      color: var(--heading);
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--accent);
+    }
+    h3 { font-size: 1.25rem; color: var(--heading); margin: 1.5rem 0 0.75rem; }
+    p { margin-bottom: 1rem; }
+    ul, ol { margin: 0 0 1.5rem 1.5rem; }
+    li { margin-bottom: 0.5rem; }
+    a { color: var(--accent); }
+    code {
+      background: var(--card-bg);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+
+    /* Cards */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 1.5rem 0; }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .card h4 { color: var(--heading); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card p { margin: 0; color: var(--text-light); font-size: 0.95rem; }
+    .card .icon { font-size: 1.5rem; }
+
+    /* Privacy callout */
+    .privacy-box {
+      background: linear-gradient(135deg, var(--accent-light) 0%, var(--card-bg) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+    }
+    .privacy-box h3 { margin-top: 0; color: var(--accent); }
+
+    /* Steps */
+    .steps { counter-reset: step; }
+    .step {
+      position: relative;
+      padding-left: 3rem;
+      margin-bottom: 1.5rem;
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 2rem;
+      height: 2rem;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: var(--card-bg); font-weight: 600; color: var(--heading); }
+
+    /* CTA */
+    .cta {
+      text-align: center;
+      padding: 3rem;
+      background: var(--accent-light);
+      border-radius: 16px;
+      margin: 3rem 0;
+    }
+    .cta h3 { color: var(--heading); margin-bottom: 1rem; }
+    .cta .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+    .cta .btn:hover { background: var(--accent-hover); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="logscrub-features.html" class="back-link">&larr; Back to Features</a>
+
+    <div class="hero">
+      <h1>ML Name Detection</h1>
+      <p>AI-powered detection of person names, locations, and organizations using neural networks that run entirely in your browser.</p>
+      <div class="badge">Powered by Transformers.js &amp; BERT</div>
+    </div>
+
+    <div class="privacy-box">
+      <h3>Privacy First</h3>
+      <p>All machine learning processing happens <strong>100% in your browser</strong>. Your data never leaves your device. The ML model is downloaded once and cached locally in your browser's IndexedDB storage.</p>
+      <p style="margin:0"><strong>No server. No cloud. No data collection.</strong></p>
+    </div>
+
+    <h2>What It Detects</h2>
+    <div class="cards">
+      <div class="card">
+        <h4><span class="icon">👤</span> Person Names</h4>
+        <p>Full names, titles, and name variations that pattern-based rules might miss. E.g., "Dr. Sarah Johnson", "Steve Bull"</p>
+      </div>
+      <div class="card">
+        <h4><span class="icon">📍</span> Locations</h4>
+        <p>Cities, countries, regions, and place names. E.g., "London", "Silicon Valley", "New York"</p>
+      </div>
+      <div class="card">
+        <h4><span class="icon">🏢</span> Organizations</h4>
+        <p>Company names, institutions, and organizations. E.g., "Microsoft", "NHS", "University of Cambridge"</p>
+      </div>
+    </div>
+
+    <h2>Technology</h2>
+    <p>ML Name Detection uses state-of-the-art Named Entity Recognition (NER) technology:</p>
+    <ul>
+      <li><strong>Transformers.js</strong> - Hugging Face's JavaScript library for running transformer models in the browser</li>
+      <li><strong>BERT Models</strong> - Bidirectional Encoder Representations from Transformers, fine-tuned for NER</li>
+      <li><strong>ONNX Runtime</strong> - Efficient model execution via WebAssembly</li>
+      <li><strong>IndexedDB Caching</strong> - Model persists across browser sessions</li>
+    </ul>
+
+    <h2>Available Models</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Download Size</th>
+          <th>Speed</th>
+          <th>Accuracy</th>
+          <th>Best For</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>DistilBERT NER</strong></td>
+          <td>~250 MB</td>
+          <td>Fast</td>
+          <td>Good</td>
+          <td>General use (recommended)</td>
+        </tr>
+        <tr>
+          <td><strong>BERT Base NER</strong></td>
+          <td>~420 MB</td>
+          <td>Slower</td>
+          <td>Best</td>
+          <td>Maximum accuracy</td>
+        </tr>
+        <tr>
+          <td><strong>BERT Base NER (uncased)</strong></td>
+          <td>~420 MB</td>
+          <td>Slower</td>
+          <td>Best</td>
+          <td>Case-insensitive text</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>How to Use</h2>
+    <div class="steps">
+      <div class="step">
+        <h4>Enable ML Detection</h4>
+        <p>Open the sidebar and expand the <strong>Extras</strong> section. Check the <strong>ML Name Detection</strong> checkbox.</p>
+      </div>
+      <div class="step">
+        <h4>Select a Model</h4>
+        <p>Choose from DistilBERT (faster, smaller) or BERT Base (more accurate, larger). DistilBERT is recommended for most use cases.</p>
+      </div>
+      <div class="step">
+        <h4>Download the Model</h4>
+        <p>Click <strong>Download Model</strong>. This only happens once &mdash; the model is cached in your browser for future sessions.</p>
+      </div>
+      <div class="step">
+        <h4>Analyze Your Text</h4>
+        <p>Click <strong>Analyze</strong>. ML detection runs automatically alongside pattern-based rules, finding names that regex can't catch.</p>
+      </div>
+      <div class="step">
+        <h4>Review &amp; Scrub</h4>
+        <p>Check the Smart Suggestions panel for ML-detected entities. Click <strong>Scrub</strong> to anonymize everything.</p>
+      </div>
+    </div>
+
+    <h2>When to Use ML Detection</h2>
+    <p>ML detection is most valuable when:</p>
+    <ul>
+      <li>Processing free-form text with person names not in standard formats</li>
+      <li>Need to detect organization or company names</li>
+      <li>Location names need to be identified and scrubbed</li>
+      <li>Pattern-based rules are missing names in narrative text</li>
+      <li>Working with customer support tickets or comments</li>
+    </ul>
+
+    <h3>Limitations</h3>
+    <ul>
+      <li><strong>False positives</strong> - May occasionally flag non-names as entities</li>
+      <li><strong>False negatives</strong> - Unusual names or contexts may be missed</li>
+      <li><strong>Language</strong> - Models are trained primarily on English text</li>
+      <li><strong>Performance</strong> - Larger models are slower; use DistilBERT for speed</li>
+    </ul>
+
+    <div class="cta">
+      <h3>Ready to try ML Name Detection?</h3>
+      <p>No installation required. Open LogScrub, enable ML detection, and start analyzing.</p>
+      <a href="./" class="btn">Launch LogScrub</a>
+    </div>
+
+    <p style="text-align:center; color: var(--text-light); margin-top: 2rem;">
+      <a href="logscrub-features.html">All Features</a> &bull;
+      <a href="scrub-pattern-matching-rules.html">Pattern Matching</a> &bull;
+      <a href="help.html">Documentation</a>
+    </p>
+  </div>
+</body>
+</html>

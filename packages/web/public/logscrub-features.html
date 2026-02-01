@@ -364,6 +364,14 @@
         </div>
 
         <div class="nav-section">
+          <div class="nav-section-title">Detection</div>
+          <a href="#pattern-matching">Pattern Matching</a>
+          <a href="#ml-detection">ML Name Detection</a>
+          <a href="scrub-pattern-matching-rules.html">Pattern Rules Guide</a>
+          <a href="scrub-ml-name-detection.html">ML Detection Guide</a>
+        </div>
+
+        <div class="nav-section">
           <div class="nav-section-title">Features</div>
           <a href="#key-features">Key Features</a>
           <a href="#use-cases">Use Cases</a>
@@ -443,6 +451,98 @@
               <p>Anonymize GPS tracks from fitness apps and devices. Strip heart rate, timestamps, and other personal data.</p>
             </a>
           </div>
+        </section>
+
+        <section id="pattern-matching">
+          <h2>Pattern Matching Rules</h2>
+          <p>LogScrub uses a powerful Rust/WebAssembly engine with 90+ built-in regex patterns to detect sensitive data. All patterns are validated and optimized for accuracy and performance.</p>
+
+          <h3>Detection Categories</h3>
+          <div class="features-grid">
+            <div class="card">
+              <h3>Contact Information</h3>
+              <p>Email addresses, phone numbers (US, UK, International), and usernames.</p>
+            </div>
+            <div class="card">
+              <h3>Network Identifiers</h3>
+              <p>IPv4, IPv6, MAC addresses, hostnames, URLs, and domain names.</p>
+            </div>
+            <div class="card">
+              <h3>Financial Data</h3>
+              <p>Credit cards (with Luhn validation), IBANs, UK sort codes, bank accounts, and cryptocurrency addresses.</p>
+            </div>
+            <div class="card">
+              <h3>Identity Documents</h3>
+              <p>SSN, UK NHS numbers, National Insurance, passports, and international IDs (AU, IN, SG, ES).</p>
+            </div>
+            <div class="card">
+              <h3>API Keys & Secrets</h3>
+              <p>AWS, Stripe, GitHub, OpenAI, Anthropic, Slack tokens, JWTs, and generic secrets.</p>
+            </div>
+            <div class="card">
+              <h3>Dates & Times</h3>
+              <p>ISO dates, US/UK formats, timestamps, and Unix epochs.</p>
+            </div>
+          </div>
+
+          <h3>Validation</h3>
+          <p>Many patterns include checksum validation to reduce false positives:</p>
+          <ul>
+            <li><strong>Credit Cards</strong> - Luhn algorithm validation</li>
+            <li><strong>IBANs</strong> - MOD-97 checksum</li>
+            <li><strong>UK NHS Numbers</strong> - NHS checksum algorithm</li>
+            <li><strong>UK National Insurance</strong> - Format and prefix validation</li>
+            <li><strong>Australian TFN</strong> - Check digit validation</li>
+          </ul>
+
+          <h3>Custom Rules</h3>
+          <p>Add your own detection rules with full regex support:</p>
+          <ul>
+            <li><strong>Custom Regex</strong> - Define patterns with standard regex syntax</li>
+            <li><strong>Plain Text</strong> - Match exact strings (useful for specific identifiers)</li>
+            <li><strong>Presets</strong> - Save and load rule configurations</li>
+          </ul>
+        </section>
+
+        <section id="ml-detection">
+          <h2>ML Name Detection</h2>
+          <p>Beyond pattern matching, LogScrub offers optional AI-powered detection using machine learning models that run entirely in your browser.</p>
+
+          <div class="benefit-list">
+            <div class="benefit">
+              <span class="check">✓</span>
+              <div><strong>100% Private</strong><br>All ML processing happens locally. No data is sent to any server.</div>
+            </div>
+            <div class="benefit">
+              <span class="check">✓</span>
+              <div><strong>Person Names</strong><br>Detect names that aren't in email or username formats.</div>
+            </div>
+            <div class="benefit">
+              <span class="check">✓</span>
+              <div><strong>Locations</strong><br>Identify cities, countries, and place names.</div>
+            </div>
+            <div class="benefit">
+              <span class="check">✓</span>
+              <div><strong>Organizations</strong><br>Find company and organization names.</div>
+            </div>
+          </div>
+
+          <h3>Technology Stack</h3>
+          <ul>
+            <li><strong>Library:</strong> <a href="https://huggingface.co/docs/transformers.js">Transformers.js</a> by Hugging Face</li>
+            <li><strong>Model:</strong> BERT-based Named Entity Recognition (NER)</li>
+            <li><strong>Runtime:</strong> ONNX format executed via WebAssembly</li>
+            <li><strong>Caching:</strong> Model downloaded once, cached in IndexedDB</li>
+          </ul>
+
+          <h3>Available Models</h3>
+          <ul>
+            <li><strong>DistilBERT NER</strong> (~250 MB) - Fast, good accuracy, recommended</li>
+            <li><strong>BERT Base NER</strong> (~420 MB) - Best accuracy, slower</li>
+            <li><strong>BERT Base NER (uncased)</strong> (~420 MB) - Case-insensitive matching</li>
+          </ul>
+
+          <p>ML detection complements pattern matching &mdash; use both together for comprehensive PII detection.</p>
         </section>
 
         <section id="key-features">

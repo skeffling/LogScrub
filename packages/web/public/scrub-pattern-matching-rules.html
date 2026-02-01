@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pattern Matching Rules - 90+ Detection Patterns | LogScrub</title>
+  <meta name="description" content="LogScrub includes 90+ built-in regex patterns for detecting PII: emails, IPs, phone numbers, credit cards, API keys, and more. Learn about all detection rules and how to create custom patterns.">
+  <meta name="keywords" content="PII detection patterns, regex rules, data masking patterns, log scrubbing rules, email detection, IP detection, credit card detection">
+  <link rel="icon" type="image/svg+xml" href="/shield.svg">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #404040;
+      --text-light: #6c757d;
+      --heading: #1a1a1a;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-light: #eff6ff;
+      --card-bg: #fafafa;
+      --success: #22c55e;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a2e;
+        --text: #d1d5db;
+        --text-light: #9ca3af;
+        --heading: #f9fafb;
+        --border: #374151;
+        --accent: #60a5fa;
+        --accent-hover: #93c5fd;
+        --accent-light: #1e3a5f;
+        --card-bg: #252540;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+      color: white;
+      padding: 3rem 2rem;
+      border-radius: 16px;
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    .hero h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+    .hero p { font-size: 1.2rem; opacity: 0.9; max-width: 600px; margin: 0 auto; }
+    .hero .stat {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      padding: 0.5rem 1.5rem;
+      border-radius: 20px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-top: 1.5rem;
+    }
+    @media (prefers-color-scheme: dark) {
+      .hero { background: linear-gradient(135deg, #1e3a5f 0%, #4c1d95 100%); }
+    }
+
+    /* Navigation */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--accent);
+      text-decoration: none;
+      margin-bottom: 2rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    /* Content */
+    h2 {
+      font-size: 1.75rem;
+      color: var(--heading);
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--accent);
+    }
+    h3 { font-size: 1.25rem; color: var(--heading); margin: 1.5rem 0 0.75rem; }
+    p { margin-bottom: 1rem; }
+    ul, ol { margin: 0 0 1.5rem 1.5rem; }
+    li { margin-bottom: 0.5rem; }
+    a { color: var(--accent); }
+    code {
+      background: var(--card-bg);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+    }
+
+    /* Category cards */
+    .categories { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+    .category {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .category h3 {
+      margin: 0 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.1rem;
+    }
+    .category .icon { font-size: 1.25rem; }
+    .category ul { margin: 0; padding-left: 1.25rem; }
+    .category li { font-size: 0.9rem; margin-bottom: 0.25rem; }
+    .category .validated {
+      display: inline-block;
+      background: #dcfce7;
+      color: #166534;
+      font-size: 0.65rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      margin-left: 0.25rem;
+      font-weight: 600;
+    }
+    @media (prefers-color-scheme: dark) {
+      .category .validated { background: #064e3b; color: #6ee7b7; }
+    }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: var(--card-bg); font-weight: 600; color: var(--heading); }
+    td code { font-size: 0.8em; }
+
+    /* Info boxes */
+    .info-box {
+      background: var(--accent-light);
+      border-left: 4px solid var(--accent);
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .info-box strong { color: var(--heading); }
+
+    /* CTA */
+    .cta {
+      text-align: center;
+      padding: 3rem;
+      background: var(--accent-light);
+      border-radius: 16px;
+      margin: 3rem 0;
+    }
+    .cta h3 { color: var(--heading); margin-bottom: 1rem; }
+    .cta .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+    .cta .btn:hover { background: var(--accent-hover); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="logscrub-features.html" class="back-link">&larr; Back to Features</a>
+
+    <div class="hero">
+      <h1>Pattern Matching Rules</h1>
+      <p>High-performance Rust/WebAssembly engine with comprehensive regex patterns for detecting sensitive data in any text format.</p>
+      <div class="stat">90+ Built-in Patterns</div>
+    </div>
+
+    <h2>Detection Categories</h2>
+    <div class="categories">
+      <div class="category">
+        <h3><span class="icon">📧</span> Contact Information</h3>
+        <ul>
+          <li>Email addresses</li>
+          <li>Email Message-IDs</li>
+          <li>Phone numbers (US format)</li>
+          <li>Phone numbers (UK format)</li>
+          <li>Phone numbers (International)</li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">🌐</span> Network Identifiers</h3>
+        <ul>
+          <li>IPv4 addresses</li>
+          <li>IPv6 addresses</li>
+          <li>MAC addresses</li>
+          <li>Hostnames</li>
+          <li>URLs (with credential detection)</li>
+          <li>URL parameters</li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">💳</span> Financial Data</h3>
+        <ul>
+          <li>Credit cards <span class="validated">Luhn</span></li>
+          <li>IBANs <span class="validated">MOD-97</span></li>
+          <li>UK Sort Codes</li>
+          <li>UK Bank Accounts</li>
+          <li>Bitcoin addresses</li>
+          <li>Ethereum addresses</li>
+          <li>Money amounts</li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">🪪</span> Identity (US)</h3>
+        <ul>
+          <li>Social Security Numbers <span class="validated">Format</span></li>
+          <li>ITINs (Individual Tax ID)</li>
+          <li>Passport numbers</li>
+          <li>Driver's license numbers</li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">🇬🇧</span> Identity (UK)</h3>
+        <ul>
+          <li>NHS Numbers <span class="validated">Checksum</span></li>
+          <li>National Insurance <span class="validated">Format</span></li>
+          <li>UK Sort Codes</li>
+          <li>UK Bank Accounts</li>
+          <li>UK Postcodes</li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">🌍</span> Identity (International)</h3>
+        <ul>
+          <li>Australian TFN <span class="validated">Checksum</span></li>
+          <li>India PAN</li>
+          <li>Singapore NRIC <span class="validated">Checksum</span></li>
+          <li>Spain NIF/NIE <span class="validated">Checksum</span></li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">🔑</span> API Keys & Tokens</h3>
+        <ul>
+          <li>AWS Access Keys</li>
+          <li>AWS Secret Keys</li>
+          <li>Stripe API Keys</li>
+          <li>GitHub Tokens</li>
+          <li>OpenAI API Keys</li>
+          <li>Anthropic API Keys</li>
+          <li>Slack Tokens</li>
+          <li>GCP API Keys</li>
+          <li>Bearer Tokens</li>
+          <li>JWTs</li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">🔐</span> Secrets</h3>
+        <ul>
+          <li>Generic secrets (high entropy)</li>
+          <li>Private keys (PEM format)</li>
+          <li>Basic auth credentials</li>
+          <li>Database connection strings</li>
+          <li>Session IDs</li>
+          <li>URL credentials</li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">📅</span> Dates & Times</h3>
+        <ul>
+          <li>ISO dates (YYYY-MM-DD)</li>
+          <li>US dates (MM/DD/YYYY)</li>
+          <li>UK dates (DD/MM/YYYY)</li>
+          <li>Times (HH:MM:SS)</li>
+          <li>ISO datetimes</li>
+          <li>Unix timestamps</li>
+          <li>Common Log Format</li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">📂</span> File Paths</h3>
+        <ul>
+          <li>Unix paths (/home/user/...)</li>
+          <li>Windows paths (C:\Users\...)</li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">📍</span> Location</h3>
+        <ul>
+          <li>GPS coordinates</li>
+          <li>UK postcodes</li>
+          <li>US ZIP codes</li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">#️⃣</span> Hashes & IDs</h3>
+        <ul>
+          <li>UUIDs</li>
+          <li>MD5 hashes</li>
+          <li>SHA1 hashes</li>
+          <li>SHA256 hashes</li>
+          <li>Docker container IDs</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>Validation</h2>
+    <p>Many patterns include checksum validation to reduce false positives:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Pattern</th>
+          <th>Validation Method</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Credit Cards</td>
+          <td>Luhn Algorithm</td>
+          <td>Validates the check digit using mod 10</td>
+        </tr>
+        <tr>
+          <td>IBANs</td>
+          <td>MOD-97</td>
+          <td>ISO 7064 modular arithmetic check</td>
+        </tr>
+        <tr>
+          <td>UK NHS Numbers</td>
+          <td>NHS Checksum</td>
+          <td>Weighted sum with mod 11 check digit</td>
+        </tr>
+        <tr>
+          <td>UK NINO</td>
+          <td>Format Validation</td>
+          <td>Valid prefix letters and suffix</td>
+        </tr>
+        <tr>
+          <td>Australian TFN</td>
+          <td>Check Digit</td>
+          <td>Weighted sum validation</td>
+        </tr>
+        <tr>
+          <td>Singapore NRIC</td>
+          <td>Check Letter</td>
+          <td>Modular arithmetic with letter mapping</td>
+        </tr>
+        <tr>
+          <td>Spain NIF/NIE</td>
+          <td>Check Letter</td>
+          <td>Mod 23 with letter table</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Application-Specific Patterns</h2>
+    <p>LogScrub includes patterns for common log formats:</p>
+
+    <h3>Email Server Logs</h3>
+    <ul>
+      <li><strong>Exim</strong> - Subject lines, sender/receiver, auth users, DNs</li>
+      <li><strong>Postfix</strong> - From/To addresses, relay servers, SASL usernames</li>
+      <li><strong>Dovecot</strong> - User logins, remote/local IPs</li>
+      <li><strong>Sendmail</strong> - From addresses, relay info, message IDs</li>
+    </ul>
+
+    <h3>VoIP / SIP</h3>
+    <ul>
+      <li>SIP usernames and display names</li>
+      <li>SIP URIs and contacts</li>
+      <li>Call IDs and branch parameters</li>
+      <li>User-Agent strings</li>
+    </ul>
+
+    <h3>SQL Dumps</h3>
+    <ul>
+      <li>Table names</li>
+      <li>String values in INSERT statements</li>
+      <li>Identifiers and column names</li>
+    </ul>
+
+    <h2>Custom Rules</h2>
+    <p>Create your own detection patterns:</p>
+
+    <div class="info-box">
+      <strong>Custom Regex Rules</strong><br>
+      Define patterns using standard regex syntax. LogScrub uses the Rust regex engine which supports most common regex features including groups, alternation, and character classes.
+    </div>
+
+    <h3>Adding a Custom Rule</h3>
+    <ol>
+      <li>Click <strong>+ Custom Rule</strong> in the sidebar</li>
+      <li>Enter a descriptive label</li>
+      <li>Write your regex pattern</li>
+      <li>Choose a replacement strategy</li>
+      <li>Save the rule</li>
+    </ol>
+
+    <h3>Plain Text Patterns</h3>
+    <p>For exact string matching without regex complexity:</p>
+    <ol>
+      <li>Click <strong>+ Plain Text</strong></li>
+      <li>Enter the exact text to match</li>
+      <li>The text will be matched literally (no regex interpretation)</li>
+    </ol>
+
+    <h2>Replacement Strategies</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Strategy</th>
+          <th>Example Output</th>
+          <th>Use Case</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Label</strong></td>
+          <td><code>[EMAIL-1]</code></td>
+          <td>Clear identification of data type</td>
+        </tr>
+        <tr>
+          <td><strong>Redact</strong></td>
+          <td><code>████████</code></td>
+          <td>Complete visual redaction</td>
+        </tr>
+        <tr>
+          <td><strong>Realistic</strong></td>
+          <td><code>john.smith@example.com</code></td>
+          <td>Realistic-looking fake data</td>
+        </tr>
+        <tr>
+          <td><strong>Template</strong></td>
+          <td><code>USER_{n}</code></td>
+          <td>Custom format with variables</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="cta">
+      <h3>Start detecting PII in your logs</h3>
+      <p>90+ patterns ready to use. No configuration needed.</p>
+      <a href="./" class="btn">Launch LogScrub</a>
+    </div>
+
+    <p style="text-align:center; color: var(--text-light); margin-top: 2rem;">
+      <a href="logscrub-features.html">All Features</a> &bull;
+      <a href="scrub-ml-name-detection.html">ML Detection</a> &bull;
+      <a href="help.html">Documentation</a>
+    </p>
+  </div>
+</body>
+</html>

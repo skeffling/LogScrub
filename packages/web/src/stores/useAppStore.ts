@@ -988,6 +988,8 @@ export const useAppStore = create<AppState>((set, get) => ({
                 const textAtPos = outputChars.slice(r.mappedStart, r.mappedEnd).join('')
                 if (textAtPos === r.original) {
                   outputChars.splice(r.mappedStart, r.mappedEnd - r.mappedStart, ...r.replacement)
+                } else {
+                  console.warn(`ML replacement mismatch at ${r.mappedStart}-${r.mappedEnd}: expected "${r.original}", found "${textAtPos}"`)
                 }
               }
               finalOutput = outputChars.join('')
@@ -1473,9 +1475,20 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // ML Name Detection actions
   setMlNameDetection: (enabled) => {
-    const { mlModelId } = get()
+    const { mlModelId, rules } = get()
     saveMLSettingsToStorage({ enabled, modelId: mlModelId })
-    set({ mlNameDetectionEnabled: enabled })
+
+    // Auto-enable/disable the ML rules when toggling ML detection
+    const mlRuleIds = ['ml_person_name', 'ml_location', 'ml_organization']
+    const newRules = { ...rules }
+    for (const id of mlRuleIds) {
+      if (newRules[id]) {
+        newRules[id] = { ...newRules[id], enabled }
+      }
+    }
+    saveRulesToStorage(newRules)
+
+    set({ mlNameDetectionEnabled: enabled, rules: newRules })
 
     // If disabling, unload the model to free memory
     if (!enabled) {

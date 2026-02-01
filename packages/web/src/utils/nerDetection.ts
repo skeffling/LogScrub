@@ -175,9 +175,6 @@ export async function runNER(text: string): Promise<NERResult> {
 
   const startTime = performance.now()
 
-  // Debug: log input text sample
-  console.log('NER input text length:', text.length, 'sample:', text.slice(0, 200).replace(/\n/g, '\\n'))
-
   // Run inference - model returns raw tokens
   const rawEntities = await pipeline(text)
 
@@ -327,10 +324,6 @@ export async function runNER(text: string): Promise<NERResult> {
 
   const processingTimeMs = performance.now() - startTime
 
-  // Debug: log results
-  console.log('NER raw tokens sample:', (rawEntities as unknown as RawToken[]).slice(0, 5).map(t => ({ entity: t.entity, word: t.word, start: t.start, end: t.end })))
-  console.log('NER aggregated:', aggregatedEntities.map(e => ({ type: e.type, word: e.words.join(' '), score: (e.scores.reduce((a,b)=>a+b,0)/e.scores.length).toFixed(2), start: e.start, end: e.end })))
-  console.log('NER final entities:', entities.map(e => ({ entityGroup: e.entityGroup, word: e.word, start: e.start, end: e.end, score: e.score.toFixed(2) })))
 
   return {
     entities,

@@ -886,12 +886,6 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     const lines = new Set<number>()
     const reps = output ? replacements : analysisReplacements
 
-    // Debug: log ML replacements in analysis mode
-    if (!output && reps.length > 0) {
-      const mlReps = reps.filter(r => r.pii_type.startsWith('ml_'))
-      console.log('Editor: analysisReplacements total:', reps.length, 'ML:', mlReps.length, mlReps.map(r => ({ type: r.pii_type, start: r.start, end: r.end, original: r.original })))
-    }
-
     for (const r of reps) {
       if (r.start >= 0) {
         for (let i = 0; i < lineOffsets.length; i++) {

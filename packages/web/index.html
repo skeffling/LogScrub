@@ -166,6 +166,14 @@
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 1.5rem;
     }
+    .cards-2x2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    @media (max-width: 768px) {
+      .cards-2x2 {
+        grid-template-columns: 1fr;
+      }
+    }
     .card {
       background: var(--bg);
       border: 1px solid var(--border);
@@ -356,7 +364,7 @@
         <h2>Supports Many File Types</h2>
         <p>Paste text directly or upload files. LogScrub handles a wide range of formats.</p>
       </div>
-      <div class="cards">
+      <div class="cards cards-2x2">
         <div class="card">
           <div class="card-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -404,7 +412,7 @@
         <h2>Powerful Detection Engine</h2>
         <p>Multiple detection methods work together to find sensitive data others miss.</p>
       </div>
-      <div class="cards">
+      <div class="cards cards-2x2">
         <div class="card">
           <div class="card-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -470,7 +478,7 @@
         <h2>Flexible Output Options</h2>
         <p>Choose how sensitive data gets replaced to fit your needs.</p>
       </div>
-      <div class="cards">
+      <div class="cards cards-2x2">
         <div class="card">
           <div class="card-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -506,6 +514,72 @@
           </div>
           <h3>Custom Templates</h3>
           <p>Define your own replacement format with templates like {TYPE}-{n} or REDACTED_{original}.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Use Cases Section -->
+  <section>
+    <div class="container">
+      <div class="section-title">
+        <h2>Use Cases</h2>
+        <p>Protect sensitive data across a wide range of scenarios.</p>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2a4 4 0 0 1 4 4c0 1.95-2 3-2 8h-4c0-5-2-6.05-2-8a4 4 0 0 1 4-4z"/><path d="M10 22h4"/><path d="M10 18h4"/>
+            </svg>
+          </div>
+          <h3>Prepare Data for AI Analysis</h3>
+          <p>Clean sensitive information before sending documents to ChatGPT, Claude, or other AI services. Get insights without exposing PII.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </div>
+          <h3>Share Logs for Debugging</h3>
+          <p>Safely share application logs with external developers, support teams, or forums without exposing user data or secrets.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <h3>GDPR & Privacy Compliance</h3>
+          <p>Anonymize personal data in documents before archiving, sharing, or processing to meet privacy regulations.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <h3>Sanitize Support Tickets</h3>
+          <p>Clean customer emails and support tickets before using them for training, documentation, or analysis.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+          </div>
+          <h3>Demo & Presentation Data</h3>
+          <p>Prepare realistic but anonymized data for demos, presentations, or screenshots without revealing real customer information.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 8v6"/><path d="M8 11h6"/>
+            </svg>
+          </div>
+          <h3>Security Audit Preparation</h3>
+          <p>Redact credentials and API keys from configuration files and logs before sharing with auditors or consultants.</p>
         </div>
       </div>
     </div>

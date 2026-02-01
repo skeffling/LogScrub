@@ -1,5 +1,5 @@
 import init, { sanitize, validate_syntax } from 'wasm-core'
-import { detectJsonSecrets, isLikelyJson, type ContextMatch } from '../utils/contextAwareDetector'
+import { detectJsonSecrets, isLikelyJson, detectCsvNameColumns, isLikelyCsv, type ContextMatch } from '../utils/contextAwareDetector'
 
 let wasmInitialized = false
 
@@ -773,6 +773,16 @@ self.onmessage = async (e: MessageEvent) => {
         contextMatches = detectJsonSecrets(text)
         if (contextMatches.length > 0) {
           log(`Found ${contextMatches.length} potential secrets via JSON key analysis`)
+        }
+      }
+
+      // Run CSV/spreadsheet name column detection
+      if (isLikelyCsv(text)) {
+        log('Detecting CSV/spreadsheet name columns...')
+        const csvMatches = detectCsvNameColumns(text)
+        if (csvMatches.length > 0) {
+          log(`Found ${csvMatches.length} names via CSV column header analysis`)
+          contextMatches = [...contextMatches, ...csvMatches]
         }
       }
 

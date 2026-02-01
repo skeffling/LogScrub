@@ -173,33 +173,67 @@ export async function runNER(text: string): Promise<NERResult> {
   const startTime = performance.now()
 
   // Run inference with aggregation to combine word pieces
-  const entities = await pipeline(text, {
-    aggregation_strategy: 'simple'
+  // Using 'average' strategy which typically works better for merging subwords
+  const rawEntities = await pipeline(text, {
+    aggregation_strategy: 'average'
   })
 
-  const processingTimeMs = performance.now() - startTime
+  // Post-process to merge adjacent entities of the same type
+  // Some models don't fully aggregate multi-word names like "Steve Bull"
+  const mergedEntities: NEREntity[] = []
 
-  // Map the results to our format
-  const mappedEntities: NEREntity[] = entities.map((e: NEREntity) => {
-    // Extract entity group from entity label (e.g., "B-PER" -> "PER")
+  // Raw entities from pipeline have slightly different shape
+  interface RawEntity {
+    entity?: string
+    entity_group?: string
+    word: string
+    score: number
+    start: number
+    end: number
+  }
+
+  for (const e of rawEntities as RawEntity[]) {
+    // Extract entity group from entity label (e.g., "B-PER" -> "PER", "PER" -> "PER")
     let entityGroup: NEREntity['entityGroup'] = 'MISC'
-    const entity = String(e.entity || '')
-    if (entity.includes('PER')) entityGroup = 'PER'
-    else if (entity.includes('LOC')) entityGroup = 'LOC'
-    else if (entity.includes('ORG')) entityGroup = 'ORG'
+    const entityLabel = String(e.entity || e.entity_group || '')
+    if (entityLabel.includes('PER')) entityGroup = 'PER'
+    else if (entityLabel.includes('LOC')) entityGroup = 'LOC'
+    else if (entityLabel.includes('ORG')) entityGroup = 'ORG'
 
-    return {
-      entity: entity,
-      word: e.word,
+    // Skip WordPiece continuation tokens that weren't aggregated
+    const word = String(e.word || '')
+    if (word.startsWith('##')) continue
+
+    const current: NEREntity = {
+      entity: entityLabel,
+      word: word,
       score: e.score,
       start: e.start,
       end: e.end,
       entityGroup
     }
-  })
+
+    // Check if we should merge with the previous entity
+    const prev = mergedEntities[mergedEntities.length - 1]
+    if (prev && prev.entityGroup === current.entityGroup) {
+      // Check if they're adjacent or nearly adjacent (within 2 chars for spaces)
+      const gap = current.start - prev.end
+      if (gap >= 0 && gap <= 2) {
+        // Merge: extend previous entity to include current
+        prev.end = current.end
+        prev.word = text.slice(prev.start, prev.end)
+        prev.score = Math.min(prev.score, current.score) // Use lower confidence
+        continue
+      }
+    }
+
+    mergedEntities.push(current)
+  }
+
+  const processingTimeMs = performance.now() - startTime
 
   return {
-    entities: mappedEntities,
+    entities: mergedEntities,
     processingTimeMs
   }
 }

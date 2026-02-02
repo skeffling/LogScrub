@@ -105,6 +105,7 @@ interface AppState {
   processingProgress: number
   canCancel: boolean
   isAnalyzing: boolean
+  analysisStage: string
   analysisReplacements: ReplacementInfo[]
   analysisStats: DetectionStats
   analysisMatches: DetectionMatches
@@ -537,6 +538,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   processingProgress: 0,
   canCancel: false,
   isAnalyzing: false,
+  analysisStage: '',
   analysisReplacements: [],
   analysisStats: {},
   analysisMatches: {},
@@ -1065,7 +1067,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!text.trim()) return
 
     cancelRequested = false
-    set({ isAnalyzing: true, processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [], contextMatches: [], syntaxError: null, syntaxValidFormat: null })
+    set({ isAnalyzing: true, analysisStage: 'Running pattern detection...', processingProgress: 0, canCancel: true, output: '', replacements: [], stats: {}, suggestions: [], showSuggestions: false, analysisCompleted: false, analysisLogs: [], contextMatches: [], syntaxError: null, syntaxValidFormat: null })
 
     try {
       const { rules, customRules, plainTextPatterns, consistencyMode, preservePrivateIPs, labelFormat, globalTemplate, fileName } = get()
@@ -1117,6 +1119,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         // Run ML NER if enabled and model is ready
         const { mlNameDetectionEnabled, mlLoadingState } = get()
         if (mlNameDetectionEnabled && mlLoadingState === 'ready') {
+          set({ analysisStage: 'Running ML name detection...' })
           try {
             const { runNER } = await import('../utils/nerDetection')
             const nerResult = await runNER(text)
@@ -1219,7 +1222,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             // Continue with WASM-only results
           }
         }
-        
+
+        set({ analysisStage: 'Computing suggestions...' })
+
         const extractSamplesWithContext = (piiType: string, maxSamples: number): SampleSnippet[] => {
           const typeReplacements = allReplacements.filter(r => r.pii_type === piiType).slice(0, maxSamples)
           return typeReplacements.map(r => {
@@ -1348,7 +1353,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     } catch {
     } finally {
-      set({ isAnalyzing: false, processingProgress: 0, canCancel: false })
+      set({ isAnalyzing: false, analysisStage: '', processingProgress: 0, canCancel: false })
     }
   },
 

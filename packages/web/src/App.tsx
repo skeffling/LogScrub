@@ -26,7 +26,7 @@ function App() {
   const {
     input, setInput, output, setOutput, isProcessing, processText, setFileName, fileName,
     processingProgress, cancelProcessing, canCancel,
-    analyzeText, isAnalyzing, analysisReplacements, analysisCompleted, clearAnalysis, analysisLogs,
+    analyzeText, isAnalyzing, analysisStage, analysisReplacements, analysisCompleted, clearAnalysis, analysisLogs,
     replacements, syntaxHighlight, setSyntaxHighlight,
     timeShift, setTimeShift,
     setStats, setMatches, setReplacements,
@@ -460,7 +460,7 @@ function App() {
         {(isProcessing || isAnalyzing) && processingProgress > 0 && (
           <div className="mb-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-600 dark:text-gray-400">{isAnalyzing ? 'Analyzing...' : 'Processing...'}</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">{isAnalyzing ? (analysisStage || 'Analyzing...') : 'Processing...'}</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"

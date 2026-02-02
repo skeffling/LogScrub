@@ -117,6 +117,7 @@ export async function loadNERPipeline(modelId: string = DEFAULT_MODEL_ID): Promi
   currentModelId = modelId
 
   try {
+    console.log('[ML NER] Loading model:', modelId)
     const { pipeline: createPipeline, env } = await import('@huggingface/transformers')
 
     // Configure Transformers.js
@@ -124,26 +125,35 @@ export async function loadNERPipeline(modelId: string = DEFAULT_MODEL_ID): Promi
 
     // Self-hosted models
     if (modelHostUrl) {
+      console.log('[ML NER] Using self-hosted models from:', modelHostUrl)
       env.localModelPath = modelHostUrl
       env.allowRemoteModels = false
       env.allowLocalModels = true
     } else {
+      console.log('[ML NER] Using Hugging Face Hub')
       env.allowRemoteModels = true
       env.allowLocalModels = false
     }
 
     // Create pipeline with progress tracking
+    console.log('[ML NER] Creating pipeline...')
     pipeline = await createPipeline('token-classification', modelId, {
-      progress_callback: (progress: { status: string; progress?: number }) => {
+      progress_callback: (progress: { status: string; progress?: number; file?: string }) => {
         if (progress.status === 'progress' && progress.progress !== undefined) {
           loadProgressCallback?.(progress.progress)
+        }
+        // Log download progress for debugging
+        if (progress.file) {
+          console.log('[ML NER] Downloading:', progress.file, progress.progress?.toFixed(1) + '%')
         }
       }
     }) as unknown as NERPipeline
 
+    console.log('[ML NER] Model loaded successfully')
     loadingState = 'ready'
     loadProgressCallback?.(100)
   } catch (err) {
+    console.error('[ML NER] Failed to load model:', err)
     loadingState = 'error'
     loadError = err instanceof Error ? err.message : 'Failed to load NER model'
     pipeline = null

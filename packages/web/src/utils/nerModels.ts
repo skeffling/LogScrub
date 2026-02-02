@@ -15,21 +15,13 @@ export interface NERModel {
 
 export const AVAILABLE_MODELS: NERModel[] = [
   {
-    id: 'Xenova/distilbert-base-NER',
-    name: 'DistilBERT NER',
-    description: 'Good balance of speed and accuracy',
-    size: '~250 MB',
-    accuracy: 'medium',
-    speed: 'medium',
-    recommended: true
-  },
-  {
     id: 'Xenova/bert-base-NER',
     name: 'BERT Base NER',
-    description: 'Best accuracy, larger download',
+    description: 'Best accuracy for English names',
     size: '~420 MB',
     accuracy: 'high',
-    speed: 'slow'
+    speed: 'medium',
+    recommended: true
   },
   {
     id: 'Xenova/bert-base-NER-uncased',
@@ -37,8 +29,24 @@ export const AVAILABLE_MODELS: NERModel[] = [
     description: 'Case-insensitive matching',
     size: '~420 MB',
     accuracy: 'high',
+    speed: 'medium'
+  },
+  {
+    id: 'Xenova/bert-base-multilingual-cased-ner-hrl',
+    name: 'BERT Multilingual NER',
+    description: 'Supports multiple languages',
+    size: '~680 MB',
+    accuracy: 'high',
     speed: 'slow'
+  },
+  {
+    id: 'Xenova/distilbert-base-multilingual-cased-ner-hrl',
+    name: 'DistilBERT Multilingual NER',
+    description: 'Faster multilingual model',
+    size: '~270 MB',
+    accuracy: 'medium',
+    speed: 'fast'
   }
 ]
 
-export const DEFAULT_MODEL_ID = 'Xenova/distilbert-base-NER'
+export const DEFAULT_MODEL_ID = 'Xenova/bert-base-NER'

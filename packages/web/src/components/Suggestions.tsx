@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 import { AVAILABLE_MODELS } from '../utils/nerModels'
+import { getCurrentDevice } from '../utils/nerDetection'
 
 type Tab = 'active' | 'suggestions' | 'context' | 'ml'
 
@@ -431,6 +432,11 @@ export function Suggestions() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       <span className="font-medium">Model ready</span>
+                      {getCurrentDevice() === 'webgpu' && (
+                        <span className="text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full font-medium">
+                          GPU Accelerated
+                        </span>
+                      )}
                     </div>
                     <button
                       onClick={() => {

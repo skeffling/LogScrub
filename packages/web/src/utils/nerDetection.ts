@@ -529,3 +529,119 @@ export function getModelSize(modelId: string): string {
   const model = AVAILABLE_MODELS.find(m => m.id === modelId)
   return model?.size || 'Unknown'
 }
+
+/**
+ * Check if a model is cached in the browser.
+ * Transformers.js uses the Cache API with cache name 'transformers-cache'.
+ */
+export async function isModelCached(modelId: string): Promise<boolean> {
+  try {
+    // Transformers.js uses the Cache API
+    const cache = await caches.open('transformers-cache')
+    const keys = await cache.keys()
+
+    // Check if any cached URL contains this model ID
+    // URLs look like: https://huggingface.co/Xenova/bert-base-NER/resolve/main/...
+    const modelPattern = modelId.replace('/', '/')
+    return keys.some(request => request.url.includes(modelPattern))
+  } catch {
+    // Cache API not available or error
+    return false
+  }
+}
+
+/**
+ * Get cache status for all available models.
+ * Returns a map of model ID to cached status.
+ */
+export async function getModelCacheStatus(): Promise<Record<string, boolean>> {
+  const status: Record<string, boolean> = {}
+
+  try {
+    const cache = await caches.open('transformers-cache')
+    const keys = await cache.keys()
+    const urls = keys.map(request => request.url)
+
+    for (const model of AVAILABLE_MODELS) {
+      const modelPattern = model.id.replace('/', '/')
+      status[model.id] = urls.some(url => url.includes(modelPattern))
+    }
+  } catch {
+    // Cache API not available - mark all as not cached
+    for (const model of AVAILABLE_MODELS) {
+      status[model.id] = false
+    }
+  }
+
+  return status
+}
+
+/**
+ * Delete a cached model from the browser.
+ * This removes all cached files for the specified model.
+ */
+export async function deleteModelCache(modelId: string): Promise<boolean> {
+  try {
+    const cache = await caches.open('transformers-cache')
+    const keys = await cache.keys()
+
+    // Find all cached URLs for this model
+    const modelPattern = modelId.replace('/', '/')
+    const modelKeys = keys.filter(request => request.url.includes(modelPattern))
+
+    if (modelKeys.length === 0) {
+      return false // Nothing to delete
+    }
+
+    // Delete all matching entries
+    await Promise.all(modelKeys.map(key => cache.delete(key)))
+
+    // If this is the currently loaded model, unload it
+    if (currentModelId === modelId) {
+      unloadNERPipeline()
+    }
+
+    return true
+  } catch (err) {
+    console.error('[ML NER] Failed to delete model cache:', err)
+    return false
+  }
+}
+
+/**
+ * Get approximate size of cached model files.
+ * Returns size in bytes, or 0 if not cached or error.
+ */
+export async function getCachedModelSize(modelId: string): Promise<number> {
+  try {
+    const cache = await caches.open('transformers-cache')
+    const keys = await cache.keys()
+
+    const modelPattern = modelId.replace('/', '/')
+    const modelKeys = keys.filter(request => request.url.includes(modelPattern))
+
+    let totalSize = 0
+    for (const key of modelKeys) {
+      const response = await cache.match(key)
+      if (response) {
+        const blob = await response.clone().blob()
+        totalSize += blob.size
+      }
+    }
+
+    return totalSize
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Format bytes to human readable string
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}

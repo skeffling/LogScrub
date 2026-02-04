@@ -72,6 +72,16 @@ export const AVAILABLE_MODELS: NERModel[] = [
     speed: 'medium',
     modelType: 'pii',
     url: 'https://huggingface.co/sfermion/bert-pii-detector-onnx'
+  },
+  {
+    id: 'joneauxedgar/pasteproof-pii-detector-onnx',
+    name: 'PasteProof PII Detector',
+    description: 'Lightweight, fast PII & secrets detection',
+    size: '~147 MB',
+    accuracy: 'high',
+    speed: 'fast',
+    modelType: 'pii',
+    url: 'https://huggingface.co/joneauxedgar/pasteproof-pii-detector-onnx'
   }
   // Note: Only models with ONNX files work with Transformers.js (browser).
   // Models in the Xenova/ namespace are pre-converted for browser use.

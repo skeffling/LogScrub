@@ -17,7 +17,83 @@ export interface NEREntity {
   score: number
   start: number
   end: number
-  entityGroup: 'PER' | 'LOC' | 'ORG' | 'MISC'
+  entityGroup: 'PER' | 'LOC' | 'ORG' | 'MISC' | 'ID' | 'CONTACT' | 'FINANCIAL' | 'CREDENTIAL' | 'TEMPORAL' | 'NETWORK'
+}
+
+/**
+ * Maps PII model entity types to entity groups.
+ * These are the 54 entity types from the OpenMed PII model.
+ */
+const PII_ENTITY_MAP: Record<string, NEREntity['entityGroup']> = {
+  // Personal identifiers -> PER
+  first_name: 'PER',
+  last_name: 'PER',
+  middle_name: 'PER',
+  age: 'PER',
+  date_of_birth: 'PER',
+  gender: 'PER',
+  biometric_identifier: 'PER',
+  blood_type: 'PER',
+  occupation: 'PER',
+  education_level: 'PER',
+  nationality: 'PER',
+  marital_status: 'PER',
+  religion: 'PER',
+  sexual_orientation: 'PER',
+
+  // Location -> LOC
+  city: 'LOC',
+  state: 'LOC',
+  country: 'LOC',
+  county: 'LOC',
+  street_address: 'LOC',
+  coordinate: 'LOC',
+
+  // Organization -> ORG
+  company_name: 'ORG',
+
+  // ID documents -> ID
+  ssn: 'ID',
+  social_security_number: 'ID',
+  medical_record_number: 'ID',
+  employee_id: 'ID',
+  passport_number: 'ID',
+  drivers_license: 'ID',
+  license_plate: 'ID',
+  vehicle_identifier: 'ID',
+
+  // Contact info -> CONTACT
+  email: 'CONTACT',
+  phone_number: 'CONTACT',
+  fax_number: 'CONTACT',
+  url: 'CONTACT',
+
+  // Financial -> FINANCIAL
+  credit_debit_card: 'FINANCIAL',
+  credit_card: 'FINANCIAL',
+  cvv: 'FINANCIAL',
+  bank_routing_number: 'FINANCIAL',
+  account_number: 'FINANCIAL',
+  iban: 'FINANCIAL',
+  swift_code: 'FINANCIAL',
+
+  // Credentials/secrets -> CREDENTIAL
+  api_key: 'CREDENTIAL',
+  password: 'CREDENTIAL',
+  pin: 'CREDENTIAL',
+  security_code: 'CREDENTIAL',
+  username: 'CREDENTIAL',
+
+  // Temporal -> TEMPORAL
+  date: 'TEMPORAL',
+  date_time: 'TEMPORAL',
+  time: 'TEMPORAL',
+
+  // Network -> NETWORK
+  ipv4: 'NETWORK',
+  ipv6: 'NETWORK',
+  device_identifier: 'NETWORK',
+  mac_address: 'NETWORK'
 }
 
 export interface NERResult {
@@ -332,11 +408,22 @@ export async function runNER(text: string): Promise<NERResult> {
     // Real names, locations, and organizations are at least 2 characters
     if (fullWord.length < 2) continue
 
-    // Map entity type
+    // Map entity type based on model type
+    // Standard NER models use PER/LOC/ORG, PII models use specific types like first_name, ssn
+    const currentModel = AVAILABLE_MODELS.find(m => m.id === currentModelId)
+    const isPiiModel = currentModel?.modelType === 'pii'
+
     let entityGroup: NEREntity['entityGroup'] = 'MISC'
-    if (agg.type === 'PER') entityGroup = 'PER'
-    else if (agg.type === 'LOC') entityGroup = 'LOC'
-    else if (agg.type === 'ORG') entityGroup = 'ORG'
+    if (isPiiModel) {
+      // PII model: map specific types to groups
+      const entityType = agg.type.toLowerCase()
+      entityGroup = PII_ENTITY_MAP[entityType] || 'MISC'
+    } else {
+      // Standard NER model
+      if (agg.type === 'PER') entityGroup = 'PER'
+      else if (agg.type === 'LOC') entityGroup = 'LOC'
+      else if (agg.type === 'ORG') entityGroup = 'ORG'
+    }
 
     // Find position in text (case-insensitive search)
     let start = agg.start

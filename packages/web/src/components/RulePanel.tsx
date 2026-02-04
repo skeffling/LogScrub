@@ -75,7 +75,7 @@ const STRATEGY_OPTIONS: { value: ReplacementStrategy; label: string }[] = [
 ]
 
 const CATEGORIES: Record<string, string[]> = {
-  'ML Detection': ['ml_person_name', 'ml_location', 'ml_organization'],
+  'ML Detection': ['ml_person_name', 'ml_location', 'ml_organization', 'ml_identifier', 'ml_contact', 'ml_financial', 'ml_credential', 'ml_temporal', 'ml_network'],
   'Contact': ['email', 'phone_us', 'phone_uk', 'phone_intl'],
   'Network': ['ipv4', 'ipv6', 'mac_address', 'hostname', 'url', 'url_params'],
   'Identity (US)': ['ssn', 'us_itin', 'passport', 'drivers_license'],

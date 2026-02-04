@@ -378,7 +378,7 @@ export function Suggestions() {
                         className="mt-1"
                       />
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-gray-900 dark:text-white">{model.name}</span>
                           <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
                             {model.size}
@@ -387,6 +387,20 @@ export function Suggestions() {
                             <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded">
                               Recommended
                             </span>
+                          )}
+                          {model.url && (
+                            <a
+                              href={model.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                              View on HuggingFace
+                            </a>
                           )}
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{model.description}</p>

@@ -218,6 +218,13 @@ const DEFAULT_RULES: Record<string, Rule> = {
   ml_person_name: { label: 'Person Names (ML)', enabled: false, strategy: 'label' },
   ml_location: { label: 'Locations (ML)', enabled: false, strategy: 'label' },
   ml_organization: { label: 'Organizations (ML)', enabled: false, strategy: 'label' },
+  // Additional ML entities for PII models
+  ml_identifier: { label: 'ID Documents (ML)', enabled: false, strategy: 'label' },
+  ml_contact: { label: 'Contact Info (ML)', enabled: false, strategy: 'label' },
+  ml_financial: { label: 'Financial (ML)', enabled: false, strategy: 'label' },
+  ml_credential: { label: 'Credentials (ML)', enabled: false, strategy: 'label' },
+  ml_temporal: { label: 'Dates/Times (ML)', enabled: false, strategy: 'label' },
+  ml_network: { label: 'Network Info (ML)', enabled: false, strategy: 'label' },
   // Pattern-based rules
   email: { label: 'Emails', enabled: true, strategy: 'label' },
   email_message_id: { label: 'Email Message-ID', enabled: false, strategy: 'label' },
@@ -894,13 +901,25 @@ export const useAppStore = create<AppState>((set, get) => ({
             const mlMatches: DetectionMatches = {
               ml_person_name: [],
               ml_location: [],
-              ml_organization: []
+              ml_organization: [],
+              ml_identifier: [],
+              ml_contact: [],
+              ml_financial: [],
+              ml_credential: [],
+              ml_temporal: [],
+              ml_network: []
             }
 
             const counters: Record<string, number> = {
               ml_person_name: 0,
               ml_location: 0,
-              ml_organization: 0
+              ml_organization: 0,
+              ml_identifier: 0,
+              ml_contact: 0,
+              ml_financial: 0,
+              ml_credential: 0,
+              ml_temporal: 0,
+              ml_network: 0
             }
 
             for (const entity of nerResult.entities) {
@@ -919,6 +938,24 @@ export const useAppStore = create<AppState>((set, get) => ({
                   break
                 case 'ORG':
                   piiType = 'ml_organization'
+                  break
+                case 'ID':
+                  piiType = 'ml_identifier'
+                  break
+                case 'CONTACT':
+                  piiType = 'ml_contact'
+                  break
+                case 'FINANCIAL':
+                  piiType = 'ml_financial'
+                  break
+                case 'CREDENTIAL':
+                  piiType = 'ml_credential'
+                  break
+                case 'TEMPORAL':
+                  piiType = 'ml_temporal'
+                  break
+                case 'NETWORK':
+                  piiType = 'ml_network'
                   break
                 default:
                   continue
@@ -1128,7 +1165,13 @@ export const useAppStore = create<AppState>((set, get) => ({
             const mlMatches: DetectionMatches = {
               ml_person_name: [],
               ml_location: [],
-              ml_organization: []
+              ml_organization: [],
+              ml_identifier: [],
+              ml_contact: [],
+              ml_financial: [],
+              ml_credential: [],
+              ml_temporal: [],
+              ml_network: []
             }
             const mlReplacements: ReplacementInfo[] = []
 
@@ -1157,6 +1200,24 @@ export const useAppStore = create<AppState>((set, get) => ({
                   break
                 case 'ORG':
                   piiType = 'ml_organization'
+                  break
+                case 'ID':
+                  piiType = 'ml_identifier'
+                  break
+                case 'CONTACT':
+                  piiType = 'ml_contact'
+                  break
+                case 'FINANCIAL':
+                  piiType = 'ml_financial'
+                  break
+                case 'CREDENTIAL':
+                  piiType = 'ml_credential'
+                  break
+                case 'TEMPORAL':
+                  piiType = 'ml_temporal'
+                  break
+                case 'NETWORK':
+                  piiType = 'ml_network'
                   break
                 default:
                   continue // Skip MISC
@@ -1547,7 +1608,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     saveMLSettingsToStorage({ enabled, modelId: mlModelId })
 
     // Auto-enable/disable the ML rules when toggling ML detection
-    const mlRuleIds = ['ml_person_name', 'ml_location', 'ml_organization']
+    const mlRuleIds = ['ml_person_name', 'ml_location', 'ml_organization', 'ml_identifier', 'ml_contact', 'ml_financial', 'ml_credential', 'ml_temporal', 'ml_network']
     const newRules = { ...rules }
     for (const id of mlRuleIds) {
       if (newRules[id]) {

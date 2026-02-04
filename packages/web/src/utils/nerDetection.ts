@@ -22,78 +22,49 @@ export interface NEREntity {
 
 /**
  * Maps PII model entity types to entity groups.
- * These are the 54 entity types from the OpenMed PII model.
+ * Supports the sfermion/bert-pii-detector-onnx model (27 entity types).
  */
 const PII_ENTITY_MAP: Record<string, NEREntity['entityGroup']> = {
-  // Personal identifiers -> PER
-  first_name: 'PER',
-  last_name: 'PER',
-  middle_name: 'PER',
-  age: 'PER',
-  date_of_birth: 'PER',
-  gender: 'PER',
-  biometric_identifier: 'PER',
-  blood_type: 'PER',
-  occupation: 'PER',
-  education_level: 'PER',
-  nationality: 'PER',
-  marital_status: 'PER',
-  religion: 'PER',
-  sexual_orientation: 'PER',
+  // Personal identifiers -> PER (sfermion/bert-pii-detector-onnx)
+  givenname1: 'PER',
+  givenname2: 'PER',
+  lastname1: 'PER',
+  lastname2: 'PER',
+  lastname3: 'PER',
+  title: 'PER',
+  sex: 'PER',
+  bod: 'PER', // birth date
 
   // Location -> LOC
+  street: 'LOC',
   city: 'LOC',
   state: 'LOC',
   country: 'LOC',
-  county: 'LOC',
-  street_address: 'LOC',
-  coordinate: 'LOC',
-
-  // Organization -> ORG
-  company_name: 'ORG',
+  postcode: 'LOC',
+  building: 'LOC',
+  secaddress: 'LOC', // secondary address
+  geocoord: 'LOC',
 
   // ID documents -> ID
-  ssn: 'ID',
-  social_security_number: 'ID',
-  medical_record_number: 'ID',
-  employee_id: 'ID',
-  passport_number: 'ID',
-  drivers_license: 'ID',
-  license_plate: 'ID',
-  vehicle_identifier: 'ID',
+  passport: 'ID',
+  idcard: 'ID',
+  driverlicense: 'ID',
+  socialnumber: 'ID',
 
   // Contact info -> CONTACT
   email: 'CONTACT',
-  phone_number: 'CONTACT',
-  fax_number: 'CONTACT',
-  url: 'CONTACT',
-
-  // Financial -> FINANCIAL
-  credit_debit_card: 'FINANCIAL',
-  credit_card: 'FINANCIAL',
-  cvv: 'FINANCIAL',
-  bank_routing_number: 'FINANCIAL',
-  account_number: 'FINANCIAL',
-  iban: 'FINANCIAL',
-  swift_code: 'FINANCIAL',
+  tel: 'CONTACT',
 
   // Credentials/secrets -> CREDENTIAL
-  api_key: 'CREDENTIAL',
-  password: 'CREDENTIAL',
-  pin: 'CREDENTIAL',
-  security_code: 'CREDENTIAL',
   username: 'CREDENTIAL',
+  pass: 'CREDENTIAL', // password
 
   // Temporal -> TEMPORAL
   date: 'TEMPORAL',
-  date_time: 'TEMPORAL',
   time: 'TEMPORAL',
 
   // Network -> NETWORK
-  ipv4: 'NETWORK',
-  ipv6: 'NETWORK',
-  device_identifier: 'NETWORK',
-  mac_address: 'NETWORK'
+  ip: 'NETWORK'
 }
 
 export interface NERResult {

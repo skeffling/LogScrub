@@ -62,6 +62,16 @@ export const AVAILABLE_MODELS: NERModel[] = [
     speed: 'fast',
     modelType: 'ner',
     url: 'https://huggingface.co/Xenova/distilbert-base-multilingual-cased-ner-hrl'
+  },
+  {
+    id: 'sfermion/bert-pii-detector-onnx',
+    name: 'BERT PII Detector',
+    description: '27 PII types: names, emails, IDs, addresses',
+    size: '~420 MB',
+    accuracy: 'high',
+    speed: 'medium',
+    modelType: 'pii',
+    url: 'https://huggingface.co/sfermion/bert-pii-detector-onnx'
   }
   // Note: Only models with ONNX files work with Transformers.js (browser).
   // Models in the Xenova/ namespace are pre-converted for browser use.

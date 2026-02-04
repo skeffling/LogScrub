@@ -62,17 +62,10 @@ export const AVAILABLE_MODELS: NERModel[] = [
     speed: 'fast',
     modelType: 'ner',
     url: 'https://huggingface.co/Xenova/distilbert-base-multilingual-cased-ner-hrl'
-  },
-  {
-    id: 'OpenMed/OpenMed-PII-BioClinicalModern-Base-149M-v1',
-    name: 'OpenMed PII (Medical/Clinical)',
-    description: '54 PII types including SSN, medical records, credentials',
-    size: '~600 MB',
-    accuracy: 'high',
-    speed: 'medium',
-    modelType: 'pii',
-    url: 'https://huggingface.co/OpenMed/OpenMed-PII-BioClinicalModern-Base-149M-v1'
   }
+  // Note: Only models with ONNX files work with Transformers.js (browser).
+  // Models in the Xenova/ namespace are pre-converted for browser use.
+  // To add new models, they must first be converted to ONNX using Hugging Face Optimum.
 ]
 
 export const DEFAULT_MODEL_ID = 'Xenova/bert-base-NER'

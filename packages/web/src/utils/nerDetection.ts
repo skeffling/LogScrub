@@ -37,6 +37,35 @@ let loadingState: NERLoadingState = 'idle'
 let loadError: string | null = null
 let currentModelId: string | null = null
 let loadProgressCallback: ((progress: number) => void) | null = null
+let currentDevice: 'webgpu' | 'wasm' | null = null
+
+/**
+ * Check if WebGPU is available in this browser.
+ * WebGPU provides 40-100x speedup over WASM for ML inference.
+ */
+async function isWebGPUSupported(): Promise<boolean> {
+  if (typeof navigator === 'undefined') {
+    return false
+  }
+  // Type assertion needed as WebGPU types may not be in older TypeScript libs
+  const nav = navigator as Navigator & { gpu?: { requestAdapter(): Promise<unknown | null> } }
+  if (!nav.gpu) {
+    return false
+  }
+  try {
+    const adapter = await nav.gpu.requestAdapter()
+    return adapter !== null
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Get the current compute device being used
+ */
+export function getCurrentDevice(): 'webgpu' | 'wasm' | null {
+  return currentDevice
+}
 
 /**
  * Register a callback to receive model download progress updates
@@ -51,8 +80,8 @@ export function onLoadProgress(callback: (progress: number) => void): () => void
 /**
  * Get the current loading state
  */
-export function getLoadingState(): { state: NERLoadingState; error: string | null; modelId: string | null } {
-  return { state: loadingState, error: loadError, modelId: currentModelId }
+export function getLoadingState(): { state: NERLoadingState; error: string | null; modelId: string | null; device: 'webgpu' | 'wasm' | null } {
+  return { state: loadingState, error: loadError, modelId: currentModelId, device: currentDevice }
 }
 
 /**
@@ -135,9 +164,15 @@ export async function loadNERPipeline(modelId: string = DEFAULT_MODEL_ID): Promi
       env.allowLocalModels = false
     }
 
+    // Check for WebGPU support (40-100x faster than WASM)
+    const webgpuSupported = await isWebGPUSupported()
+    const device = webgpuSupported ? 'webgpu' : 'wasm'
+    console.log('[ML NER] Using device:', device, webgpuSupported ? '(GPU accelerated)' : '(CPU fallback)')
+
     // Create pipeline with progress tracking
     console.log('[ML NER] Creating pipeline...')
     pipeline = await createPipeline('token-classification', modelId, {
+      device,
       progress_callback: (progress: { status: string; progress?: number; file?: string }) => {
         if (progress.status === 'progress' && progress.progress !== undefined) {
           loadProgressCallback?.(progress.progress)
@@ -148,6 +183,7 @@ export async function loadNERPipeline(modelId: string = DEFAULT_MODEL_ID): Promi
         }
       }
     }) as unknown as NERPipeline
+    currentDevice = device
 
     console.log('[ML NER] Model loaded successfully')
     loadingState = 'ready'
@@ -169,6 +205,7 @@ export function unloadNERPipeline(): void {
   loadingState = 'idle'
   loadError = null
   currentModelId = null
+  currentDevice = null
 }
 
 /**

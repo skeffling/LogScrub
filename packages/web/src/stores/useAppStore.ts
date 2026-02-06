@@ -231,6 +231,8 @@ const DEFAULT_RULES: Record<string, Rule> = {
   ml_credential: { label: 'Credentials (ML)', enabled: false, strategy: 'label' },
   ml_temporal: { label: 'Dates/Times (ML)', enabled: false, strategy: 'label' },
   ml_network: { label: 'Network Info (ML)', enabled: false, strategy: 'label' },
+  // Context-aware detected entities
+  csv_person_name: { label: 'Person Names (CSV)', enabled: false, strategy: 'label' },
   // Pattern-based rules
   email: { label: 'Emails', enabled: true, strategy: 'label' },
   email_message_id: { label: 'Email Message-ID', enabled: false, strategy: 'label' },
@@ -1089,6 +1091,91 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         }
 
+        // Run CSV person name detection if enabled
+        const currentRulesForCsv = get().rules
+        if (currentRulesForCsv.csv_person_name?.enabled) {
+          try {
+            const { detectCsvNameColumns, isLikelyCsv } = await import('../utils/contextAwareDetector')
+            if (isLikelyCsv(text)) {
+              const csvNames = detectCsvNameColumns(text)
+              if (csvNames.length > 0) {
+                const csvValues: string[] = []
+                const csvReplacements: ReplacementInfo[] = []
+                const currentLF = get().labelFormat
+
+                for (const cm of csvNames) {
+                  const overlaps = finalReplacements.some(r =>
+                    (cm.start >= r.start && cm.start < r.end) ||
+                    (cm.end > r.start && cm.end <= r.end) ||
+                    (cm.start <= r.start && cm.end >= r.end)
+                  )
+                  if (overlaps) continue
+
+                  if (!csvValues.includes(cm.value)) csvValues.push(cm.value)
+
+                  const strategy = currentRulesForCsv.csv_person_name.strategy
+                  const idx = csvValues.indexOf(cm.value) + 1
+                  let replacement: string
+                  if (strategy === 'redact') {
+                    replacement = '█'.repeat(cm.value.length)
+                  } else {
+                    replacement = `${currentLF.prefix}PERSON_NAME-${idx}${currentLF.suffix}`
+                  }
+
+                  csvReplacements.push({
+                    start: cm.start, end: cm.end,
+                    original: cm.value, replacement, pii_type: 'csv_person_name'
+                  })
+                }
+
+                if (csvReplacements.length > 0) {
+                  // Apply to output using position mapping (same approach as ML)
+                  const wasmReplacements = [...finalReplacements].sort((a, b) => a.start - b.start)
+                  let offset = 0
+                  const offsets: Array<{ originalPos: number; offset: number }> = [{ originalPos: 0, offset: 0 }]
+                  for (const r of wasmReplacements) {
+                    offset += r.replacement.length - r.original.length
+                    offsets.push({ originalPos: r.end, offset })
+                  }
+
+                  const mapPosition = (origPos: number): number => {
+                    let currentOffset = 0
+                    for (const o of offsets) {
+                      if (origPos >= o.originalPos) currentOffset = o.offset
+                      else break
+                    }
+                    return origPos + currentOffset
+                  }
+
+                  const mapped = csvReplacements.map(r => ({
+                    ...r,
+                    mappedStart: mapPosition(r.start),
+                    mappedEnd: mapPosition(r.end)
+                  })).sort((a, b) => b.mappedStart - a.mappedStart)
+
+                  let outputChars = [...finalOutput]
+                  for (const r of mapped) {
+                    const textAtPos = outputChars.slice(r.mappedStart, r.mappedEnd).join('')
+                    if (textAtPos === r.original) {
+                      outputChars.splice(r.mappedStart, r.mappedEnd - r.mappedStart, ...r.replacement)
+                    }
+                  }
+                  finalOutput = outputChars.join('')
+
+                  for (const val of csvValues) {
+                    if (!finalMatches.csv_person_name) finalMatches.csv_person_name = []
+                    if (!finalMatches.csv_person_name.includes(val)) finalMatches.csv_person_name.push(val)
+                  }
+                  finalStats = { ...finalStats, csv_person_name: csvValues.length }
+                  finalReplacements = [...finalReplacements, ...csvReplacements]
+                }
+              }
+            }
+          } catch (err) {
+            console.warn('CSV person name detection failed:', err)
+          }
+        }
+
         // Validate line count
         const inputLines = text.split('\n').length
         const outputLines = finalOutput.split('\n').length
@@ -1303,6 +1390,66 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         }
 
+        // Promote CSV name context matches into a proper rule category
+        const rawContextMatches: ContextMatch[] = result.contextMatches || []
+        const csvNameMatches = rawContextMatches.filter(cm => cm.type === 'csv_name')
+        const nonCsvContextMatches = rawContextMatches.filter(cm => cm.type !== 'csv_name')
+
+        if (csvNameMatches.length > 0) {
+          const csvValues: string[] = []
+          const csvReplacements: ReplacementInfo[] = []
+
+          for (const cm of csvNameMatches) {
+            // Skip if this span overlaps with an existing ML or WASM replacement
+            const overlaps = allReplacements.some(r =>
+              (cm.start >= r.start && cm.start < r.end) ||
+              (cm.end > r.start && cm.end <= r.end) ||
+              (cm.start <= r.start && cm.end >= r.end)
+            )
+            if (overlaps) continue
+
+            if (!csvValues.includes(cm.value)) {
+              csvValues.push(cm.value)
+            }
+
+            const strategy = rules.csv_person_name?.strategy || 'label'
+            const idx = csvValues.indexOf(cm.value) + 1
+            let replacement: string
+            if (strategy === 'redact') {
+              replacement = '█'.repeat(cm.value.length)
+            } else {
+              replacement = `${labelFormat.prefix}PERSON_NAME-${idx}${labelFormat.suffix}`
+            }
+
+            csvReplacements.push({
+              start: cm.start,
+              end: cm.end,
+              original: cm.value,
+              replacement,
+              pii_type: 'csv_person_name'
+            })
+          }
+
+          if (csvValues.length > 0) {
+            stats = { ...stats, csv_person_name: csvValues.length }
+            matches = { ...matches, csv_person_name: csvValues }
+            allReplacements = [...allReplacements, ...csvReplacements].sort((a, b) => a.start - b.start)
+          }
+        }
+
+        // Filter remaining context matches: remove any that overlap with ML detections
+        const mlReplacementsList = allReplacements.filter(r => r.pii_type.startsWith('ml_'))
+        let finalContextMatches = nonCsvContextMatches
+        if (mlReplacementsList.length > 0 && finalContextMatches.length > 0) {
+          finalContextMatches = finalContextMatches.filter(cm =>
+            !mlReplacementsList.some(r =>
+              (cm.start >= r.start && cm.start < r.end) ||
+              (cm.end > r.start && cm.end <= r.end) ||
+              (cm.start <= r.start && cm.end >= r.end)
+            )
+          )
+        }
+
         set({ analysisStage: 'Computing suggestions...' })
 
         const extractSamplesWithContext = (piiType: string, maxSamples: number): SampleSnippet[] => {
@@ -1427,9 +1574,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           suggestions,
           activeMatches,
           unmatchedRules,
-          showSuggestions: suggestions.length > 0 || activeMatches.length > 0 || (result.contextMatches && result.contextMatches.length > 0),
+          showSuggestions: suggestions.length > 0 || activeMatches.length > 0 || (finalContextMatches.length > 0),
           suggestionsInitialTab: suggestions.length > 0 ? 'suggestions' : 'active',
-          contextMatches: result.contextMatches || []
+          contextMatches: finalContextMatches
         })
       }
     } catch {

@@ -34,7 +34,9 @@ function App() {
     // ML state
     mlLoadingState, mlNameDetectionEnabled, mlExplicitlyConfigured, mlModelCached,
     mlPendingReanalysis,
+    showSuggestions,
     setShowSuggestions,
+    dismissSuggestions,
     activeMatches
   } = useAppStore()
   const [fullscreenView, setFullscreenView] = useState(false)
@@ -164,7 +166,9 @@ function App() {
         setShowGoToLine(true)
       }
       if (e.key === 'Escape') {
-        if (isProcessing && canCancel) {
+        if (showSuggestions) {
+          dismissSuggestions()
+        } else if (isProcessing && canCancel) {
           cancelProcessing()
         }
         if (showGoToLine) {
@@ -173,10 +177,10 @@ function App() {
         }
       }
     }
-    
+
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleProcess, output, isProcessing, canCancel, cancelProcessing, showGoToLine])
+  }, [handleProcess, output, isProcessing, canCancel, cancelProcessing, showGoToLine, showSuggestions, dismissSuggestions])
 
   const inputLines = useMemo(() => input.split('\n'), [input])
 
@@ -831,7 +835,6 @@ function App() {
             </div>
             
             <div className="flex-shrink-0">
-              <Suggestions />
               {emailHeadersDetected && !dismissedBanners.has('email') && (
                 <DetectionBanner
                   icon={<Icon name="mail" size="lg" className="text-blue-600 dark:text-blue-400 flex-shrink-0" />}
@@ -1026,6 +1029,9 @@ function App() {
                 gpxTransposedContinent={gpxTransposedContinent}
                 syntaxValidFormat={syntaxValidFormat}
                 onMetadataStrippingChange={setWillStripMetadata}
+                showRulesets={showSuggestions}
+                rulesetsPanel={<Suggestions />}
+                onCloseRulesets={dismissSuggestions}
               />
             </div>
           </div>

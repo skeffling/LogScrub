@@ -208,15 +208,6 @@ export function Suggestions() {
     }
   }, [mlLoadingState, setMlNameDetection])
 
-  // Handle Escape key to close modal
-  useEffect(() => {
-    if (!showSuggestions) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') dismissSuggestions()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [showSuggestions, dismissSuggestions])
 
   // Pattern test handler
   const handlePatternTest = useCallback(() => {
@@ -329,8 +320,6 @@ export function Suggestions() {
 
   if (!showSuggestions) return null
 
-  const totalDetections = activeMatches.reduce((sum, m) => sum + m.count, 0)
-
   const renderMatchList = (items: typeof activeMatches, showEnableButton: boolean, showDisableButton: boolean = false) => (
     <div className="space-y-2">
       {items.map(item => {
@@ -442,37 +431,7 @@ export function Suggestions() {
   )
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900"
-    >
-        {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
-              <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Rulesets & Settings
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {totalDetections} detection{totalDetections !== 1 ? 's' : ''} across {activeMatches.length} active rule{activeMatches.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={dismissSuggestions}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            title="Close"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
+    <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-gray-900">
         {/* Tabs */}
         <div className="flex flex-shrink-0 relative z-10 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-x-auto">
           {([
@@ -518,7 +477,7 @@ export function Suggestions() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 min-h-0">
+        <div className="flex-1 overflow-y-auto p-4 min-h-0">
           {/* ==================== ACTIVE MATCHES TAB ==================== */}
           {activeTab === 'active' && (
             <div className="space-y-4">
@@ -621,9 +580,17 @@ export function Suggestions() {
             <div className="space-y-4">
               {suggestions.length > 0 ? (
                 <>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    These disabled rules would find matches if enabled. Review and enable the ones you need.
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      These disabled rules would find matches if enabled. Review and enable the ones you need.
+                    </p>
+                    <button
+                      onClick={enableAllSuggested}
+                      className="flex-shrink-0 ml-3 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
+                    >
+                      Enable All
+                    </button>
+                  </div>
                   {renderMatchList(suggestions, true)}
                   <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
                     <strong>Note:</strong> These suggestions may include false positives. Only enable rules that match actual sensitive data.
@@ -975,29 +942,6 @@ export function Suggestions() {
               </div>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Press <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">Esc</kbd> to close
-          </p>
-          <div className="flex items-center gap-3">
-            {activeTab === 'suggestions' && suggestions.length > 0 && (
-              <button
-                onClick={enableAllSuggested}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
-              >
-                Enable All Suggestions
-              </button>
-            )}
-            <button
-              onClick={dismissSuggestions}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors"
-            >
-              Close
-            </button>
-          </div>
         </div>
 
       {/* ==================== SUB-MODALS ==================== */}

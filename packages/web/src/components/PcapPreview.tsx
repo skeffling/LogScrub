@@ -1,13 +1,28 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAppStore } from '../stores/useAppStore'
-import init, { analyze_pcap, anonymize_pcap_bytes, pre_analyze_pcap, get_packet_comparison, search_packets } from '../wasm-core/wasm_core'
 
-let wasmReady: Promise<unknown> | null = null
-async function ensureWasm(): Promise<void> {
-  if (!wasmReady) {
-    wasmReady = init()
-  }
-  await wasmReady
+function createPcapWorker(): Worker {
+  return new Worker(new URL('../workers/pcap.worker.ts', import.meta.url), { type: 'module' })
+}
+
+let messageId = 0
+
+function postWorkerMessage(worker: Worker, type: string, payload: Record<string, unknown>): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const id = ++messageId
+    const handler = (e: MessageEvent) => {
+      // Only handle messages for this request (worker processes sequentially)
+      if (e.data.type === 'result') {
+        worker.removeEventListener('message', handler)
+        resolve(e.data.payload)
+      } else if (e.data.type === 'error') {
+        worker.removeEventListener('message', handler)
+        reject(new Error(e.data.payload))
+      }
+    }
+    worker.addEventListener('message', handler)
+    worker.postMessage({ type, payload, id })
+  })
 }
 
 interface PcapStats {
@@ -192,6 +207,17 @@ interface PcapPreviewProps {
 
 export function PcapPreview({ file, onClose }: PcapPreviewProps) {
   const { preservePrivateIPs } = useAppStore()
+  const workerRef = useRef<Worker | null>(null)
+
+  // Initialize worker
+  useEffect(() => {
+    workerRef.current = createPcapWorker()
+    return () => {
+      workerRef.current?.terminate()
+      workerRef.current = null
+    }
+  }, [])
+
   const [isLoading, setIsLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -320,23 +346,23 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
   // Load and analyze the file
   useEffect(() => {
     async function loadFile() {
+      if (!workerRef.current) return
       setIsLoading(true)
       setError(null)
 
       try {
-        await ensureWasm()
         const arrayBuffer = await file.arrayBuffer()
         const data = new Uint8Array(arrayBuffer)
         setFileData(data)
 
         // Run pre-analysis for protocol stats
-        const preAnalysisJson = pre_analyze_pcap(data)
+        const preAnalysisJson = await postWorkerMessage(workerRef.current, 'pre_analyze', { data }) as string
         const preAnalysisResult: PcapPreAnalysis = JSON.parse(preAnalysisJson)
         setPreAnalysis(preAnalysisResult)
 
         // Run anonymization analysis
         const config = JSON.stringify(buildConfig())
-        const resultJson = analyze_pcap(data, config)
+        const resultJson = await postWorkerMessage(workerRef.current, 'analyze', { data, config }) as string
         const result: PcapAnalysis = JSON.parse(resultJson)
         setAnalysis(result)
       } catch (err) {
@@ -352,15 +378,14 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
 
   // Re-analyze when options change
   const reanalyze = useCallback(async () => {
-    if (!fileData) return
+    if (!fileData || !workerRef.current) return
 
     setIsLoading(true)
     setError(null)
 
     try {
-      await ensureWasm()
       const config = JSON.stringify(buildConfig())
-      const resultJson = analyze_pcap(fileData, config)
+      const resultJson = await postWorkerMessage(workerRef.current, 'analyze', { data: fileData, config }) as string
       const result: PcapAnalysis = JSON.parse(resultJson)
       setAnalysis(result)
     } catch (err) {
@@ -372,15 +397,14 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
 
   // Download anonymized PCAP
   const handleDownload = useCallback(async () => {
-    if (!fileData) return
+    if (!fileData || !workerRef.current) return
 
     setIsProcessing(true)
     setError(null)
 
     try {
-      await ensureWasm()
       const config = JSON.stringify(buildConfig())
-      const anonymizedData = anonymize_pcap_bytes(fileData, config)
+      const anonymizedData = await postWorkerMessage(workerRef.current, 'anonymize', { data: fileData, config }) as Uint8Array
 
       const blob = new Blob([anonymizedData], { type: 'application/vnd.tcpdump.pcap' })
       const url = URL.createObjectURL(blob)
@@ -500,13 +524,12 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
 
   // Load packet comparison data
   const loadComparison = useCallback(async () => {
-    if (!fileData) return
+    if (!fileData || !workerRef.current) return
 
     setIsLoadingComparison(true)
     try {
-      await ensureWasm()
       const config = JSON.stringify(buildConfig())
-      const resultJson = get_packet_comparison(fileData, config, 100) // Limit to 100 packets
+      const resultJson = await postWorkerMessage(workerRef.current, 'compare', { data: fileData, config, max_packets: 100 }) as string
       const result: PacketComparison[] = JSON.parse(resultJson)
       setComparisons(result)
     } catch (err) {
@@ -518,12 +541,11 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
 
   // Search packets
   const handleSearch = useCallback(async () => {
-    if (!fileData || !searchTerm.trim()) return
+    if (!fileData || !searchTerm.trim() || !workerRef.current) return
 
     setIsSearching(true)
     try {
-      await ensureWasm()
-      const resultJson = search_packets(fileData, searchTerm.trim(), 50) // Limit to 50 results
+      const resultJson = await postWorkerMessage(workerRef.current, 'search', { data: fileData, term: searchTerm.trim(), max_results: 50 }) as string
       const result: SearchResult[] = JSON.parse(resultJson)
       setSearchResults(result)
     } catch (err) {

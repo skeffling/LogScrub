@@ -69,6 +69,7 @@ export function Suggestions() {
     addContextMatchAsPattern,
     rules,
     setRuleStrategy,
+    setAllStrategy,
     setRuleTemplate,
     customRules,
     addCustomRule,
@@ -109,6 +110,7 @@ export function Suggestions() {
   } = useAppStore()
 
   const [activeTab, setActiveTab] = useState<Tab>('active')
+  const [lastSetStrategy, setLastSetStrategy] = useState<ReplacementStrategy | null>(null)
   const [expandedRule, setExpandedRule] = useState<string | null>(null)
   const [showPatternViewer, setShowPatternViewer] = useState<{ id: string; label: string; pattern: string } | null>(null)
   const [patternTestText, setPatternTestText] = useState('')
@@ -397,13 +399,28 @@ export function Suggestions() {
                     <label className="text-xs text-gray-600 dark:text-gray-400">Strategy:</label>
                     <select
                       value={rule.strategy}
-                      onChange={(e) => setRuleStrategy(item.id, e.target.value as ReplacementStrategy)}
+                      onChange={(e) => {
+                        const strategy = e.target.value as ReplacementStrategy
+                        setRuleStrategy(item.id, strategy)
+                        setLastSetStrategy(strategy)
+                      }}
                       className="text-xs border dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 dark:text-gray-300"
                     >
                       {STRATEGY_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
+                    {lastSetStrategy && lastSetStrategy === rule.strategy && (
+                      <button
+                        onClick={() => {
+                          setAllStrategy(lastSetStrategy)
+                          setLastSetStrategy(null)
+                        }}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 hover:underline"
+                      >
+                        Set all to {STRATEGY_OPTIONS.find(o => o.value === lastSetStrategy)?.label}
+                      </button>
+                    )}
                   </div>
                   {rule.strategy === 'template' && (
                     <button

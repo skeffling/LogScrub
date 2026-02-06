@@ -114,7 +114,8 @@ interface AppState {
   activeMatches: RuleSuggestion[]
   unmatchedRules: Array<{ id: string; label: string }>
   showSuggestions: boolean
-  suggestionsInitialTab: 'active' | 'suggestions' | 'ml' | 'context' | null
+  suggestionsInitialTab: 'active' | 'suggestions' | 'context' | 'custom' | 'settings' | null
+  lastSuggestionsTab: 'active' | 'suggestions' | 'context' | 'custom' | 'settings'
   analysisLogs: string[]
   contextMatches: ContextMatch[]
   terminalStyle: boolean
@@ -151,7 +152,7 @@ interface AppState {
   analyzeText: (text: string) => Promise<void>
   clearAnalysis: () => void
   dismissSuggestions: () => void
-  setShowSuggestions: (show: boolean, initialTab?: 'active' | 'suggestions' | 'ml' | 'context') => void
+  setShowSuggestions: (show: boolean, initialTab?: 'active' | 'suggestions' | 'context' | 'custom' | 'settings') => void
   enableSuggestedRule: (id: string) => void
   disableActiveMatch: (id: string) => void
   enableAllSuggested: () => void
@@ -555,6 +556,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   unmatchedRules: [],
   showSuggestions: false,
   suggestionsInitialTab: null,
+  lastSuggestionsTab: 'active',
   analysisLogs: [],
   contextMatches: [],
   terminalStyle: loadTerminalStyleFromStorage(),
@@ -1409,6 +1411,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           activeMatches,
           unmatchedRules,
           showSuggestions: suggestions.length > 0 || activeMatches.length > 0 || (result.contextMatches && result.contextMatches.length > 0),
+          suggestionsInitialTab: suggestions.length > 0 ? 'suggestions' : 'active',
           contextMatches: result.contextMatches || []
         })
       }
@@ -1422,6 +1425,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   dismissSuggestions: () => set({ showSuggestions: false, suggestionsInitialTab: null }),
   setShowSuggestions: (show, initialTab) => set({ showSuggestions: show, suggestionsInitialTab: initialTab ?? null }),
+
 
   enableSuggestedRule: (id) => {
     const { rules, customRules, plainTextPatterns, suggestions, activeMatches } = get()

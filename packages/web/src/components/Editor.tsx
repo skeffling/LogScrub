@@ -23,8 +23,6 @@ interface EditorProps {
   lineFilter?: LineFilter
   onLineFilterChange?: (value: LineFilter) => void
   onClearAll?: () => void
-  onLeftResize?: () => void
-  showLeftHandle?: boolean
   gpxTransposedContinent?: string | null
   syntaxValidFormat?: ValidatedFormat
   onMetadataStrippingChange?: (willStrip: boolean) => void
@@ -591,7 +589,7 @@ function dismissDonationForever() {
   } catch {}
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, onLeftResize, showLeftHandle = false, gpxTransposedContinent, syntaxValidFormat, onMetadataStrippingChange }, ref) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, gpxTransposedContinent, syntaxValidFormat, onMetadataStrippingChange }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType, files, selectedFileId, isMultiFileMode, selectFile, addFilesFromZip } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showAIExplain, setShowAIExplain] = useState(false)
@@ -2126,17 +2124,6 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
 
       <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
       <div className="flex flex-col min-h-0 min-w-0 relative w-full md:w-0" style={{ flex: `0 0 ${splitRatio}%` }}>
-        {/* Resize handle on left edge of Original panel (controls Rules panel width) */}
-        {showLeftHandle && onLeftResize && (
-          <div
-            className="hidden md:block absolute top-0 left-0 w-2 h-full cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors z-10"
-            onMouseDown={(e) => {
-              e.preventDefault()
-              onLeftResize()
-            }}
-            title="Drag to resize"
-          />
-        )}
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
           <label
             className={`text-sm font-medium text-gray-700 dark:text-gray-300 ${titleBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3 cursor-help`}

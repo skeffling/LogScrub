@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Header } from './components/Header'
 import { Editor } from './components/Editor'
-import { SidebarPanel } from './components/SidebarPanel'
 import { AboutModal } from './components/AboutModal'
 import { DmesgTimestampModal } from './components/DmesgTimestampModal'
 import { SipTraceModal } from './components/SipTraceModal'
@@ -33,11 +32,9 @@ function App() {
     documentType, lineCountWarning, syntaxError, syntaxValidFormat,
     rules, toggleRule, setRuleStrategy, customRules, addCustomRule,
     // ML state
-    mlLoadingState, mlNameDetectionEnabled, setShowSuggestions
+    mlLoadingState, mlNameDetectionEnabled, setShowSuggestions,
+    activeMatches
   } = useAppStore()
-  const [showRules, setShowRules] = useState(() => loadUiPreference('showRules', true))
-  const [rulePanelWidth, setRulePanelWidth] = useState(() => loadUiPreference('rulePanelWidth', 320))
-  const [isResizing, setIsResizing] = useState(false)
   const [fullscreenView, setFullscreenView] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [constrainWidth, setConstrainWidth] = useState(() => loadUiPreference('constrainWidth', false))
@@ -68,39 +65,9 @@ function App() {
     setFullscreenView(true)
   }, [])
 
-  useEffect(() => { saveUiPreference('showRules', showRules) }, [showRules])
-  useEffect(() => { saveUiPreference('rulePanelWidth', rulePanelWidth) }, [rulePanelWidth])
   useEffect(() => { saveUiPreference('constrainWidth', constrainWidth) }, [constrainWidth])
   useEffect(() => { saveUiPreference('showDiffHighlight', showDiffHighlight) }, [showDiffHighlight])
   useEffect(() => { saveUiPreference('syncScroll', syncScroll) }, [syncScroll])
-
-  // Handle panel resize
-  useEffect(() => {
-    if (!isResizing) return
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.max(200, Math.min(600, e.clientX - 16)) // 16px for padding
-      setRulePanelWidth(newWidth)
-    }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-  }, [isResizing])
 
   useEffect(() => {
     if (!input && !output) return
@@ -492,39 +459,23 @@ function App() {
           </div>
         )}
         
-        <div className="flex flex-col lg:flex-row gap-4 lg:gap-0 flex-1 min-h-0 lg:overflow-hidden">
-          {showRules && (
-            <aside className="min-h-0 lg:overflow-hidden flex flex-col flex-shrink-0 relative rule-panel-aside">
-              <style>{`
-                .rule-panel-aside { width: 100%; }
-                @media (min-width: 1024px) { .rule-panel-aside { width: ${rulePanelWidth}px; } }
-              `}</style>
-              <SidebarPanel />
-              {/* Resize handle */}
-              <div
-                className="hidden lg:block absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/30 transition-colors"
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  setIsResizing(true)
-                }}
-                title="Drag to resize"
-              />
-            </aside>
-          )}
-
-          <div className={`flex flex-col min-h-0 lg:overflow-hidden flex-1 ${showRules ? 'lg:pl-4' : ''}`}>
+        <div className="flex flex-col flex-1 min-h-0 lg:overflow-hidden">
+          <div className="flex flex-col min-h-0 lg:overflow-hidden flex-1">
             <div className="flex flex-wrap justify-between items-center gap-2 mb-3 flex-shrink-0" role="toolbar" aria-label="Editor controls">
               <div className="flex items-center gap-1 sm:gap-2">
                 {/* View Controls */}
                 <button
-                  onClick={() => setShowRules(!showRules)}
-                  className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                  title={showRules ? 'Hide the detection rules panel' : 'Show the detection rules panel'}
-                  aria-expanded={showRules}
-                  aria-controls="rules-panel"
+                  onClick={() => setShowSuggestions(true)}
+                  className="flex items-center gap-1.5 text-sm px-2.5 py-1 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                  title="Open Rulesets & Settings"
                 >
-                  <Icon name={showRules ? 'chevron-left' : 'chevron-right'} size="sm" />
-                  <span>{showRules ? 'Hide Rules' : 'Show Rules'}</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                  </svg>
+                  <span>Rulesets</span>
+                  {analysisCompleted && activeMatches.length > 0 && (
+                    <span className="px-1.5 py-0.5 text-xs bg-purple-600 text-white rounded-full">{activeMatches.length}</span>
+                  )}
                 </button>
                 <button
                   onClick={() => setConstrainWidth(!constrainWidth)}
@@ -940,7 +891,7 @@ function App() {
                       <>
                         {' '}
                         <button
-                          onClick={() => setShowSuggestions(true, 'ml')}
+                          onClick={() => setShowSuggestions(true, 'settings')}
                           className="underline hover:no-underline font-medium"
                         >
                           Try ML Analysis
@@ -1029,8 +980,6 @@ function App() {
                 lineFilter={lineFilter}
                 onLineFilterChange={setLineFilter}
                 onClearAll={handleClear}
-                onLeftResize={() => setIsResizing(true)}
-                showLeftHandle={showRules}
                 gpxTransposedContinent={gpxTransposedContinent}
                 syntaxValidFormat={syntaxValidFormat}
                 onMetadataStrippingChange={setWillStripMetadata}

@@ -1,24 +1,18 @@
 import init, { pre_analyze_pcap, analyze_pcap, anonymize_pcap_bytes, get_packet_comparison, search_packets } from 'wasm-core'
 
-let wasmInitialized = false
-
-async function initWasm() {
-  if (!wasmInitialized) {
-    await init()
-    wasmInitialized = true
-  }
-}
-
 // Keep file data in worker memory so it doesn't need to be re-sent each time
 let storedData: Uint8Array | null = null
+let wasmReady = false
 
 self.onmessage = async (e: MessageEvent) => {
   try {
-    await initWasm()
-
     switch (e.data.type) {
       case 'load': {
-        // Store file data in worker - only sent once from main thread
+        // Initialize WASM with bytes from main thread (avoids worker fetching .wasm file)
+        if (!wasmReady) {
+          await init(e.data.payload.wasmBytes)
+          wasmReady = true
+        }
         storedData = e.data.payload.data
         self.postMessage({ type: 'result', payload: true })
         break

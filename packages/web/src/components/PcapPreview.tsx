@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 
+// Vite rewrites this to the hashed asset URL at build time
+const wasmUrl = new URL('../wasm-core/wasm_core_bg.wasm', import.meta.url)
+
 function createPcapWorker(): Worker {
   return new Worker(new URL('../workers/pcap.worker.ts', import.meta.url), { type: 'module' })
 }
@@ -358,12 +361,16 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
       setError(null)
 
       try {
-        const arrayBuffer = await file.arrayBuffer()
+        // Fetch WASM bytes on main thread (where URL resolution works) and file data in parallel
+        const [arrayBuffer, wasmBytes] = await Promise.all([
+          file.arrayBuffer(),
+          fetch(wasmUrl).then(r => r.arrayBuffer())
+        ])
         const data = new Uint8Array(arrayBuffer)
         setFileData(data)
 
-        // Send file data to worker once - it stays in worker memory
-        await postWorkerMessage(workerRef.current, 'load', { data })
+        // Send file data + WASM bytes to worker - avoids worker fetching .wasm file itself
+        await postWorkerMessage(workerRef.current, 'load', { data, wasmBytes })
 
         // Run pre-analysis for protocol stats (JSON parsed in worker)
         const preAnalysisResult = await postWorkerMessage(workerRef.current, 'pre_analyze') as PcapPreAnalysis

@@ -480,19 +480,6 @@ function App() {
               <div className="flex items-center gap-1 sm:gap-2">
                 {/* View Controls */}
                 <button
-                  onClick={() => setShowSuggestions(true)}
-                  className="flex items-center gap-1.5 text-sm px-2.5 py-1 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
-                  title="Open Rulesets & Settings"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                  </svg>
-                  <span>Rulesets</span>
-                  {analysisCompleted && activeMatches.length > 0 && (
-                    <span className="px-1.5 py-0.5 text-xs bg-purple-600 text-white rounded-full">{activeMatches.length}</span>
-                  )}
-                </button>
-                <button
                   onClick={() => setConstrainWidth(!constrainWidth)}
                   className="hidden xl:flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 px-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   title={constrainWidth ? 'Use full width' : 'Constrain width'}
@@ -806,6 +793,19 @@ function App() {
                     )}
                   </div>
                 )}
+                <button
+                  onClick={() => setShowSuggestions(true)}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
+                  title="Open Rulesets & Settings"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                  </svg>
+                  <span>Rulesets</span>
+                  {analysisCompleted && activeMatches.length > 0 && (
+                    <span className="px-1.5 py-0.5 text-xs bg-purple-500 rounded-full">{activeMatches.length}</span>
+                  )}
+                </button>
                 {isProcessing && canCancel ? (
                   <button
                     onClick={cancelProcessing}

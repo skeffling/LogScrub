@@ -9,38 +9,52 @@ async function initWasm() {
   }
 }
 
+// Keep file data in worker memory so it doesn't need to be re-sent each time
+let storedData: Uint8Array | null = null
+
 self.onmessage = async (e: MessageEvent) => {
   try {
     await initWasm()
 
     switch (e.data.type) {
+      case 'load': {
+        // Store file data in worker - only sent once from main thread
+        storedData = e.data.payload.data
+        self.postMessage({ type: 'result', payload: true })
+        break
+      }
+
       case 'pre_analyze': {
-        const result = pre_analyze_pcap(e.data.payload.data)
+        if (!storedData) throw new Error('No file loaded')
+        const result = JSON.parse(pre_analyze_pcap(storedData))
         self.postMessage({ type: 'result', payload: result })
         break
       }
 
       case 'analyze': {
-        const result = analyze_pcap(e.data.payload.data, e.data.payload.config)
+        if (!storedData) throw new Error('No file loaded')
+        const result = JSON.parse(analyze_pcap(storedData, e.data.payload.config))
         self.postMessage({ type: 'result', payload: result })
         break
       }
 
       case 'anonymize': {
-        const result = anonymize_pcap_bytes(e.data.payload.data, e.data.payload.config)
-        // Transfer the buffer to avoid copying
+        if (!storedData) throw new Error('No file loaded')
+        const result = anonymize_pcap_bytes(storedData, e.data.payload.config)
         self.postMessage({ type: 'result', payload: result }, { transfer: [result.buffer] })
         break
       }
 
       case 'compare': {
-        const result = get_packet_comparison(e.data.payload.data, e.data.payload.config, e.data.payload.max_packets)
+        if (!storedData) throw new Error('No file loaded')
+        const result = JSON.parse(get_packet_comparison(storedData, e.data.payload.config, e.data.payload.max_packets))
         self.postMessage({ type: 'result', payload: result })
         break
       }
 
       case 'search': {
-        const result = search_packets(e.data.payload.data, e.data.payload.term, e.data.payload.max_results)
+        if (!storedData) throw new Error('No file loaded')
+        const result = JSON.parse(search_packets(storedData, e.data.payload.term, e.data.payload.max_results))
         self.postMessage({ type: 'result', payload: result })
         break
       }

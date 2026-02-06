@@ -7,20 +7,27 @@ function createPcapWorker(): Worker {
 
 let messageId = 0
 
-function postWorkerMessage(worker: Worker, type: string, payload: Record<string, unknown>): Promise<unknown> {
+function postWorkerMessage(worker: Worker, type: string, payload?: Record<string, unknown>): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const id = ++messageId
-    const handler = (e: MessageEvent) => {
-      // Only handle messages for this request (worker processes sequentially)
+    const msgHandler = (e: MessageEvent) => {
       if (e.data.type === 'result') {
-        worker.removeEventListener('message', handler)
+        worker.removeEventListener('message', msgHandler)
+        worker.removeEventListener('error', errHandler)
         resolve(e.data.payload)
       } else if (e.data.type === 'error') {
-        worker.removeEventListener('message', handler)
+        worker.removeEventListener('message', msgHandler)
+        worker.removeEventListener('error', errHandler)
         reject(new Error(e.data.payload))
       }
     }
-    worker.addEventListener('message', handler)
+    const errHandler = (e: ErrorEvent) => {
+      worker.removeEventListener('message', msgHandler)
+      worker.removeEventListener('error', errHandler)
+      reject(new Error(e.message || 'Worker error'))
+    }
+    worker.addEventListener('message', msgHandler)
+    worker.addEventListener('error', errHandler)
     worker.postMessage({ type, payload, id })
   })
 }
@@ -355,15 +362,16 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
         const data = new Uint8Array(arrayBuffer)
         setFileData(data)
 
-        // Run pre-analysis for protocol stats
-        const preAnalysisJson = await postWorkerMessage(workerRef.current, 'pre_analyze', { data }) as string
-        const preAnalysisResult: PcapPreAnalysis = JSON.parse(preAnalysisJson)
+        // Send file data to worker once - it stays in worker memory
+        await postWorkerMessage(workerRef.current, 'load', { data })
+
+        // Run pre-analysis for protocol stats (JSON parsed in worker)
+        const preAnalysisResult = await postWorkerMessage(workerRef.current, 'pre_analyze') as PcapPreAnalysis
         setPreAnalysis(preAnalysisResult)
 
-        // Run anonymization analysis
+        // Run anonymization analysis (JSON parsed in worker)
         const config = JSON.stringify(buildConfig())
-        const resultJson = await postWorkerMessage(workerRef.current, 'analyze', { data, config }) as string
-        const result: PcapAnalysis = JSON.parse(resultJson)
+        const result = await postWorkerMessage(workerRef.current, 'analyze', { config }) as PcapAnalysis
         setAnalysis(result)
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
@@ -385,8 +393,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
 
     try {
       const config = JSON.stringify(buildConfig())
-      const resultJson = await postWorkerMessage(workerRef.current, 'analyze', { data: fileData, config }) as string
-      const result: PcapAnalysis = JSON.parse(resultJson)
+      const result = await postWorkerMessage(workerRef.current, 'analyze', { config }) as PcapAnalysis
       setAnalysis(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -404,7 +411,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
 
     try {
       const config = JSON.stringify(buildConfig())
-      const anonymizedData = await postWorkerMessage(workerRef.current, 'anonymize', { data: fileData, config }) as Uint8Array
+      const anonymizedData = await postWorkerMessage(workerRef.current, 'anonymize', { config }) as Uint8Array
 
       const blob = new Blob([anonymizedData], { type: 'application/vnd.tcpdump.pcap' })
       const url = URL.createObjectURL(blob)
@@ -529,8 +536,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
     setIsLoadingComparison(true)
     try {
       const config = JSON.stringify(buildConfig())
-      const resultJson = await postWorkerMessage(workerRef.current, 'compare', { data: fileData, config, max_packets: 100 }) as string
-      const result: PacketComparison[] = JSON.parse(resultJson)
+      const result = await postWorkerMessage(workerRef.current, 'compare', { config, max_packets: 100 }) as PacketComparison[]
       setComparisons(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -545,8 +551,7 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
 
     setIsSearching(true)
     try {
-      const resultJson = await postWorkerMessage(workerRef.current, 'search', { data: fileData, term: searchTerm.trim(), max_results: 50 }) as string
-      const result: SearchResult[] = JSON.parse(resultJson)
+      const result = await postWorkerMessage(workerRef.current, 'search', { term: searchTerm.trim(), max_results: 50 }) as SearchResult[]
       setSearchResults(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

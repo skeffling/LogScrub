@@ -893,10 +893,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         // Run ML NER if enabled and model is ready
         const { mlNameDetectionEnabled, mlLoadingState, rules: currentRules, labelFormat: currentLabelFormat } = get()
+        console.log('[ML NER] processText check:', { mlNameDetectionEnabled, mlLoadingState })
         if (mlNameDetectionEnabled && mlLoadingState === 'ready') {
           try {
             const { runNER } = await import('../utils/nerDetection')
             const nerResult = await runNER(text)
+            console.log('[ML NER] processText: runNER returned', nerResult.entities.length, 'entities')
 
             // Collect ML replacements (on original text positions)
             const mlReplacements: ReplacementInfo[] = []
@@ -1157,11 +1159,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         // Run ML NER if enabled and model is ready
         const { mlNameDetectionEnabled, mlLoadingState } = get()
+        console.log('[ML NER] analyzeText check:', { mlNameDetectionEnabled, mlLoadingState })
         if (mlNameDetectionEnabled && mlLoadingState === 'ready') {
           set({ analysisStage: 'Running ML name detection...' })
           try {
             const { runNER } = await import('../utils/nerDetection')
             const nerResult = await runNER(text)
+            console.log('[ML NER] runNER returned:', nerResult.entities.length, 'entities in', nerResult.processingTimeMs.toFixed(0) + 'ms')
 
             // Group entities by type
             const mlMatches: DetectionMatches = {
@@ -1271,17 +1275,20 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
 
             // Merge ML results with WASM results
+            const mlMatchSummary: Record<string, number> = {}
             for (const [type, values] of Object.entries(mlMatches)) {
               if (values.length > 0) {
                 matches = { ...matches, [type]: values }
                 stats = { ...stats, [type]: values.length }
+                mlMatchSummary[type] = values.length
               }
             }
+            console.log('[ML NER] ML matches:', mlMatchSummary, '| ML replacements:', mlReplacements.length)
 
             // Merge replacements (sort by position to handle overlaps)
             allReplacements = [...allReplacements, ...mlReplacements].sort((a, b) => a.start - b.start)
           } catch (err) {
-            console.warn('ML NER failed:', err)
+            console.warn('[ML NER] Analysis failed:', err)
             // Continue with WASM-only results
           }
         }

@@ -272,6 +272,11 @@ export async function runNER(text: string): Promise<NERResult> {
   // Run inference - model returns raw tokens
   const rawEntities = await pipeline(text)
 
+  console.log('[ML NER] Raw pipeline output:', Array.isArray(rawEntities) ? (rawEntities as unknown[]).length + ' tokens' : typeof rawEntities)
+  if (Array.isArray(rawEntities) && (rawEntities as unknown[]).length > 0) {
+    console.log('[ML NER] First token sample:', JSON.stringify((rawEntities as unknown[])[0]))
+  }
+
   // Raw token format from model:
   // { entity: "B-PER", score: 0.99, index: 7, word: "ami" }
   // { entity: "B-PER", score: 0.97, index: 8, word: "##t" }  (WordPiece continuation)
@@ -359,6 +364,8 @@ export async function runNER(text: string): Promise<NERResult> {
   if (currentEntity) {
     aggregatedEntities.push(currentEntity)
   }
+
+  console.log('[ML NER] Aggregated entities:', aggregatedEntities.length, aggregatedEntities.map(e => `${e.type}: "${e.words.join(' ')}" (score: ${(e.scores.reduce((a,b)=>a+b,0)/e.scores.length).toFixed(2)})`))
 
   // Convert to final format and find positions in text
   const entities: NEREntity[] = []
@@ -472,6 +479,7 @@ export async function runNER(text: string): Promise<NERResult> {
 
   const processingTimeMs = performance.now() - startTime
 
+  console.log('[ML NER] Final entities:', entities.length, entities.map(e => `${e.entityGroup}: "${e.word}" @${e.start}-${e.end} (score: ${e.score.toFixed(2)})`))
 
   return {
     entities,

@@ -114,10 +114,11 @@ function App() {
 
   const handleProcess = useCallback(() => {
     if (input.trim() && !isProcessing) {
+      if (showSuggestions) dismissSuggestions()
       processText(input)
       window.umami?.track('sanitize')
     }
-  }, [input, isProcessing, processText])
+  }, [input, isProcessing, processText, showSuggestions, dismissSuggestions])
 
   const handleClear = () => {
     setInput('')

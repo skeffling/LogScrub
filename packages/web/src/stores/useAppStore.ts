@@ -134,6 +134,10 @@ interface AppState {
   mlLoadingState: MLLoadingState
   mlLoadProgress: number
   mlError: string | null
+  mlModelCached: boolean | null        // null = not checked yet, true/false after check
+  mlAutoLoadAttempted: boolean         // prevents re-running check
+  mlExplicitlyConfigured: boolean      // user has touched ML settings at least once
+  mlPendingReanalysis: boolean         // triggers auto-reanalysis after model load
 
   setInput: (input: string) => void
   setOutput: (output: string) => void
@@ -189,6 +193,7 @@ interface AppState {
   setMlModelId: (modelId: string) => void
   loadMlModel: () => Promise<void>
   unloadMlModel: () => void
+  checkAndAutoLoadMlModel: () => Promise<void>
 
   // Multi-file state
   files: FileEntry[]
@@ -491,14 +496,15 @@ interface MLSettings {
   modelId: string
 }
 
-function loadMLSettingsFromStorage(): MLSettings {
+function loadMLSettingsFromStorage(): MLSettings & { explicitlyConfigured: boolean } {
   try {
     const stored = localStorage.getItem(ML_SETTINGS_STORAGE_KEY)
     if (stored) {
-      return JSON.parse(stored)
+      const parsed = JSON.parse(stored)
+      return { enabled: parsed.enabled, modelId: parsed.modelId || DEFAULT_ML_MODEL_ID, explicitlyConfigured: true }
     }
   } catch {}
-  return { enabled: false, modelId: DEFAULT_ML_MODEL_ID }
+  return { enabled: false, modelId: DEFAULT_ML_MODEL_ID, explicitlyConfigured: false }
 }
 
 function saveMLSettingsToStorage(settings: MLSettings) {
@@ -574,6 +580,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   mlLoadingState: 'idle',
   mlLoadProgress: 0,
   mlError: null,
+  mlModelCached: null,
+  mlAutoLoadAttempted: false,
+  mlExplicitlyConfigured: loadMLSettingsFromStorage().explicitlyConfigured,
+  mlPendingReanalysis: false,
 
   // Multi-file state
   files: [],
@@ -1628,7 +1638,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     saveRulesToStorage(newRules)
 
-    set({ mlNameDetectionEnabled: enabled, rules: newRules })
+    set({ mlNameDetectionEnabled: enabled, mlExplicitlyConfigured: true, rules: newRules })
 
     // If disabling, unload the model to free memory
     if (!enabled) {
@@ -1667,7 +1677,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       await loadNERPipeline(mlModelId)
       unsubscribe()
 
-      set({ mlLoadingState: 'ready', mlLoadProgress: 100 })
+      const { input } = get()
+      set({ mlLoadingState: 'ready', mlLoadProgress: 100, mlPendingReanalysis: !!input.trim() })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load ML model'
       set({
@@ -1689,6 +1700,39 @@ export const useAppStore = create<AppState>((set, get) => ({
       mlLoadProgress: 0,
       mlError: null
     })
+  },
+
+  checkAndAutoLoadMlModel: async () => {
+    const { mlAutoLoadAttempted, mlExplicitlyConfigured, mlNameDetectionEnabled, mlModelId } = get()
+
+    // Guard: skip if already attempted
+    if (mlAutoLoadAttempted) return
+    set({ mlAutoLoadAttempted: true })
+
+    // If user explicitly disabled ML, respect that
+    if (mlExplicitlyConfigured && !mlNameDetectionEnabled) {
+      set({ mlModelCached: false })
+      return
+    }
+
+    // Check if model is cached
+    try {
+      const { isModelCached } = await import('../utils/nerDetection')
+      const cached = await isModelCached(mlModelId)
+      set({ mlModelCached: cached })
+
+      if (cached) {
+        // Auto-enable ML if not already enabled
+        if (!mlNameDetectionEnabled) {
+          get().setMlNameDetection(true)
+        }
+        // Load from cache (fast, ~100ms)
+        await get().loadMlModel()
+      }
+    } catch (err) {
+      console.warn('[ML] Auto-load check failed:', err)
+      set({ mlModelCached: false })
+    }
   },
 
   // Multi-file actions

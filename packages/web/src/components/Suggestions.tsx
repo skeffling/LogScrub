@@ -201,6 +201,13 @@ export function Suggestions() {
     }
   }, [mlLoadingState, loadCacheStatus])
 
+  // Auto-enable ML detection when model first becomes ready
+  useEffect(() => {
+    if (mlLoadingState === 'ready' && !useAppStore.getState().mlNameDetectionEnabled) {
+      setMlNameDetection(true)
+    }
+  }, [mlLoadingState, setMlNameDetection])
+
   // Handle Escape key to close modal
   useEffect(() => {
     if (!showSuggestions) return

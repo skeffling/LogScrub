@@ -1,7 +1,7 @@
 import { ReactNode } from 'react'
 import { Icon } from './ui'
 
-type ColorScheme = 'blue' | 'purple' | 'orange' | 'red' | 'amber' | 'green'
+type ColorScheme = 'blue' | 'purple' | 'orange' | 'red' | 'amber' | 'green' | 'indigo'
 
 interface DetectionBannerProps {
   icon: ReactNode
@@ -60,6 +60,13 @@ const colorClasses: Record<ColorScheme, {
     text: 'text-green-800 dark:text-green-200',
     button: 'bg-green-600 hover:bg-green-700',
     dismiss: 'text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200',
+  },
+  indigo: {
+    bg: 'bg-indigo-50 dark:bg-indigo-900/20',
+    border: 'border-indigo-200 dark:border-indigo-800',
+    text: 'text-indigo-800 dark:text-indigo-200',
+    button: 'bg-indigo-600 hover:bg-indigo-700',
+    dismiss: 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200',
   },
 }
 

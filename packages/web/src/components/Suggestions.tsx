@@ -211,10 +211,6 @@ export function Suggestions() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [showSuggestions, dismissSuggestions])
 
-  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) dismissSuggestions()
-  }, [dismissSuggestions])
-
   // Pattern test handler
   const handlePatternTest = useCallback(() => {
     if (!patternTestText.trim()) {
@@ -440,12 +436,10 @@ export function Suggestions() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900"
     >
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
               <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -473,7 +467,7 @@ export function Suggestions() {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-x-auto">
+        <div className="flex flex-shrink-0 relative z-10 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-x-auto">
           {([
             { key: 'active' as Tab, label: 'Active Matches', count: activeMatches.length, color: 'green' },
             { key: 'suggestions' as Tab, label: 'Suggestions', count: suggestions.length, color: 'amber' },
@@ -517,7 +511,7 @@ export function Suggestions() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 min-h-[400px]">
+        <div className="flex-1 overflow-y-auto p-6 min-h-0">
           {/* ==================== ACTIVE MATCHES TAB ==================== */}
           {activeTab === 'active' && (
             <div className="space-y-4">
@@ -977,9 +971,9 @@ export function Suggestions() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Press <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">Esc</kbd> or click outside to close
+            Press <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">Esc</kbd> to close
           </p>
           <div className="flex items-center gap-3">
             {activeTab === 'suggestions' && suggestions.length > 0 && (
@@ -998,7 +992,6 @@ export function Suggestions() {
             </button>
           </div>
         </div>
-      </div>
 
       {/* ==================== SUB-MODALS ==================== */}
 

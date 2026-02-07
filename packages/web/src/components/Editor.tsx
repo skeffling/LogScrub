@@ -28,9 +28,11 @@ interface EditorProps {
   showRulesets?: boolean
   rulesetsPanel?: React.ReactNode
   onCloseRulesets?: () => void
+  onToggleRulesets?: () => void
   showSettings?: boolean
   settingsPanel?: React.ReactNode
   onCloseSettings?: () => void
+  onToggleSettings?: () => void
 }
 
 export interface EditorHandle {
@@ -594,7 +596,7 @@ function dismissDonationForever() {
   } catch {}
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, gpxTransposedContinent, syntaxValidFormat, onMetadataStrippingChange, showRulesets, rulesetsPanel, onCloseRulesets, showSettings, settingsPanel, onCloseSettings }, ref) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, gpxTransposedContinent, syntaxValidFormat, onMetadataStrippingChange, showRulesets, rulesetsPanel, onCloseRulesets, onToggleRulesets, showSettings, settingsPanel, onCloseSettings, onToggleSettings }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType, files, selectedFileId, isMultiFileMode, selectFile, addFilesFromZip } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showAIExplain, setShowAIExplain] = useState(false)
@@ -2374,39 +2376,14 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
           title="Drag to resize"
         />
         <div className="flex items-center justify-between mb-0 flex-shrink-0 relative z-10">
-          {showRulesets ? (
-            <span className="text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-t border-t border-l border-r border-purple-200 dark:border-purple-700 -mb-px ml-3 flex items-center gap-2">
-              Rulesets
-              {onCloseRulesets && (
-                <button
-                  onClick={onCloseRulesets}
-                  className="p-0.5 text-purple-500 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-800/50 rounded transition-colors"
-                  title="Close Rulesets"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </span>
-          ) : showSettings ? (
-            <span className="text-sm font-medium text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-t border-t border-l border-r border-green-200 dark:border-green-700 -mb-px ml-3 flex items-center gap-2">
-              Settings
-              {onCloseSettings && (
-                <button
-                  onClick={onCloseSettings}
-                  className="p-0.5 text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-800/50 rounded transition-colors"
-                  title="Close Settings"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </span>
-          ) : (
-            <label
-              className={`text-sm font-medium ${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-600 dark:text-gray-400'} ${output ? outputPaneBg : placeholderBg} px-2 py-0.5 rounded-t border-t border-l border-r dark:border-gray-600 -mb-px ml-3 ${output ? 'cursor-help' : ''}`}
+          <div className="flex ml-1">
+            <button
+              onClick={() => { onCloseRulesets?.(); onCloseSettings?.(); }}
+              className={`text-sm font-medium px-3 py-0.5 rounded-t border-t border-l border-r -mb-px transition-colors ${
+                !showRulesets && !showSettings
+                  ? `${output ? 'text-gray-700 dark:text-gray-300' : 'text-gray-600 dark:text-gray-400'} ${output ? outputPaneBg : placeholderBg} dark:border-gray-600`
+                  : 'text-gray-400 dark:text-gray-500 bg-transparent border-transparent hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
               title={output ? [
                 `${outputLines.length.toLocaleString()} lines`,
                 lineFilter !== 'all' ? `Showing: ${filteredOutputLines.length.toLocaleString()} ${lineFilter}` : null,
@@ -2418,8 +2395,28 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
               ) : (
                 'Scrubbed'
               )}
-            </label>
-          )}
+            </button>
+            <button
+              onClick={() => { onToggleRulesets?.(); }}
+              className={`text-sm font-medium px-3 py-0.5 rounded-t border-t border-l border-r -mb-px transition-colors ${
+                showRulesets
+                  ? 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700'
+                  : 'text-gray-400 dark:text-gray-500 bg-transparent border-transparent hover:text-purple-600 dark:hover:text-purple-300'
+              }`}
+            >
+              Rulesets
+            </button>
+            <button
+              onClick={() => { onToggleSettings?.(); }}
+              className={`text-sm font-medium px-3 py-0.5 rounded-t border-t border-l border-r -mb-px transition-colors ${
+                showSettings
+                  ? 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700'
+                  : 'text-gray-400 dark:text-gray-500 bg-transparent border-transparent hover:text-green-600 dark:hover:text-green-300'
+              }`}
+            >
+              Settings
+            </button>
+          </div>
           <div className="flex gap-2 pr-1">
           {!showRulesets && !showSettings && (
             <>

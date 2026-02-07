@@ -277,8 +277,39 @@ function buildMappingTable(replacements: ReplacementInfo[], inputText: string): 
   })
 }
 
+function getRuleSource(ruleId: string): 'Builtin' | 'Custom' | 'ML' | 'Context' {
+  if (ruleId.startsWith('custom_rule_') || ruleId.startsWith('plain_')) return 'Custom'
+  if (ruleId.startsWith('ml_')) return 'ML'
+  if (ruleId.startsWith('csv_') || ruleId.startsWith('json_')) return 'Context'
+  return 'Builtin'
+}
+
+const SOURCE_COLORS: Record<string, string> = {
+  Builtin: 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300',
+  Custom: 'bg-blue-200 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
+  ML: 'bg-purple-200 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300',
+  Context: 'bg-teal-200 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300',
+}
+
+function SourceBadge({ ruleId }: { ruleId: string }) {
+  const source = getRuleSource(ruleId)
+  return (
+    <span className={`text-[9px] px-1 py-0.5 rounded font-medium ${SOURCE_COLORS[source]}`}>
+      {source}
+    </span>
+  )
+}
+
+function StrategyPill({ strategy }: { strategy: string }) {
+  return (
+    <span className="text-[9px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+      {strategy}
+    </span>
+  )
+}
+
 export function Stats() {
-  const { stats, matches, fileName, analysisStats, analysisMatches, replacements, analysisReplacements, input, files, isMultiFileMode, aggregatedStats, selectedFileId } = useAppStore()
+  const { stats, matches, fileName, analysisStats, analysisMatches, replacements, analysisReplacements, input, files, isMultiFileMode, aggregatedStats, selectedFileId, rules } = useAppStore()
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [showAuditReport, setShowAuditReport] = useState(false)
   const [activeTab, setActiveTab] = useState<'stats' | 'mapping'>('stats')
@@ -644,8 +675,9 @@ ${entries.map(([type]) => {
                               className="w-2 h-2 rounded-full flex-shrink-0"
                               style={{ backgroundColor: color }}
                             />
-                            <span className="text-gray-700 dark:text-gray-300 truncate flex-1 text-left group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                            <span className="text-gray-700 dark:text-gray-300 truncate flex-1 text-left group-hover:text-blue-600 dark:group-hover:text-blue-400 flex items-center gap-1">
                               {TYPE_LABELS[type] || type}
+                              <SourceBadge ruleId={type} />
                             </span>
                             <span className="text-gray-600 dark:text-gray-400 tabular-nums">
                               {count} ({percentage.toFixed(1)}%)
@@ -802,8 +834,9 @@ ${entries.map(([type]) => {
                                   className="w-2 h-2 rounded-full flex-shrink-0"
                                   style={{ backgroundColor: getTypeColor(type) }}
                                 />
-                                <span className="flex-1 text-left text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+                                <span className="flex-1 text-left text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1">
                                   {TYPE_LABELS[type] || type}
+                                  <StrategyPill strategy={rules[type]?.strategy || 'label'} />
                                 </span>
                                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                                   {count}
@@ -841,7 +874,7 @@ ${entries.map(([type]) => {
                     onClick={() => setSelectedType(type)}
                     className="w-full flex items-center justify-between text-sm hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded transition-colors"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span
                         className="w-2 h-2 rounded-full flex-shrink-0"
                         style={{ backgroundColor: getTypeColor(type) }}
@@ -849,6 +882,8 @@ ${entries.map(([type]) => {
                       <span className="text-blue-600 dark:text-blue-400 hover:underline truncate">
                         {TYPE_LABELS[type] || type}
                       </span>
+                      <SourceBadge ruleId={type} />
+                      <StrategyPill strategy={rules[type]?.strategy || 'label'} />
                     </div>
                     <span className="font-medium text-gray-900 dark:text-white ml-2">{count}</span>
                   </button>

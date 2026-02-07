@@ -2288,7 +2288,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
                   <p>1. Paste logs here, or use <span className="text-blue-600 dark:text-blue-400">Upload</span>/drag & drop</p>
                   <p className="text-xs text-gray-500 dark:text-gray-500 ml-3">Supports: txt, log, json, csv, sql, pdf, docx, xlsx, odt, ods, gpx, fit, pcap, zip, gz</p>
                   <p>2. Click <span className="text-purple-600 dark:text-purple-400">Analyze</span> to detect PII and get rule suggestions</p>
-                  <p>3. Enable/disable rules in Detection Rules panel</p>
+                  <p>3. Open <span className="text-purple-600 dark:text-purple-400">Rulesets</span> to enable/disable rules and review matches</p>
                   <p>4. Click <span className="text-blue-600 dark:text-blue-400">Scrub</span> to apply replacements</p>
                   <p>5. Use diff view, fullscreen, and other tools to review, then Copy or Download</p>
                   <p className="text-yellow-600 dark:text-yellow-500 mt-2">⚠ Always double-check for PII before sharing the file!</p>

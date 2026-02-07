@@ -701,7 +701,7 @@
           <h3>Basic Workflow</h3>
           <ol>
             <li><strong>Paste or upload</strong> your log content into the "Original" pane</li>
-            <li><strong>Review</strong> the detection rules in the left panel (enabled rules are checked)</li>
+            <li><strong>Review</strong> detection rules by clicking the <strong>Rulesets</strong> button (toggle rules on/off, review matches)</li>
             <li><strong>Click "Scrub"</strong> or press <code>⌘/Ctrl + Enter</code></li>
             <li><strong>Copy or download</strong> the scrubbed output</li>
           </ol>
@@ -879,7 +879,7 @@ User [EMAIL-3] logged in</div>
                 <li><code>::1</code> - Loopback</li>
                 <li><code>::ffff:x.x.x.x</code> - IPv4-mapped addresses (checks IPv4 portion)</li>
               </ul>
-              <p style="margin-top: 0.5rem;">You can toggle this setting via the "Preserve Private IPs" checkbox in the rules panel.</p>
+              <p style="margin-top: 0.5rem;">You can toggle this setting via the "Preserve Private IPs" checkbox in the Settings panel.</p>
             </div>
           </div>
 
@@ -1130,7 +1130,7 @@ User [EMAIL-3] logged in</div>
 
           <h3>Adding a Custom Rule</h3>
           <ol>
-            <li>Click the <strong>"+ Regex"</strong> button in the rules panel</li>
+            <li>Click the <strong>"+ Regex"</strong> button in the Rulesets panel (Custom Rules tab)</li>
             <li>Enter a descriptive name for the rule</li>
             <li>Enter your regex pattern (JavaScript syntax)</li>
             <li>Click "Add Rule"</li>
@@ -1162,7 +1162,7 @@ User [EMAIL-3] logged in</div>
 
           <h3>Adding a Plain Text Pattern</h3>
           <ol>
-            <li>Click the <strong>"+ Text"</strong> button in the rules panel</li>
+            <li>Click the <strong>"+ Text"</strong> button in the Rulesets panel (Custom Rules tab)</li>
             <li>Enter a label for the pattern</li>
             <li>Enter the exact text to match</li>
             <li>Click "Add Pattern"</li>
@@ -1227,7 +1227,7 @@ User [EMAIL-3] logged in</div>
           <p>Supported file types: <code>.log</code>, <code>.txt</code>, <code>.json</code>, <code>.xml</code>, <code>.csv</code>, <code>.sql</code>, <code>.zip</code></p>
 
           <h3>Files Tab</h3>
-          <p>When you upload multiple files, a "Files" tab appears in the sidebar alongside "Detection Rules":</p>
+          <p>When you upload multiple files, a "Files" tab appears:</p>
           <ul>
             <li><strong>File list</strong> — Shows all uploaded files with their names, sizes, and status</li>
             <li><strong>Status badges</strong> — Pending, Analyzing, Analyzed, Processing, Done, or Error</li>
@@ -1449,11 +1449,10 @@ User [EMAIL-3] logged in</div>
 
           <h3>Enabling ML Detection</h3>
           <ol>
-            <li>Expand the <strong>Extras</strong> section in the sidebar</li>
-            <li>Check <strong>ML Name Detection</strong></li>
-            <li>Select a model (DistilBERT recommended for balance of speed/accuracy)</li>
-            <li>Click <strong>Download Model</strong> (only required once)</li>
-            <li>Once "Ready" appears, ML will run automatically during Analyze</li>
+            <li>Click the <strong>Settings</strong> button in the toolbar</li>
+            <li>Select a model under <strong>ML Name Detection</strong> (DistilBERT recommended for balance of speed/accuracy)</li>
+            <li>Click <strong>Download Model</strong> (only required once — cached models auto-load on startup)</li>
+            <li>Once "Ready" appears, click <strong>Run ML Analysis</strong> or it will run automatically during Analyze</li>
           </ol>
 
           <h3>Available Models</h3>

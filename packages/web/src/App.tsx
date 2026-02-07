@@ -11,6 +11,7 @@ import { DetectionBanner } from './components/DetectionBanner'
 import { FullscreenViewer } from './components/FullscreenViewer'
 import { BUILTIN_PRESETS } from './data/presets'
 import { Suggestions } from './components/Suggestions'
+import { SettingsPanel } from './components/SettingsPanel'
 import { Stats } from './components/Stats'
 import { Modal } from './components/Modal'
 import { FeatureBanner } from './components/FeatureBanner'
@@ -37,6 +38,9 @@ function App() {
     showSuggestions,
     setShowSuggestions,
     dismissSuggestions,
+    showSettings,
+    setShowSettings,
+    dismissSettings,
     activeMatches
   } = useAppStore()
   const [fullscreenView, setFullscreenView] = useState(false)
@@ -115,10 +119,11 @@ function App() {
   const handleProcess = useCallback(() => {
     if (input.trim() && !isProcessing) {
       if (showSuggestions) dismissSuggestions()
+      if (showSettings) dismissSettings()
       processText(input)
       window.umami?.track('sanitize')
     }
-  }, [input, isProcessing, processText, showSuggestions, dismissSuggestions])
+  }, [input, isProcessing, processText, showSuggestions, dismissSuggestions, showSettings, dismissSettings])
 
   const handleClear = () => {
     setInput('')
@@ -169,6 +174,8 @@ function App() {
       if (e.key === 'Escape') {
         if (showSuggestions) {
           dismissSuggestions()
+        } else if (showSettings) {
+          dismissSettings()
         } else if (isProcessing && canCancel) {
           cancelProcessing()
         }
@@ -181,7 +188,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleProcess, output, isProcessing, canCancel, cancelProcessing, showGoToLine, showSuggestions, dismissSuggestions])
+  }, [handleProcess, output, isProcessing, canCancel, cancelProcessing, showGoToLine, showSuggestions, dismissSuggestions, showSettings, dismissSettings])
 
   const inputLines = useMemo(() => input.split('\n'), [input])
 
@@ -621,6 +628,17 @@ function App() {
                     <span>Clear Preview</span>
                   </button>
                 )}
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
+                  title="Open Settings"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>Settings</span>
+                </button>
                 {analysisReplacements.length === 0 && (
                   <button
                     onClick={() => { analyzeText(input); window.umami?.track('analyze') }}
@@ -801,7 +819,7 @@ function App() {
                 <button
                   onClick={() => setShowSuggestions(true)}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
-                  title="Open Rulesets & Settings"
+                  title="Open Rulesets"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -909,7 +927,7 @@ function App() {
                   colorScheme="indigo"
                   message="Enhance detection with ML — download a model to find names, locations, and organizations."
                   actionLabel="Open Settings"
-                  onAction={() => setShowSuggestions(true, 'settings')}
+                  onAction={() => setShowSettings(true)}
                   onDismiss={() => dismissBanner('ml')}
                 />
               )}
@@ -923,7 +941,7 @@ function App() {
                   colorScheme="amber"
                   message="ML detection is enabled but the model needs to be re-downloaded."
                   actionLabel="Open Settings"
-                  onAction={() => setShowSuggestions(true, 'settings')}
+                  onAction={() => setShowSettings(true)}
                   onDismiss={() => dismissBanner('mlRedownload')}
                 />
               )}
@@ -938,7 +956,7 @@ function App() {
                       <>
                         {' '}
                         <button
-                          onClick={() => setShowSuggestions(true, 'settings')}
+                          onClick={() => setShowSettings(true)}
                           className="underline hover:no-underline font-medium"
                         >
                           Try ML Analysis
@@ -1033,6 +1051,9 @@ function App() {
                 showRulesets={showSuggestions}
                 rulesetsPanel={<Suggestions />}
                 onCloseRulesets={dismissSuggestions}
+                showSettings={showSettings}
+                settingsPanel={<SettingsPanel />}
+                onCloseSettings={dismissSettings}
               />
             </div>
           </div>

@@ -114,8 +114,9 @@ interface AppState {
   activeMatches: RuleSuggestion[]
   unmatchedRules: Array<{ id: string; label: string }>
   showSuggestions: boolean
-  suggestionsInitialTab: 'active' | 'suggestions' | 'context' | 'custom' | 'settings' | null
-  lastSuggestionsTab: 'active' | 'suggestions' | 'context' | 'custom' | 'settings'
+  suggestionsInitialTab: 'active' | 'suggestions' | 'context' | 'custom' | null
+  lastSuggestionsTab: 'active' | 'suggestions' | 'context' | 'custom'
+  showSettings: boolean
   analysisLogs: string[]
   contextMatches: ContextMatch[]
   terminalStyle: boolean
@@ -156,7 +157,9 @@ interface AppState {
   analyzeText: (text: string) => Promise<void>
   clearAnalysis: () => void
   dismissSuggestions: () => void
-  setShowSuggestions: (show: boolean, initialTab?: 'active' | 'suggestions' | 'context' | 'custom' | 'settings') => void
+  setShowSuggestions: (show: boolean, initialTab?: 'active' | 'suggestions' | 'context' | 'custom') => void
+  dismissSettings: () => void
+  setShowSettings: (show: boolean) => void
   enableSuggestedRule: (id: string) => void
   disableActiveMatch: (id: string) => void
   enableAllSuggested: () => void
@@ -565,6 +568,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   showSuggestions: false,
   suggestionsInitialTab: null,
   lastSuggestionsTab: 'active',
+  showSettings: false,
   analysisLogs: [],
   contextMatches: [],
   terminalStyle: loadTerminalStyleFromStorage(),
@@ -1588,7 +1592,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearAnalysis: () => set({ analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, suggestions: [], activeMatches: [], unmatchedRules: [], showSuggestions: false, contextMatches: [] }),
 
   dismissSuggestions: () => set({ showSuggestions: false, suggestionsInitialTab: null }),
-  setShowSuggestions: (show, initialTab) => set({ showSuggestions: show, suggestionsInitialTab: initialTab ?? null }),
+  setShowSuggestions: (show, initialTab) => set({ showSuggestions: show, showSettings: false, suggestionsInitialTab: initialTab ?? null }),
+  dismissSettings: () => set({ showSettings: false }),
+  setShowSettings: (show) => set({ showSettings: show, showSuggestions: false }),
 
 
   enableSuggestedRule: (id) => {

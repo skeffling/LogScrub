@@ -399,7 +399,7 @@ pub fn generate_realistic(
         }
 
         // National IDs - preserve format
-        "uk_nhs" | "uk_nino" | "uk_sort_code" | "uk_bank_account" | "us_itin" | "au_tfn" | "in_pan" | "sg_nric" | "es_nif" | "es_nie" => {
+        "uk_nhs" | "uk_nino" | "uk_sort_code" | "uk_bank_account" | "us_itin" | "au_tfn" | "in_pan" | "sg_nric" | "es_nif" | "es_nie" | "ca_sin" | "vin" => {
             let mut rng = get_seeded_rng("national_id", original);
             preserve_alphanum_format(original, &mut rng)
         }

@@ -50,6 +50,8 @@ const TYPE_LABELS: Record<string, string> = {
   sendmail_from: 'Sendmail From',
   sendmail_relay: 'Sendmail Relay',
   sendmail_msgid: 'Sendmail MsgID',
+  ca_sin: 'CA SIN',
+  vin: 'VIN',
 }
 
 // Color palette for the chart - grouped by category
@@ -109,6 +111,9 @@ const TYPE_COLORS: Record<string, string> = {
   sendmail_from: '#9333ea',
   sendmail_relay: '#a855f7',
   sendmail_msgid: '#d8b4fe',
+  // Canadian / Vehicle
+  ca_sin: '#c084fc',
+  vin: '#0ea5e9',
 }
 
 const getTypeColor = (type: string): string => {
@@ -121,7 +126,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Network': ['ipv4', 'ipv6', 'mac_address', 'hostname', 'url', 'url_params'],
   'Identity (US)': ['ssn', 'us_itin', 'passport', 'drivers_license'],
   'Identity (UK)': ['uk_nhs', 'uk_nino'],
-  'Identity (Intl)': ['au_tfn', 'in_pan', 'sg_nric'],
+  'Identity (Intl)': ['au_tfn', 'in_pan', 'sg_nric', 'ca_sin'],
   'Financial': ['credit_card', 'iban', 'btc_address', 'eth_address', 'money'],
   'Tokens & Keys': ['jwt', 'bearer_token', 'aws_access_key', 'aws_secret_key', 'stripe_key', 'gcp_api_key', 'github_token', 'slack_token', 'openai_key', 'anthropic_key', 'xai_key', 'cerebras_key'],
   'Secrets': ['generic_secret', 'high_entropy_secret', 'private_key', 'basic_auth', 'url_credentials', 'session_id'],
@@ -133,7 +138,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Dovecot': ['dovecot_user', 'dovecot_rip', 'dovecot_lip'],
   'Sendmail': ['sendmail_from', 'sendmail_relay', 'sendmail_msgid'],
   'Hashes': ['md5_hash', 'sha1_hash', 'sha256_hash', 'docker_container_id'],
-  'Other': ['uuid', 'email_message_id', 'file_path_unix', 'file_path_windows'],
+  'Other': ['uuid', 'email_message_id', 'file_path_unix', 'file_path_windows', 'vin'],
 }
 
 // Category colors

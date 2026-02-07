@@ -281,6 +281,84 @@ pub fn sg_nric_check(nric: &str) -> bool {
     }
 }
 
+/// Canadian Social Insurance Number validation using Luhn algorithm
+/// Format: XXX-XXX-XXX (9 digits)
+pub fn ca_sin_check(sin: &str) -> bool {
+    let digits: Vec<u32> = sin
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .filter_map(|c| c.to_digit(10))
+        .collect();
+
+    if digits.len() != 9 {
+        return false;
+    }
+
+    // Reject all zeros
+    if digits.iter().all(|&d| d == 0) {
+        return false;
+    }
+
+    // Luhn algorithm for 9 digits
+    let mut sum = 0;
+    let mut double = false;
+
+    for digit in digits.iter().rev() {
+        let mut d = *digit;
+        if double {
+            d *= 2;
+            if d > 9 {
+                d -= 9;
+            }
+        }
+        sum += d;
+        double = !double;
+    }
+
+    sum % 10 == 0
+}
+
+/// Vehicle Identification Number (VIN) validation using check digit
+/// Format: 17 alphanumeric characters (no I, O, Q)
+pub fn vin_check(vin: &str) -> bool {
+    let upper = vin.to_uppercase();
+    let chars: Vec<char> = upper.chars().collect();
+
+    if chars.len() != 17 {
+        return false;
+    }
+
+    // Transliteration map
+    let transliterate = |c: char| -> Option<u32> {
+        match c {
+            'A' => Some(1), 'B' => Some(2), 'C' => Some(3), 'D' => Some(4),
+            'E' => Some(5), 'F' => Some(6), 'G' => Some(7), 'H' => Some(8),
+            'J' => Some(1), 'K' => Some(2), 'L' => Some(3), 'M' => Some(4),
+            'N' => Some(5), 'P' => Some(7), 'R' => Some(9),
+            'S' => Some(2), 'T' => Some(3), 'U' => Some(4), 'V' => Some(5),
+            'W' => Some(6), 'X' => Some(7), 'Y' => Some(8),
+            '0'..='9' => c.to_digit(10),
+            _ => None,
+        }
+    };
+
+    let weights: [u32; 17] = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+
+    let mut sum: u32 = 0;
+    for (i, &c) in chars.iter().enumerate() {
+        if let Some(val) = transliterate(c) {
+            sum += val * weights[i];
+        } else {
+            return false;
+        }
+    }
+
+    let remainder = sum % 11;
+    let expected = if remainder == 10 { 'X' } else { char::from_digit(remainder, 10).unwrap() };
+
+    chars[8] == expected
+}
+
 /// Spanish NIF (DNI) validation using mod-23 checksum
 /// Format: 8 digits + 1 check letter
 pub fn es_nif_check(nif: &str) -> bool {

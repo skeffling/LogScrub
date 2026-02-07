@@ -34,7 +34,7 @@ fn get_pattern_priority(id: &str) -> u8 {
         "credit_card" | "iban" => 100,
 
         // Very high: validated national IDs
-        "ssn" | "uk_nhs" | "uk_nino" | "au_tfn" | "sg_nric" | "es_nif" | "es_nie" | "us_itin" | "in_pan" => 90,
+        "ssn" | "uk_nhs" | "uk_nino" | "au_tfn" | "sg_nric" | "es_nif" | "es_nie" | "us_itin" | "in_pan" | "ca_sin" => 90,
 
         // High: network identifiers
         "ipv4" | "ipv6" | "mac_address" | "btc_address" | "eth_address" => 80,
@@ -45,7 +45,7 @@ fn get_pattern_priority(id: &str) -> u8 {
         // Average: contact info and location
         "phone_us" | "phone_uk" | "phone_intl" | "hostname" | "postcode_uk" | "postcode_us"
         | "gps_coordinates" | "passport" | "drivers_license" | "money"
-        | "uk_sort_code" | "uk_bank_account" => 60,
+        | "uk_sort_code" | "uk_bank_account" | "vin" => 60,
 
         // Below average: API keys and secrets
         "aws_access_key" | "aws_secret_key" | "stripe_key" | "gcp_api_key" | "github_token"
@@ -305,6 +305,15 @@ static IN_PAN_REGEX: Lazy<Regex> =
 // Singapore Patterns
 static SG_NRIC_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\b[STFGM][0-9]{7}[A-Z]\b").unwrap());
+
+// Canada Patterns
+// SIN: 9 digits with optional dashes/spaces
+static CA_SIN_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[0-9]{3}[- ]?[0-9]{3}[- ]?[0-9]{3}\b").unwrap());
+
+// Vehicle Identification Number: 17 alphanumeric (no I, O, Q)
+static VIN_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b[A-HJ-NPR-Z0-9]{17}\b").unwrap());
 
 // Spain Patterns
 // NIF/DNI: 8 digits + check letter
@@ -727,6 +736,16 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
             id: "sg_nric",
             regex: &SG_NRIC_REGEX,
             validator: Some(validators::sg_nric_check),
+        },
+        PatternDef {
+            id: "ca_sin",
+            regex: &CA_SIN_REGEX,
+            validator: Some(validators::ca_sin_check),
+        },
+        PatternDef {
+            id: "vin",
+            regex: &VIN_REGEX,
+            validator: Some(validators::vin_check),
         },
         PatternDef {
             id: "es_nif",

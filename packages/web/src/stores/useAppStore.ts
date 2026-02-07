@@ -256,6 +256,8 @@ const DEFAULT_RULES: Record<string, Rule> = {
   au_tfn: { label: 'AU Tax File Number', enabled: false, strategy: 'label' },
   in_pan: { label: 'India PAN', enabled: false, strategy: 'label' },
   sg_nric: { label: 'Singapore NRIC', enabled: false, strategy: 'label' },
+  ca_sin: { label: 'Canadian SIN', enabled: false, strategy: 'label' },
+  vin: { label: 'VIN', enabled: false, strategy: 'label' },
   credit_card: { label: 'Credit Cards', enabled: true, strategy: 'redact' },
   iban: { label: 'IBAN', enabled: true, strategy: 'label' },
   uuid: { label: 'UUIDs', enabled: true, strategy: 'label' },

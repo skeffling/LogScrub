@@ -19,6 +19,8 @@ export interface NERModel {
   modelType?: 'ner' | 'pii'
   /** URL to the model's Hugging Face page */
   url?: string
+  /** Subfolder where the ONNX file lives (default: 'onnx'). Use '.' for root. */
+  onnxSubfolder?: string
 }
 
 export const AVAILABLE_MODELS: NERModel[] = [
@@ -81,7 +83,8 @@ export const AVAILABLE_MODELS: NERModel[] = [
     accuracy: 'high',
     speed: 'fast',
     modelType: 'pii',
-    url: 'https://huggingface.co/joneauxedgar/pasteproof-pii-detector-onnx'
+    url: 'https://huggingface.co/joneauxedgar/pasteproof-pii-detector-onnx',
+    onnxSubfolder: '.'
   }
   // Note: Only models with ONNX files work with Transformers.js (browser).
   // Models in the Xenova/ namespace are pre-converted for browser use.

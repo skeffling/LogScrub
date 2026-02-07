@@ -64,7 +64,32 @@ const PII_ENTITY_MAP: Record<string, NEREntity['entityGroup']> = {
   time: 'TEMPORAL',
 
   // Network -> NETWORK
-  ip: 'NETWORK'
+  ip: 'NETWORK',
+
+  // PasteProof PII Detector (joneauxedgar/pasteproof-pii-detector-onnx)
+  first_name: 'PER',
+  last_name: 'PER',
+  name: 'PER',
+  dob: 'PER',
+  hipaa_dob: 'PER',
+  phone: 'CONTACT',
+  ssn: 'ID',
+  driver_license: 'ID',
+  gdpr_nin: 'ID',
+  gdpr_passport: 'ID',
+  hipaa_mrn: 'ID',
+  zipcode: 'LOC',
+  credit_card: 'FINANCIAL',
+  gdpr_iban: 'FINANCIAL',
+  hipaa_account: 'FINANCIAL',
+  pci_expiry: 'FINANCIAL',
+  pci_pan: 'FINANCIAL',
+  pci_track: 'FINANCIAL',
+  api_key: 'CREDENTIAL',
+  aws_key: 'CREDENTIAL',
+  password: 'CREDENTIAL',
+  private_key: 'CREDENTIAL',
+  ip_address: 'NETWORK'
 }
 
 export interface NERResult {
@@ -218,7 +243,8 @@ export async function loadNERPipeline(modelId: string = DEFAULT_MODEL_ID): Promi
 
     // Create pipeline with progress tracking
     console.log('[ML NER] Creating pipeline...')
-    pipeline = await createPipeline('token-classification', modelId, {
+    const modelConfig = AVAILABLE_MODELS.find(m => m.id === modelId)
+    const pipelineOptions: Record<string, unknown> = {
       device,
       progress_callback: (progress: { status: string; progress?: number; file?: string }) => {
         if (progress.status === 'progress' && progress.progress !== undefined) {
@@ -229,7 +255,11 @@ export async function loadNERPipeline(modelId: string = DEFAULT_MODEL_ID): Promi
           console.log('[ML NER] Downloading:', progress.file, progress.progress?.toFixed(1) + '%')
         }
       }
-    }) as unknown as NERPipeline
+    }
+    if (modelConfig?.onnxSubfolder) {
+      pipelineOptions.subfolder = modelConfig.onnxSubfolder
+    }
+    pipeline = await createPipeline('token-classification', modelId, pipelineOptions) as unknown as NERPipeline
     currentDevice = device
 
     console.log('[ML NER] Model loaded successfully')

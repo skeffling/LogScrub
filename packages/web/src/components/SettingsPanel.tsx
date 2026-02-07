@@ -56,26 +56,12 @@ export function SettingsPanel() {
     }
   }, [showSettings, loadCacheStatus])
 
-  // Auto-load ML model when panel opens (if cached, loads instantly)
-  useEffect(() => {
-    if (showSettings && mlLoadingState === 'idle') {
-      loadMlModel()
-    }
-  }, [showSettings, mlLoadingState, loadMlModel])
-
   // Refresh cache status when a model finishes loading
   useEffect(() => {
     if (mlLoadingState === 'ready') {
       loadCacheStatus()
     }
   }, [mlLoadingState, loadCacheStatus])
-
-  // Auto-enable ML detection when model first becomes ready
-  useEffect(() => {
-    if (mlLoadingState === 'ready' && !useAppStore.getState().mlNameDetectionEnabled) {
-      setMlNameDetection(true)
-    }
-  }, [mlLoadingState, setMlNameDetection])
 
   if (!showSettings) return null
 

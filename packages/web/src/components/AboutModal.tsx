@@ -1,12 +1,10 @@
 import { Modal } from './Modal'
-import { useAppStore } from '../stores/useAppStore'
 
 interface AboutModalProps {
   onClose: () => void
 }
 
 export function AboutModal({ onClose }: AboutModalProps) {
-  const { terminalStyle, setTerminalStyle, themeMode, setThemeMode } = useAppStore()
 
   return (
     <Modal onClose={onClose} maxWidth="max-w-3xl">
@@ -158,72 +156,6 @@ export function AboutModal({ onClose }: AboutModalProps) {
           </p>
         </div>
         
-        <div>
-          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Display Options</h3>
-          <div className="space-y-3">
-            <div>
-              <span className="text-sm font-medium text-gray-900 dark:text-white block mb-2">Theme</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setThemeMode('light')}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border ${
-                    themeMode === 'light'
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  Light
-                </button>
-                <button
-                  onClick={() => setThemeMode('dark')}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border ${
-                    themeMode === 'dark'
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                  </svg>
-                  Dark
-                </button>
-                <button
-                  onClick={() => setThemeMode('auto')}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border ${
-                    themeMode === 'auto'
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  Auto
-                </button>
-              </div>
-            </div>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={terminalStyle}
-                onChange={(e) => setTerminalStyle(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">Terminal Style</span>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  Dark grey background with light text for Original and Scrubbed panes
-                </p>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <hr className="dark:border-gray-700" />
-
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
           <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">Important Disclaimer</h3>
           <p className="text-sm text-amber-700 dark:text-amber-300">

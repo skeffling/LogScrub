@@ -22,7 +22,6 @@ interface EditorProps {
   syncScroll?: boolean
   lineFilter?: LineFilter
   onLineFilterChange?: (value: LineFilter) => void
-  onClearAll?: () => void
   gpxTransposedContinent?: string | null
   syntaxValidFormat?: ValidatedFormat
   onMetadataStrippingChange?: (willStrip: boolean) => void
@@ -595,7 +594,7 @@ function dismissDonationForever() {
   } catch {}
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, onClearAll, gpxTransposedContinent, syntaxValidFormat, onMetadataStrippingChange, showRulesets, rulesetsPanel, onCloseRulesets, showSettings, settingsPanel, onCloseSettings }, ref) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, gpxTransposedContinent, syntaxValidFormat, onMetadataStrippingChange, showRulesets, rulesetsPanel, onCloseRulesets, showSettings, settingsPanel, onCloseSettings }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType, files, selectedFileId, isMultiFileMode, selectFile, addFilesFromZip } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showAIExplain, setShowAIExplain] = useState(false)
@@ -2213,22 +2212,6 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
                 {showDocumentPreview ? 'Hide Preview' : 'Show Preview'}
               </button>
             )}
-            {input && (
-              <button
-                onClick={() => {
-                  onInputChange('')
-                  setFileName(null)
-                  setSelectedLine(null)
-                  setDocumentFile(null)
-                  setDocumentType(null)
-                  setScrubbedDocFile(null)
-                }}
-                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                title="Clear the input text"
-              >
-                Clear
-              </button>
-            )}
           </div>
         </div>
         
@@ -2440,11 +2423,11 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
           <div className="flex gap-2 pr-1">
           {!showRulesets && !showSettings && (
             <>
-            {onClearAll && (input || output) && (
+            {(input || output) && (
               <button
-                onClick={onClearAll}
+                onClick={() => window.location.reload()}
                 className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                title="Clear all input and output text"
+                title="Reload the page to start fresh"
               >
                 Clear All
               </button>

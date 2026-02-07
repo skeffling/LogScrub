@@ -29,7 +29,7 @@ function App() {
     analyzeText, isAnalyzing, analysisStage, analysisReplacements, analysisCompleted, clearAnalysis, analysisLogs,
     replacements, syntaxHighlight, setSyntaxHighlight,
     timeShift, setTimeShift,
-    setStats, setMatches, setReplacements,
+    setReplacements,
     documentType, lineCountWarning, syntaxError, syntaxValidFormat,
     rules, toggleRule, setRuleStrategy, customRules, addCustomRule,
     // ML state
@@ -124,17 +124,6 @@ function App() {
       window.umami?.track('sanitize')
     }
   }, [input, isProcessing, processText, showSuggestions, dismissSuggestions, showSettings, dismissSettings])
-
-  const handleClear = () => {
-    setInput('')
-    setOutput('')
-    setFileName(null)
-    setStats({})
-    setMatches({})
-    setReplacements([])
-    clearAnalysis()
-    setGpxTransposedContinent(null)
-  }
 
   const handleDownload = () => {
     if (!output) return
@@ -1044,7 +1033,6 @@ function App() {
                 syncScroll={syncScroll}
                 lineFilter={lineFilter}
                 onLineFilterChange={setLineFilter}
-                onClearAll={handleClear}
                 gpxTransposedContinent={gpxTransposedContinent}
                 syntaxValidFormat={syntaxValidFormat}
                 onMetadataStrippingChange={setWillStripMetadata}

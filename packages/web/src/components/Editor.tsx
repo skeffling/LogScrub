@@ -187,6 +187,17 @@ interface ReplacementLookup {
   original: string
   type: string
   lines: number[]
+  count: number
+}
+
+interface RevealPopoverInfo {
+  pattern: string
+  original: string
+  type: string
+  count: number
+  lines: number[]
+  x: number
+  y: number
 }
 
 function buildReplacementLookup(replacements: ReplacementInfo[], inputText: string): Map<string, ReplacementLookup> {
@@ -214,6 +225,7 @@ function buildReplacementLookup(replacements: ReplacementInfo[], inputText: stri
     const existing = lookup.get(rep.replacement)
     const lineNum = rep.start >= 0 ? findLineNumber(rep.start) : -1
     if (existing) {
+      existing.count++
       if (lineNum > 0 && !existing.lines.includes(lineNum)) {
         existing.lines.push(lineNum)
       }
@@ -221,14 +233,15 @@ function buildReplacementLookup(replacements: ReplacementInfo[], inputText: stri
       lookup.set(rep.replacement, {
         original: rep.original,
         type: rep.pii_type,
-        lines: lineNum > 0 ? [lineNum] : []
+        lines: lineNum > 0 ? [lineNum] : [],
+        count: 1
       })
     }
   }
   return lookup
 }
 
-function highlightOutputLine(line: string, replacements: ReplacementInfo[], lookup?: Map<string, ReplacementLookup>, syntaxHighlight = false, piiTypeFilter?: string | null): React.ReactNode {
+function highlightOutputLine(line: string, replacements: ReplacementInfo[], lookup?: Map<string, ReplacementLookup>, syntaxHighlight = false, piiTypeFilter?: string | null, onReplacementClick?: (info: RevealPopoverInfo) => void): React.ReactNode {
   const patterns = replacements.map(r => ({
     pattern: r.replacement,
     type: r.pii_type
@@ -313,9 +326,21 @@ function highlightOutputLine(line: string, replacements: ReplacementInfo[], look
           key={`hl-${keyIndex++}`}
           className={isDimmed
             ? "bg-gray-200 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 rounded px-0.5"
-            : "bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded px-0.5 cursor-help"
+            : "bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded px-0.5 cursor-pointer"
           }
-          title={tooltipLines.join('\n')}
+          onClick={onReplacementClick && info ? (e) => {
+            e.stopPropagation()
+            onReplacementClick({
+              pattern: match.pattern,
+              original: info.original,
+              type: match.type,
+              count: info.count,
+              lines: info.lines,
+              x: e.clientX,
+              y: e.clientY
+            })
+          } : undefined}
+          title={!onReplacementClick ? tooltipLines.join('\n') : undefined}
         >
           {line.slice(match.start, match.end)}
         </span>
@@ -357,13 +382,25 @@ function highlightOutputLine(line: string, replacements: ReplacementInfo[], look
       const isDimmedSyn = piiTypeFilter && matchAtStart.type !== piiTypeFilter
       const bgClass = isDimmedSyn
         ? 'bg-gray-200 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 rounded px-0.5'
-        : 'bg-green-200 dark:bg-green-900/50 rounded px-0.5 cursor-help'
+        : 'bg-green-200 dark:bg-green-900/50 rounded px-0.5 cursor-pointer'
       const combinedClass = [seg.className, bgClass].filter(Boolean).join(' ')
       parts.push(
         <span
           key={keyIndex++}
           className={combinedClass}
-          title={tooltipLines.join('\n')}
+          onClick={onReplacementClick && info ? (e) => {
+            e.stopPropagation()
+            onReplacementClick({
+              pattern: matchAtStart.pattern,
+              original: info.original,
+              type: matchAtStart.type,
+              count: info.count,
+              lines: info.lines,
+              x: e.clientX,
+              y: e.clientY
+            })
+          } : undefined}
+          title={!onReplacementClick ? tooltipLines.join('\n') : undefined}
         >
           {seg.text}
         </span>
@@ -399,13 +436,25 @@ function highlightOutputLine(line: string, replacements: ReplacementInfo[], look
           const isDimmedPartial = piiTypeFilter && match.type !== piiTypeFilter
           const bgClass = isDimmedPartial
             ? 'bg-gray-200 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 rounded px-0.5'
-            : 'bg-green-200 dark:bg-green-900/50 rounded px-0.5 cursor-help'
+            : 'bg-green-200 dark:bg-green-900/50 rounded px-0.5 cursor-pointer'
           const combinedClass = [seg.className, bgClass].filter(Boolean).join(' ')
           parts.push(
             <span
               key={keyIndex++}
               className={combinedClass}
-              title={tooltipLines.join('\n')}
+              onClick={onReplacementClick && info ? (e) => {
+                e.stopPropagation()
+                onReplacementClick({
+                  pattern: match.pattern,
+                  original: info.original,
+                  type: match.type,
+                  count: info.count,
+                  lines: info.lines,
+                  x: e.clientX,
+                  y: e.clientY
+                })
+              } : undefined}
+              title={!onReplacementClick ? tooltipLines.join('\n') : undefined}
             >
               {text}
             </span>
@@ -453,6 +502,7 @@ interface VirtualizedListProps {
   paneText?: string
   syntaxHighlight?: boolean
   piiTypeFilter?: string | null
+  onReplacementClick?: (info: RevealPopoverInfo) => void
 }
 
 function VirtualizedList({
@@ -463,7 +513,8 @@ function VirtualizedList({
   lineNumText = 'text-gray-600 dark:text-gray-400',
   paneText = 'text-gray-900 dark:text-gray-100',
   syntaxHighlight = false,
-  piiTypeFilter
+  piiTypeFilter,
+  onReplacementClick
 }: VirtualizedListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
   const [hoveredLineIndex, setHoveredLineIndex] = useState<number | null>(null)
@@ -566,7 +617,7 @@ function VirtualizedList({
                 content = highlightLine(line, lineOffsets[lineNum] ?? 0, replacements, 'original', syntaxHighlight)
               } else if (type === 'output') {
                 content = showDiff && replacements.length > 0
-                  ? highlightOutputLine(line, replacements, replacementLookup, syntaxHighlight, piiTypeFilter)
+                  ? highlightOutputLine(line, replacements, replacementLookup, syntaxHighlight, piiTypeFilter, onReplacementClick)
                   : highlightLine(line, 0, [], 'output', syntaxHighlight)
               } else {
                 content = showDiff && replacements.length > 0
@@ -685,6 +736,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const [copiedLineIndex, setCopiedLineIndex] = useState<number | null>(null)
   const [showDiff, setShowDiff] = useState(showDiffProp)
   const [piiTypeFilter, setPiiTypeFilter] = useState<string | null>(null)
+  const [revealPopover, setRevealPopover] = useState<RevealPopoverInfo | null>(null)
   const lineFilter = lineFilterProp
   const setLineFilter = onLineFilterChange || (() => {})
   const scrollingRef = useRef<'input' | 'output' | null>(null)
@@ -935,7 +987,27 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   // Reset filter when output changes
   useEffect(() => {
     setPiiTypeFilter(null)
+    setRevealPopover(null)
   }, [output])
+
+  // Click-outside and Escape to dismiss reveal popover
+  useEffect(() => {
+    if (!revealPopover) return
+    const handleClickOutside = () => setRevealPopover(null)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setRevealPopover(null)
+    }
+    // Delay adding click listener to avoid immediate dismissal
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 0)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('click', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [revealPopover])
 
   const { filteredInputLines, filteredOutputLines, filteredLineNumbers } = useMemo(() => {
     if (lineFilter === 'all' || changedLines.size === 0) {
@@ -1967,6 +2039,13 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
     setSelectedLine(lineNum === selectedLine ? null : lineNum)
   }
 
+  const handleReplacementClick = useCallback((info: RevealPopoverInfo) => {
+    // Clamp position to viewport bounds
+    const x = Math.min(info.x, window.innerWidth - 320)
+    const y = Math.min(info.y + 8, window.innerHeight - 200)
+    setRevealPopover({ ...info, x, y })
+  }, [])
+
   const handleCopyLine = useCallback(async (lines: string[], index: number, e: React.MouseEvent) => {
     e.stopPropagation()
     const lineContent = lines[index]
@@ -2093,7 +2172,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
                 ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original', syntaxHighlight)
                 : type === 'output'
                   ? (showDiff && reps.length > 0
-                      ? highlightOutputLine(line, reps, replacementLookup, syntaxHighlight, piiTypeFilter)
+                      ? highlightOutputLine(line, reps, replacementLookup, syntaxHighlight, piiTypeFilter, handleReplacementClick)
                       : highlightLine(line, 0, [], 'output', syntaxHighlight))
                   : (showDiff && reps.length > 0
                       ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original', syntaxHighlight)
@@ -2633,6 +2712,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
               paneText={paneText}
               syntaxHighlight={syntaxHighlight}
               piiTypeFilter={piiTypeFilter}
+              onReplacementClick={handleReplacementClick}
             />
           </div>
         ) : (
@@ -2646,6 +2726,41 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
         )}
       </div>
       </div>
+
+      {revealPopover && (
+        <div
+          className="fixed z-50 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg shadow-xl p-3 max-w-xs"
+          style={{ top: revealPopover.y, left: revealPopover.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Original</div>
+          <div className="font-mono text-sm break-all flex items-center gap-1 text-gray-900 dark:text-white">
+            <span className="flex-1">{revealPopover.original}</span>
+            <button
+              onClick={async () => {
+                await navigator.clipboard.writeText(revealPopover.original)
+              }}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
+              title="Copy original value"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            Type: <span className="text-gray-700 dark:text-gray-300">{TYPE_LABELS[revealPopover.type] || revealPopover.type}</span>
+            {' · '}{revealPopover.count} occurrence{revealPopover.count !== 1 ? 's' : ''}
+          </div>
+          {revealPopover.lines.length > 0 && (
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              Lines: {revealPopover.lines.length > 5
+                ? `${revealPopover.lines.slice(0, 5).join(', ')}... (${revealPopover.lines.length} total)`
+                : revealPopover.lines.join(', ')}
+            </div>
+          )}
+        </div>
+      )}
 
       {showDonationModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowDonationModal(false)}>

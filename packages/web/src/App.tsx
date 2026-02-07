@@ -508,9 +508,9 @@ function App() {
                 <div className="hidden md:flex items-center gap-1">
                   <ToggleButton
                     active={showDiffHighlight}
-                    disabled={!input.trim()}
-                    onClick={() => input.trim() && setShowDiffHighlight(!showDiffHighlight)}
-                    title={!input.trim() ? 'Load a log file first' : 'Toggle diff highlighting'}
+                    disabled={!output}
+                    onClick={() => output && setShowDiffHighlight(!showDiffHighlight)}
+                    title={!output ? 'Run Scrub first' : 'Toggle diff highlighting'}
                   >
                     Diff
                   </ToggleButton>
@@ -593,9 +593,9 @@ function App() {
                 <div className="hidden md:flex items-center gap-1">
                   <ToggleButton
                     active={syncScroll}
-                    disabled={!input.trim() || lineFilter !== 'all'}
-                    onClick={() => input.trim() && lineFilter === 'all' && setSyncScroll(!syncScroll)}
-                    title={!input.trim() ? 'Load a log file first' : lineFilter !== 'all' ? 'Disabled while filtering lines' : 'Sync scrolling between original and sanitized panes'}
+                    disabled={!output || lineFilter !== 'all'}
+                    onClick={() => output && lineFilter === 'all' && setSyncScroll(!syncScroll)}
+                    title={!output ? 'Run Scrub first' : lineFilter !== 'all' ? 'Disabled while filtering lines' : 'Sync scrolling between original and sanitized panes'}
                   >
                     Sync Scroll
                   </ToggleButton>
@@ -603,14 +603,14 @@ function App() {
                   <div className="h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1" aria-hidden="true" />
 
                   <button
-                    onClick={() => input.trim() && setShowStats(true)}
-                    disabled={!input.trim()}
+                    onClick={() => output && setShowStats(true)}
+                    disabled={!output}
                     className={`flex items-center gap-1 text-sm px-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                      !input.trim()
+                      !output
                         ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                         : 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}
-                    title={!input.trim() ? 'Load a log file first' : 'View detection statistics and download audit reports'}
+                    title={!output ? 'Run Scrub first' : 'View detection statistics and download audit reports'}
                   >
                     <Icon name="chart-bar" size="md" />
                     <span>Stats &amp; Map</span>

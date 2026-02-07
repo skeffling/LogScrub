@@ -478,6 +478,17 @@ function App() {
           <div className="flex flex-col min-h-0 lg:overflow-hidden flex-1">
             <div className="flex flex-wrap justify-between items-center gap-2 mb-3 flex-shrink-0" role="toolbar" aria-label="Editor controls">
               <div className="flex items-center gap-1 sm:gap-2">
+                {/* Reset */}
+                {(input || output) && (
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    title="Reload the page to start fresh"
+                  >
+                    Reset
+                  </button>
+                )}
+
                 {/* View Controls */}
                 <button
                   onClick={() => setConstrainWidth(!constrainWidth)}

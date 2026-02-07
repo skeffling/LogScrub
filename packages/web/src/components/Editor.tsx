@@ -737,6 +737,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const [showDiff, setShowDiff] = useState(showDiffProp)
   const [piiTypeFilter, setPiiTypeFilter] = useState<string | null>(null)
   const [revealPopover, setRevealPopover] = useState<RevealPopoverInfo | null>(null)
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false)
   const lineFilter = lineFilterProp
   const setLineFilter = onLineFilterChange || (() => {})
   const scrollingRef = useRef<'input' | 'output' | null>(null)
@@ -2526,15 +2527,6 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
           <div className="flex gap-2 pr-1">
           {!showRulesets && !showSettings && (
             <>
-            {(input || output) && (
-              <button
-                onClick={() => window.location.reload()}
-                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                title="Reload the page to start fresh"
-              >
-                Clear All
-              </button>
-            )}
             {output && piiTypeCounts.length > 0 && (
               <select
                 value={piiTypeFilter || ''}
@@ -2592,46 +2584,51 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
                     </svg>
                     Copy
                   </button>
-                  <button
-                    onClick={handleDownload}
-                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-                    title="Download as plain text"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    txt
-                  </button>
-                  <button
-                    onClick={handleDownloadZip}
-                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-                    title="Download as compressed zip"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    zip
-                  </button>
-                  <button
-                    onClick={handleDownloadGzip}
-                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-                    title="Download as gzip compressed"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    gz
-                  </button>
-                  <button
-                    onClick={handleDownloadRtf}
-                    className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
-                    title="Download as RTF with highlighted replacements"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    rtf
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {showDownloadMenu && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowDownloadMenu(false)} />
+                        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg shadow-lg z-50 py-1 min-w-[120px]">
+                          <button
+                            onClick={() => { handleDownload(); setShowDownloadMenu(false) }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            Plain text (.txt)
+                          </button>
+                          <button
+                            onClick={() => { handleDownloadZip(); setShowDownloadMenu(false) }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            Compressed (.zip)
+                          </button>
+                          <button
+                            onClick={() => { handleDownloadGzip(); setShowDownloadMenu(false) }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            Gzip (.gz)
+                          </button>
+                          <button
+                            onClick={() => { handleDownloadRtf(); setShowDownloadMenu(false) }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-green-700 dark:text-green-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            Rich text (.rtf)
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </>
               )}
               <span className="text-gray-300 dark:text-gray-600">|</span>

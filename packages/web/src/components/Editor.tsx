@@ -10,6 +10,7 @@ import { DocumentPreview } from './DocumentPreview'
 import { MetadataDialog, DocumentMetadata } from './MetadataDialog'
 import { PcapPreview } from './PcapPreview'
 import { extractOfficeMetadata, extractOpenDocumentMetadata, extractPdfMetadata, hasMetadata, generateMinimalCoreXml, generateMinimalAppXml, generateMinimalMetaXml } from '../utils/metadataExtractor'
+import { TYPE_LABELS } from './Stats'
 
 type LineFilter = 'all' | 'changed' | 'unchanged'
 
@@ -227,7 +228,7 @@ function buildReplacementLookup(replacements: ReplacementInfo[], inputText: stri
   return lookup
 }
 
-function highlightOutputLine(line: string, replacements: ReplacementInfo[], lookup?: Map<string, ReplacementLookup>, syntaxHighlight = false): React.ReactNode {
+function highlightOutputLine(line: string, replacements: ReplacementInfo[], lookup?: Map<string, ReplacementLookup>, syntaxHighlight = false, piiTypeFilter?: string | null): React.ReactNode {
   const patterns = replacements.map(r => ({
     pattern: r.replacement,
     type: r.pii_type
@@ -306,10 +307,14 @@ function highlightOutputLine(line: string, replacements: ReplacementInfo[], look
         }
       }
 
+      const isDimmed = piiTypeFilter && match.type !== piiTypeFilter
       parts.push(
         <span
           key={`hl-${keyIndex++}`}
-          className="bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded px-0.5 cursor-help"
+          className={isDimmed
+            ? "bg-gray-200 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 rounded px-0.5"
+            : "bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded px-0.5 cursor-help"
+          }
           title={tooltipLines.join('\n')}
         >
           {line.slice(match.start, match.end)}
@@ -349,7 +354,10 @@ function highlightOutputLine(line: string, replacements: ReplacementInfo[], look
         }
       }
 
-      const bgClass = 'bg-green-200 dark:bg-green-900/50 rounded px-0.5 cursor-help'
+      const isDimmedSyn = piiTypeFilter && matchAtStart.type !== piiTypeFilter
+      const bgClass = isDimmedSyn
+        ? 'bg-gray-200 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 rounded px-0.5'
+        : 'bg-green-200 dark:bg-green-900/50 rounded px-0.5 cursor-help'
       const combinedClass = [seg.className, bgClass].filter(Boolean).join(' ')
       parts.push(
         <span
@@ -388,7 +396,10 @@ function highlightOutputLine(line: string, replacements: ReplacementInfo[], look
             }
           }
 
-          const bgClass = 'bg-green-200 dark:bg-green-900/50 rounded px-0.5 cursor-help'
+          const isDimmedPartial = piiTypeFilter && match.type !== piiTypeFilter
+          const bgClass = isDimmedPartial
+            ? 'bg-gray-200 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 rounded px-0.5'
+            : 'bg-green-200 dark:bg-green-900/50 rounded px-0.5 cursor-help'
           const combinedClass = [seg.className, bgClass].filter(Boolean).join(' ')
           parts.push(
             <span
@@ -441,6 +452,7 @@ interface VirtualizedListProps {
   lineNumText?: string
   paneText?: string
   syntaxHighlight?: boolean
+  piiTypeFilter?: string | null
 }
 
 function VirtualizedList({
@@ -450,7 +462,8 @@ function VirtualizedList({
   lineNumBg = 'bg-gray-100 dark:bg-gray-900',
   lineNumText = 'text-gray-600 dark:text-gray-400',
   paneText = 'text-gray-900 dark:text-gray-100',
-  syntaxHighlight = false
+  syntaxHighlight = false,
+  piiTypeFilter
 }: VirtualizedListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
   const [hoveredLineIndex, setHoveredLineIndex] = useState<number | null>(null)
@@ -553,7 +566,7 @@ function VirtualizedList({
                 content = highlightLine(line, lineOffsets[lineNum] ?? 0, replacements, 'original', syntaxHighlight)
               } else if (type === 'output') {
                 content = showDiff && replacements.length > 0
-                  ? highlightOutputLine(line, replacements, replacementLookup, syntaxHighlight)
+                  ? highlightOutputLine(line, replacements, replacementLookup, syntaxHighlight, piiTypeFilter)
                   : highlightLine(line, 0, [], 'output', syntaxHighlight)
               } else {
                 content = showDiff && replacements.length > 0
@@ -671,6 +684,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const [hoveredLineIndex, setHoveredLineIndex] = useState<number | null>(null)
   const [copiedLineIndex, setCopiedLineIndex] = useState<number | null>(null)
   const [showDiff, setShowDiff] = useState(showDiffProp)
+  const [piiTypeFilter, setPiiTypeFilter] = useState<string | null>(null)
   const lineFilter = lineFilterProp
   const setLineFilter = onLineFilterChange || (() => {})
   const scrollingRef = useRef<'input' | 'output' | null>(null)
@@ -909,6 +923,19 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
     const reps = output ? replacements : analysisReplacements
     return buildReplacementLookup(reps, input)
   }, [replacements, analysisReplacements, input, output])
+
+  // PII type filter: build counts from active replacements
+  const activeReplacementsForFilter = output ? replacements : analysisReplacements
+  const piiTypeCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const r of activeReplacementsForFilter) counts[r.pii_type] = (counts[r.pii_type] || 0) + 1
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])
+  }, [activeReplacementsForFilter])
+
+  // Reset filter when output changes
+  useEffect(() => {
+    setPiiTypeFilter(null)
+  }, [output])
 
   const { filteredInputLines, filteredOutputLines, filteredLineNumbers } = useMemo(() => {
     if (lineFilter === 'all' || changedLines.size === 0) {
@@ -2066,7 +2093,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
                 ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original', syntaxHighlight)
                 : type === 'output'
                   ? (showDiff && reps.length > 0
-                      ? highlightOutputLine(line, reps, replacementLookup, syntaxHighlight)
+                      ? highlightOutputLine(line, reps, replacementLookup, syntaxHighlight, piiTypeFilter)
                       : highlightLine(line, 0, [], 'output', syntaxHighlight))
                   : (showDiff && reps.length > 0
                       ? highlightLine(line, lineOffsets[lineNum] ?? 0, reps, 'original', syntaxHighlight)
@@ -2429,6 +2456,18 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
                 Clear All
               </button>
             )}
+            {output && piiTypeCounts.length > 0 && (
+              <select
+                value={piiTypeFilter || ''}
+                onChange={(e) => setPiiTypeFilter(e.target.value || null)}
+                className="text-xs bg-white dark:bg-gray-700 border dark:border-gray-600 rounded px-1.5 py-0.5 text-gray-700 dark:text-gray-300"
+              >
+                <option value="">All PII types</option>
+                {piiTypeCounts.map(([type, count]) => (
+                  <option key={type} value={type}>{TYPE_LABELS[type] || type} ({count})</option>
+                ))}
+              </select>
+            )}
             {scrubbedDocFile && (
               <button
                 onClick={() => setShowScrubbedPreview(!showScrubbedPreview)}
@@ -2593,6 +2632,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
               lineNumText={lineNumText}
               paneText={paneText}
               syntaxHighlight={syntaxHighlight}
+              piiTypeFilter={piiTypeFilter}
             />
           </div>
         ) : (

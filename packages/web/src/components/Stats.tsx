@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useAppStore, type ReplacementInfo } from '../stores/useAppStore'
 import { Modal } from './Modal'
 
-const TYPE_LABELS: Record<string, string> = {
+export const TYPE_LABELS: Record<string, string> = {
   email: 'Emails',
   ipv4: 'IPv4',
   ipv6: 'IPv6',

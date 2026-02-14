@@ -579,6 +579,36 @@
     footer a {
       color: var(--accent);
     }
+
+    /* Expandable rule details */
+    .rule-details {
+      margin-top: 4px;
+    }
+    .rule-details summary {
+      cursor: pointer;
+      font-size: 0.75rem;
+      color: var(--accent);
+      user-select: none;
+    }
+    .rule-details summary:hover {
+      color: var(--accent-hover);
+    }
+    .rule-details code.regex {
+      display: block;
+      margin-top: 4px;
+      padding: 6px 8px;
+      background: var(--code-bg);
+      border-radius: 4px;
+      font-size: 0.7rem;
+      word-break: break-all;
+      line-height: 1.4;
+    }
+    .rule-details .validation-note {
+      font-size: 0.7rem;
+      color: var(--text-light);
+      margin-top: 4px;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -839,11 +869,73 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>Email</strong></td><td>user@example.com</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Email Message-ID</strong></td><td>&lt;abc123@mail.example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Phone (US)</strong></td><td>(555) 123-4567</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Phone (UK)</strong></td><td>020 7946 0958</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Phone (Intl)</strong></td><td>+44 7911 123456</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>Email</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b</code>
+                    </details>
+                  </td>
+                  <td>user@example.com</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Email Message-ID</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">&lt;[A-Za-z0-9!#$%&amp;'*+/=?^_`.{|}~-]+@[A-Za-z0-9.-]+&gt;</code>
+                    </details>
+                  </td>
+                  <td>&lt;abc123@mail.example.com&gt;</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Phone (US)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b</code>
+                    </details>
+                  </td>
+                  <td>(555) 123-4567</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Phone (UK)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:0[1-9][0-9]{8,9}|0[1-9][0-9]{2,4}[\s-][0-9]{3,4}[\s-]?[0-9]{3,4})\b</code>
+                    </details>
+                  </td>
+                  <td>020 7946 0958</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Phone (Intl)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\+[1-9][0-9]{1,3}[\s-]?[0-9]{6,14}\b</code>
+                    </details>
+                  </td>
+                  <td>+44 7911 123456</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Phone (Intl, No +)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b[1-9][0-9]{9,14}\b</code>
+                      <div class="validation-note">Validated against ~100 E.164 country codes with per-country digit length checks</div>
+                    </details>
+                  </td>
+                  <td>447508804412</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
           </div>
@@ -853,11 +945,62 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>IPv4</strong></td><td>192.168.1.1</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>IPv6</strong></td><td>2001:0db8:85a3::8a2e:0370:7334</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>MAC Address</strong></td><td>00:1A:2B:3C:4D:5E</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Hostname</strong></td><td>api.example.com</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>URL</strong></td><td>https://example.com/path</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>IPv4</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b</code>
+                    </details>
+                  </td>
+                  <td>192.168.1.1</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>IPv6</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\[(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}\]... (full IPv6 pattern with bracketed, bare, link-local, and IPv4-mapped variants)</code>
+                    </details>
+                  </td>
+                  <td>2001:0db8:85a3::8a2e:0370:7334</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>MAC Address</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b(?:[0-9A-F]{2}[:-]){5}[0-9A-F]{2}\b</code>
+                    </details>
+                  </td>
+                  <td>00:1A:2B:3C:4D:5E</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Hostname</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?![a-zA-Z0-9-]+\.(?:txt|log|json|xml|...))\b)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,12}\b</code>
+                      <div class="validation-note">Excludes common file extensions (.txt, .log, .json, .xml, .csv, etc.) to reduce false positives</div>
+                    </details>
+                  </td>
+                  <td>api.example.com</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>URL</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">https?://[^\s&lt;&gt;\[\]{}|\\^`\x00-\x1f\x7f]+</code>
+                    </details>
+                  </td>
+                  <td>https://example.com/path</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
               </table>
             </div>
 
@@ -888,10 +1031,51 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>SSN</strong></td><td>123-45-6789</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>US ITIN</strong></td><td>912-54-1234</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Passport</strong></td><td>AB1234567</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Driver's License</strong></td><td>DL: D1234567</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>SSN</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b[0-9]{3}-[0-9]{2}-[0-9]{4}\b</code>
+                      <div class="validation-note">Validates area/group/serial ranges (no 000, 666, or 900-999 area codes)</div>
+                    </details>
+                  </td>
+                  <td>123-45-6789</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>US ITIN</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b9[0-9]{2}[- ]?(5[0-9]|6[0-5]|7[0-9]|8[0-8]|9[0-24-9])[- ]?[0-9]{4}\b</code>
+                    </details>
+                  </td>
+                  <td>912-54-1234</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Passport</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b(?:passport[:\s#]*)?[A-Z]{1,2}[0-9]{6,9}\b</code>
+                    </details>
+                  </td>
+                  <td>AB1234567</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Driver's License</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b(?:d\.?l\.?|driver'?s?\s*(?:license|lic))[:\s#]*[A-Z0-9]{5,15}\b</code>
+                    </details>
+                  </td>
+                  <td>DL: D1234567</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
           </div>
@@ -901,14 +1085,128 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>UK NHS Number</strong></td><td>450 557 7104</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>UK National Insurance</strong></td><td>AB 12 34 56 C</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>AU Tax File Number</strong></td><td>123 456 789</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>India PAN</strong></td><td>ABCPD1234E</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Singapore NRIC</strong></td><td>S1234567A</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>UK NHS Number</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b([0-9]{3})[- ]?([0-9]{3})[- ]?([0-9]{4})\b</code>
+                      <div class="validation-note">Mod-11 checksum validation</div>
+                    </details>
+                  </td>
+                  <td>450 557 7104</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>UK National Insurance</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b[A-Z]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[0-9]{2}\s?[A-D]\b</code>
+                      <div class="validation-note">Validates prefix letters (excludes D, F, I, Q, U, V in first; D, F, I, O, Q, U, V in second)</div>
+                    </details>
+                  </td>
+                  <td>AB 12 34 56 C</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>AU Tax File Number</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}\b</code>
+                      <div class="validation-note">Weighted checksum validation</div>
+                    </details>
+                  </td>
+                  <td>123 456 789</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>India PAN</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b[A-Z]{3}[ABCFGHLJPT][A-Z][0-9]{4}[A-Z]\b</code>
+                    </details>
+                  </td>
+                  <td>ABCPD1234E</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Singapore NRIC</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b[STFGM][0-9]{7}[A-Z]\b</code>
+                      <div class="validation-note">Mod-11 with letter check table</div>
+                    </details>
+                  </td>
+                  <td>S1234567A</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Spanish NIF/DNI</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b[0-9]{8}[A-Z]\b</code>
+                      <div class="validation-note">Mod-23 checksum validation</div>
+                    </details>
+                  </td>
+                  <td>12345678Z</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Spanish NIE</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b[XYZ][0-9]{7}[A-Z]\b</code>
+                      <div class="validation-note">Mod-23 checksum (X/Y/Z prefix mapped to 0/1/2)</div>
+                    </details>
+                  </td>
+                  <td>X1234567L</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Canadian SIN</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b[0-9]{3}[- ]?[0-9]{3}[- ]?[0-9]{3}\b</code>
+                      <div class="validation-note">Luhn checksum validation</div>
+                    </details>
+                  </td>
+                  <td>123-456-789</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>VIN</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b[A-HJ-NPR-Z0-9]{17}\b</code>
+                      <div class="validation-note">Check-digit validation at position 9, transliteration + weighted sum</div>
+                    </details>
+                  </td>
+                  <td>1HGBH41JXMN109186</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>ICCID (SIM Card)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b89[0-9]{16,20}\b</code>
+                      <div class="validation-note">Must start with 89 (telecom MII) + Luhn checksum validation</div>
+                    </details>
+                  </td>
+                  <td>8944200011231044047</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
-            <p><em>Note: NHS Number and AU TFN include checksum validation to reduce false positives.</em></p>
+            <p><em>Note: NHS Number, AU TFN, Singapore NRIC, Canadian SIN, ICCID, Spanish NIF/NIE, and VIN include checksum or check-digit validation to reduce false positives.</em></p>
           </div>
 
           <div class="category-section">
@@ -916,11 +1214,65 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>Credit Card</strong></td><td>4111111111111111</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>IBAN</strong></td><td>GB82WEST12345698765432</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Bitcoin Address</strong></td><td>1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Ethereum Address</strong></td><td>0x742d35Cc6634C0532925a3b844Bc...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Money/Currency</strong></td><td>$10.99, £1,000.00, 100 EUR</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>Credit Card</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b</code>
+                      <div class="validation-note">Luhn checksum validation</div>
+                    </details>
+                  </td>
+                  <td>4111111111111111</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>IBAN</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{7}(?:[A-Z0-9]?){0,16}\b</code>
+                      <div class="validation-note">Mod-97 checksum validation (ISO 7064)</div>
+                    </details>
+                  </td>
+                  <td>GB82WEST12345698765432</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Bitcoin Address</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}\b</code>
+                      <div class="validation-note">Base58 format check</div>
+                    </details>
+                  </td>
+                  <td>1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Ethereum Address</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b0x[a-fA-F0-9]{40}\b</code>
+                      <div class="validation-note">Hex format check (40 hex characters after 0x prefix)</div>
+                    </details>
+                  </td>
+                  <td>0x742d35Cc6634C0532925a3b844Bc...</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Money/Currency</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?:[$&pound;&euro;&yen;&#8377;&#8361;&#8381;&cent;&#3647;&#8362;&#8372;&#8358;&#8353;&#8369;&#8370;&#8373;&#8376;&#8378;&#8380;&#8382;][0-9]{1,3}(?:[,.\s][0-9]{2,3})*(?:[.,][0-9]{1,2})?|[0-9]{1,3}(?:[,.\s][0-9]{2,3})*(?:[.,][0-9]{1,2})?\s*(?:USD|EUR|GBP|JPY|CNY|INR|...))</code>
+                    </details>
+                  </td>
+                  <td>$10.99, &pound;1,000.00, 100 EUR</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
           </div>
@@ -930,22 +1282,182 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>JWT</strong></td><td>eyJhbGciOiJIUzI1NiIsInR5cCI6...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Bearer Token</strong></td><td>Bearer abc123.def456</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>AWS Access Key</strong></td><td>AKIAIOSFODNN7EXAMPLE</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>AWS Secret Key</strong></td><td>aws_secret_access_key = wJalrXUt...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Stripe Key</strong></td><td>sk_test_4eC39HqLyjWDarjtT1zdp7dc</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>GCP API Key</strong></td><td>AIzaSyDaGmWKa4JsXZ-HjGw7ISLn...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>GitHub Token</strong></td><td>ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>OpenAI API Key</strong></td><td>sk-proj-abc123def456ghi789...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Anthropic API Key</strong></td><td>sk-ant-api03-abc123def456...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>X AI API Key</strong></td><td>xai-abc123def456ghi789...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Cerebras API Key</strong></td><td>csk-abc123def456ghi789...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Slack Token</strong></td><td>xoxb-123456789012-123456789012-abc...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>NPM Token</strong></td><td>npm_abc123def456ghi789jkl012...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>SendGrid Key</strong></td><td>SG.abc123def456.ghi789jkl012mno345...</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Twilio Key</strong></td><td>SK1234567890abcdef1234567890abcdef</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Database URL</strong></td><td>postgres://user:pass@host:5432/db</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>JWT</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+</code>
+                    </details>
+                  </td>
+                  <td>eyJhbGciOiJIUzI1NiIsInR5cCI6...</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Bearer Token</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)bearer\s+[a-z0-9_-]+\.[a-z0-9_-]+\.?[a-z0-9_-]*</code>
+                    </details>
+                  </td>
+                  <td>Bearer abc123.def456</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>AWS Access Key</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}\b</code>
+                    </details>
+                  </td>
+                  <td>AKIAIOSFODNN7EXAMPLE</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>AWS Secret Key</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)(?:aws.?secret|secret.?access)[^a-z0-9]*['"]?([a-z0-9/+=]{40})['"]?</code>
+                    </details>
+                  </td>
+                  <td>aws_secret_access_key = wJalrXUt...</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Stripe Key</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:sk|pk)_(?:test|live)_[0-9a-zA-Z]{24,}\b</code>
+                    </details>
+                  </td>
+                  <td>sk_test_4eC39HqLyjWDarjtT1zdp7dc</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>GCP API Key</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\bAIza[0-9A-Za-z_-]{35}\b</code>
+                    </details>
+                  </td>
+                  <td>AIzaSyDaGmWKa4JsXZ-HjGw7ISLn...</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>GitHub Token</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}\b</code>
+                    </details>
+                  </td>
+                  <td>ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>OpenAI API Key</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\bsk-(?:proj-)?[a-zA-Z0-9]{32,64}\b</code>
+                    </details>
+                  </td>
+                  <td>sk-proj-abc123def456ghi789...</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Anthropic API Key</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\bsk-ant-[a-zA-Z0-9_-]{32,64}\b</code>
+                    </details>
+                  </td>
+                  <td>sk-ant-api03-abc123def456...</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>X AI API Key</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\bxai-[a-zA-Z0-9]{32,64}\b</code>
+                    </details>
+                  </td>
+                  <td>xai-abc123def456ghi789...</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Cerebras API Key</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\bcsk-[a-zA-Z0-9]{40,50}\b</code>
+                    </details>
+                  </td>
+                  <td>csk-abc123def456ghi789...</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Slack Token</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\bxox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*\b</code>
+                    </details>
+                  </td>
+                  <td>xoxb-123456789012-123456789012-abc...</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>NPM Token</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\bnpm_[A-Za-z0-9]{36}\b</code>
+                    </details>
+                  </td>
+                  <td>npm_abc123def456ghi789jkl012...</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SendGrid Key</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b</code>
+                    </details>
+                  </td>
+                  <td>SG.abc123def456.ghi789jkl012mno345...</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Twilio Key</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:AC|SK)[a-f0-9]{32}\b</code>
+                    </details>
+                  </td>
+                  <td>SK1234567890abcdef1234567890abcdef</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Database URL</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)(?:mongodb|postgres|postgresql|mysql|redis|amqp|mssql)://[^\s]+</code>
+                    </details>
+                  </td>
+                  <td>postgres://user:pass@host:5432/db</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
               </table>
             </div>
           </div>
@@ -955,12 +1467,73 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>Generic Secret</strong></td><td>password=MyS3cr3tP@ss!</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>High Entropy Secret</strong></td><td>xK9#mP2$vL7@nQ4!</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Private Key</strong></td><td>-----BEGIN RSA PRIVATE KEY-----</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Basic Auth</strong></td><td>Basic dXNlcjpwYXNzd29yZA==</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>URL Credentials</strong></td><td>https://user:pass@example.com</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>Session ID</strong></td><td>JSESSIONID=ABC123DEF456789XYZ</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>Generic Secret</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|auth[_-]?token|access[_-]?token)\s*[:=]\s*['"]?([^\s'"]{8,})['"]?</code>
+                    </details>
+                  </td>
+                  <td>password=MyS3cr3tP@ss!</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>High Entropy Secret</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">['"][A-Za-z0-9!@#$%^&amp;*_+\-]{8,64}['"]</code>
+                      <div class="validation-note">Shannon entropy &gt; 3.5 bits/char, requires mixed character types</div>
+                    </details>
+                  </td>
+                  <td>xK9#mP2$vL7@nQ4!</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Private Key</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">-----BEGIN (?:RSA |DSA |EC |OPENSSH |PGP )?PRIVATE KEY-----</code>
+                    </details>
+                  </td>
+                  <td>-----BEGIN RSA PRIVATE KEY-----</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Basic Auth</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)basic\s+[a-z0-9+/]+=*</code>
+                    </details>
+                  </td>
+                  <td>Basic dXNlcjpwYXNzd29yZA==</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>URL Credentials</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)(?:https?|ftp)://[^/:@\s"']+:[^@\s"']+@[^\s/"']+</code>
+                    </details>
+                  </td>
+                  <td>https://user:pass@example.com</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Session ID</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)(?:session[_-]?id|sid|jsessionid|phpsessid|aspsessionid)[=:\s]*[a-z0-9_-]{16,}</code>
+                    </details>
+                  </td>
+                  <td>JSESSIONID=ABC123DEF456789XYZ</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
               </table>
             </div>
           </div>
@@ -970,9 +1543,39 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>GPS Coordinates</strong></td><td>51.5074, -0.1278</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>UK Postcode</strong></td><td>SW1A 1AA</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>US Zip Code</strong></td><td>90210</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>GPS Coordinates</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">-?(?:[1-8]?[0-9](?:\.[0-9]{4,})?|90(?:\.0+)?)\s*,\s*-?(?:1[0-7][0-9]|[1-9]?[0-9])(?:\.[0-9]{4,})?</code>
+                    </details>
+                  </td>
+                  <td>51.5074, -0.1278</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>UK Postcode</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}\b</code>
+                    </details>
+                  </td>
+                  <td>SW1A 1AA</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>US Zip Code</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b[0-9]{5}(?:-[0-9]{4})?\b</code>
+                    </details>
+                  </td>
+                  <td>90210</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
           </div>
@@ -982,13 +1585,83 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>Date (ISO)</strong></td><td>2024-01-15</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Date (MM/DD/YY)</strong></td><td>01/15/24, 12/31/2024</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Date (DD/MM/YY)</strong></td><td>15/01/24, 31/12/2024</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Time</strong></td><td>14:30:00, 2:30 PM</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>DateTime (ISO)</strong></td><td>2024-01-15T10:30:00Z</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>DateTime (CLF)</strong></td><td>[15/Jan/2024:10:30:00 +0000]</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Unix Timestamp</strong></td><td>1705312200</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>Date (ISO)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])\b</code>
+                    </details>
+                  </td>
+                  <td>2024-01-15</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Date (MM/DD/YY)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12][0-9]|3[01])[/-](?:19|20)?[0-9]{2}\b</code>
+                    </details>
+                  </td>
+                  <td>01/15/24, 12/31/2024</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Date (DD/MM/YY)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:0?[1-9]|[12][0-9]|3[01])[/-](?:0?[1-9]|1[0-2])[/-](?:19|20)?[0-9]{2}\b</code>
+                    </details>
+                  </td>
+                  <td>15/01/24, 31/12/2024</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Time</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:[01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?(?:\s*[AaPp][Mm])?\b</code>
+                    </details>
+                  </td>
+                  <td>14:30:00, 2:30 PM</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>DateTime (ISO)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])[T\s](?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:?[0-9]{2})?\b</code>
+                    </details>
+                  </td>
+                  <td>2024-01-15T10:30:00Z</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>DateTime (CLF)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\[?\d{1,2}/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/\d{4}:\d{2}:\d{2}:\d{2}\s*[+-]?\d{4}\]?</code>
+                    </details>
+                  </td>
+                  <td>[15/Jan/2024:10:30:00 +0000]</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Unix Timestamp</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">\b1[0-9]{9}(?:[0-9]{3})?\b</code>
+                    </details>
+                  </td>
+                  <td>1705312200</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
             <p>Date/time rules are disabled by default as they often match non-sensitive data.</p>
@@ -999,9 +1672,39 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>SQL Tables</strong></td><td>FROM users, INSERT INTO orders</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SQL Strings</strong></td><td>'John Doe', "example@email.com"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SQL Identifiers</strong></td><td>column_name, table.field</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>SQL Tables</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+(`[^`]+`|\[[^\]]+\]|"[^"]+"|[a-zA-Z_][a-zA-Z0-9_]*)</code>
+                    </details>
+                  </td>
+                  <td>FROM users, INSERT INTO orders</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SQL Strings</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">'(?:[^'\\]|\\.)*'</code>
+                    </details>
+                  </td>
+                  <td>'John Doe', "example@email.com"</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SQL Identifiers</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)(?:SELECT|WHERE|AND|OR|ON|SET|ORDER\s+BY|GROUP\s+BY|HAVING|AS|,)\s*(`[^`]+`|\[[^\]]+\])|(`[^`]+`|\[[^\]]+\])\.\s*(`[^`]+`|\[[^\]]+\])</code>
+                    </details>
+                  </td>
+                  <td>column_name, table.field</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
             <p>SQL rules help scrub sensitive data from database queries and logs. Disabled by default to avoid false positives.</p>
@@ -1024,11 +1727,61 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>Exim Subject</strong></td><td>T="Meeting reminder"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Exim Sender</strong></td><td>F=&lt;user@example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Exim Auth</strong></td><td>A=login:user</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Exim User</strong></td><td>U=mailuser</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Exim DN</strong></td><td>DN=cn=user,dc=example,dc=com</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>Exim Subject</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">T="(?:[^"\\]|\\.)*"</code>
+                    </details>
+                  </td>
+                  <td>T="Meeting reminder"</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Exim Sender</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">F=&lt;[^&gt;]+&gt;</code>
+                    </details>
+                  </td>
+                  <td>F=&lt;user@example.com&gt;</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Exim Auth</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)A=[a-z_]+(?::[^\s]+)?</code>
+                    </details>
+                  </td>
+                  <td>A=login:user</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Exim User</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">U=[^\s]+</code>
+                    </details>
+                  </td>
+                  <td>U=mailuser</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Exim DN</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">DN=[^\s]+</code>
+                    </details>
+                  </td>
+                  <td>DN=cn=user,dc=example,dc=com</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
             <p>Rules for <a href="https://www.exim.org/exim-html-current/doc/html/spec_html/ch-log_files.html" target="_blank" rel="noopener noreferrer">Exim mail server logs</a>. These follow Exim's well-documented log format with field prefixes (T=, F=, A=, U=, DN=).</p>
@@ -1039,10 +1792,50 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>Postfix From</strong></td><td>from=&lt;user@example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Postfix To</strong></td><td>to=&lt;recipient@example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Postfix Relay</strong></td><td>relay=mail.example.com[192.168.1.1]</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Postfix SASL User</strong></td><td>sasl_username=admin</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>Postfix From</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">from=&lt;[^&gt;]*&gt;</code>
+                    </details>
+                  </td>
+                  <td>from=&lt;user@example.com&gt;</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Postfix To</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">to=&lt;[^&gt;]+&gt;</code>
+                    </details>
+                  </td>
+                  <td>to=&lt;recipient@example.com&gt;</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Postfix Relay</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">relay=[^\s,]+(?:\[[^\]]+\])?</code>
+                    </details>
+                  </td>
+                  <td>relay=mail.example.com[192.168.1.1]</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Postfix SASL User</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">sasl_username=[^\s,]+</code>
+                    </details>
+                  </td>
+                  <td>sasl_username=admin</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
             <p>Rules for <a href="http://www.postfix.org/DEBUG_README.html" target="_blank" rel="noopener noreferrer">Postfix mail server logs</a>. Postfix is one of the most widely used MTAs on Linux systems.</p>
@@ -1053,9 +1846,39 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>Dovecot User</strong></td><td>user=&lt;mailuser&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Dovecot Remote IP</strong></td><td>rip=192.168.1.100</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Dovecot Local IP</strong></td><td>lip=10.0.0.1</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>Dovecot User</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">user=&lt;[^&gt;]+&gt;</code>
+                    </details>
+                  </td>
+                  <td>user=&lt;mailuser&gt;</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Dovecot Remote IP</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">rip=[0-9a-fA-F.:]+</code>
+                    </details>
+                  </td>
+                  <td>rip=192.168.1.100</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Dovecot Local IP</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">lip=[0-9a-fA-F.:]+</code>
+                    </details>
+                  </td>
+                  <td>lip=10.0.0.1</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
             <p>Rules for <a href="https://doc.dovecot.org/2.3/admin_manual/logging/" target="_blank" rel="noopener noreferrer">Dovecot IMAP/POP3 server logs</a>. Captures login events with username and IP addresses.</p>
@@ -1066,9 +1889,39 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>Sendmail From</strong></td><td>from=&lt;user@domain.com&gt;,</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Sendmail Relay</strong></td><td>relay=mail.example.com</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Sendmail MsgID</strong></td><td>msgid=&lt;abc123@host&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>Sendmail From</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">from=&lt;[^&gt;]*&gt;,</code>
+                    </details>
+                  </td>
+                  <td>from=&lt;user@domain.com&gt;,</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Sendmail Relay</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">relay=[^\s,\[\]]+(?:\[[^\]]+\])?</code>
+                    </details>
+                  </td>
+                  <td>relay=mail.example.com</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Sendmail MsgID</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">msgid=&lt;[^&gt;]+&gt;</code>
+                    </details>
+                  </td>
+                  <td>msgid=&lt;abc123@host&gt;</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
             <p>Rules for <a href="https://softpanorama.org/Mail/Sendmail/sendmail_logs_format.shtml" target="_blank" rel="noopener noreferrer">Sendmail mail server logs</a>. One of the oldest Unix MTAs with a well-established log format.</p>
@@ -1079,18 +1932,138 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>SIP Username</strong></td><td>username="john.doe"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SIP Realm</strong></td><td>realm="sip.example.com"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SIP Nonce</strong></td><td>nonce="abc123def456"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SIP Response</strong></td><td>response="9f8e7d6c5b4a3210"</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SIP From Name</strong></td><td>From: "John Doe" &lt;sip:john@example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SIP To Name</strong></td><td>To: "Jane Smith" &lt;sip:jane@example.com&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SIP Contact</strong></td><td>Contact: &lt;sip:john@192.168.1.100:5060&gt;</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SIP URI</strong></td><td>sip:user@domain.com:5060</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SIP Call-ID</strong></td><td>Call-ID: abc123@192.168.1.100</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SIP Branch</strong></td><td>branch=z9hG4bK-abc123</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SIP User-Agent</strong></td><td>User-Agent: Oasis SIP Phone</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SIP Via</strong></td><td>Via: SIP/2.0/UDP 192.168.1.100:5060</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>SIP Username</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)username="[^"]+"</code>
+                    </details>
+                  </td>
+                  <td>username="john.doe"</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SIP Realm</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)realm="[^"]+"</code>
+                    </details>
+                  </td>
+                  <td>realm="sip.example.com"</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SIP Nonce</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)nonce="[^"]+"</code>
+                    </details>
+                  </td>
+                  <td>nonce="abc123def456"</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SIP Response</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)response="[a-f0-9]+"</code>
+                    </details>
+                  </td>
+                  <td>response="9f8e7d6c5b4a3210"</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SIP From Name</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)^From:\s*"[^"]*"</code>
+                    </details>
+                  </td>
+                  <td>From: "John Doe" &lt;sip:john@example.com&gt;</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SIP To Name</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)^To:\s*"[^"]*"</code>
+                    </details>
+                  </td>
+                  <td>To: "Jane Smith" &lt;sip:jane@example.com&gt;</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SIP Contact</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)^Contact:\s*&lt;?sip:[^&gt;]+&gt;?</code>
+                    </details>
+                  </td>
+                  <td>Contact: &lt;sip:john@192.168.1.100:5060&gt;</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SIP URI</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">sips?:[^\s&lt;&gt;@]+@[^\s&lt;&gt;;]+</code>
+                    </details>
+                  </td>
+                  <td>sip:user@domain.com:5060</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SIP Call-ID</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)^Call-ID:\s*[^\s]+</code>
+                    </details>
+                  </td>
+                  <td>Call-ID: abc123@192.168.1.100</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SIP Branch</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)branch=z9hG4bK[a-zA-Z0-9]+</code>
+                    </details>
+                  </td>
+                  <td>branch=z9hG4bK-abc123</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SIP User-Agent</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)^User-Agent:\s*[^\r\n]+</code>
+                    </details>
+                  </td>
+                  <td>User-Agent: Oasis SIP Phone</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SIP Via</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)^Via:\s*SIP/2\.0/[^\r\n]+</code>
+                    </details>
+                  </td>
+                  <td>Via: SIP/2.0/UDP 192.168.1.100:5060</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
             <p>Rules for SIP (Session Initiation Protocol) traces used in VoIP systems. Useful for scrubbing packet captures or debug logs from phone systems.</p>
@@ -1101,9 +2074,39 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>MD5 Hash</strong></td><td>d41d8cd98f00b204e9800998ecf8427e</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SHA1 Hash</strong></td><td>da39a3ee5e6b4b0d3255bfef95601890afd80709</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>SHA256 Hash</strong></td><td>e3b0c44298fc1c149afbf4c8996fb924...27ae41e4649b934ca495991b7852b855</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>MD5 Hash</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b[a-f0-9]{32}\b</code>
+                    </details>
+                  </td>
+                  <td>d41d8cd98f00b204e9800998ecf8427e</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SHA1 Hash</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b[a-f0-9]{40}\b</code>
+                    </details>
+                  </td>
+                  <td>da39a3ee5e6b4b0d3255bfef95601890afd80709</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>SHA256 Hash</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b[a-f0-9]{64}\b</code>
+                    </details>
+                  </td>
+                  <td>e3b0c44298fc1c149afbf4c8996fb924...27ae41e4649b934ca495991b7852b855</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
             <p>Cryptographic hash detection. Disabled by default as hashes are often legitimate identifiers, but can be enabled if you need to scrub file checksums or content hashes.</p>
@@ -1114,11 +2117,61 @@ User [EMAIL-3] logged in</div>
             <div class="table-wrapper">
               <table>
                 <tr><th>Rule</th><th>Example Match</th><th>Default</th></tr>
-                <tr><td><strong>UUID</strong></td><td>550e8400-e29b-41d4-a716-446655440000</td><td><span class="badge badge-enabled">Enabled</span></td></tr>
-                <tr><td><strong>File Path (Unix)</strong></td><td>/home/john/documents/file.txt</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>File Path (Windows)</strong></td><td>C:\Users\John\Documents\file.txt</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>Docker Container ID</strong></td><td>abc123def456789012345678901234567890abcd</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
-                <tr><td><strong>URL Parameters</strong></td><td>?user=john&amp;token=abc123</td><td><span class="badge badge-disabled">Disabled</span></td></tr>
+                <tr>
+                  <td>
+                    <strong>UUID</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b</code>
+                    </details>
+                  </td>
+                  <td>550e8400-e29b-41d4-a716-446655440000</td>
+                  <td><span class="badge badge-enabled">Enabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>File Path (Unix)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?:/(?:home|Users)/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9._-]+)+|/tmp(?:/[a-zA-Z0-9._-]+)+)</code>
+                    </details>
+                  </td>
+                  <td>/home/john/documents/file.txt</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>File Path (Windows)</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)[a-z]:\\(?:Users|Documents and Settings)\\[^\s\\]+(?:\\[^\s\\]+)*</code>
+                    </details>
+                  </td>
+                  <td>C:\Users\John\Documents\file.txt</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Docker Container ID</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">(?i)\b[a-f0-9]{12}\b</code>
+                    </details>
+                  </td>
+                  <td>abc123def456789012345678901234567890abcd</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>URL Parameters</strong>
+                    <details class="rule-details">
+                      <summary>Show pattern</summary>
+                      <code class="regex">Captures query string key-value pairs from URLs</code>
+                    </details>
+                  </td>
+                  <td>?user=john&amp;token=abc123</td>
+                  <td><span class="badge badge-disabled">Disabled</span></td>
+                </tr>
               </table>
             </div>
           </div>

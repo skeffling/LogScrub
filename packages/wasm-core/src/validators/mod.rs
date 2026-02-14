@@ -453,6 +453,171 @@ pub fn iccid_check(iccid: &str) -> bool {
     sum % 10 == 0
 }
 
+/// E.164 country code lookup: returns (min_total_digits, max_total_digits) for known codes.
+fn e164_country_length(code: u16) -> Option<(usize, usize)> {
+    match code {
+        // 1-digit country codes
+        1 => Some((11, 11)),   // NANP (US, Canada, Caribbean)
+        7 => Some((11, 11)),   // Russia, Kazakhstan
+
+        // 2-digit country codes
+        20 => Some((12, 12)),  // Egypt
+        27 => Some((11, 11)),  // South Africa
+        30 => Some((12, 12)),  // Greece
+        31 => Some((11, 11)),  // Netherlands
+        32 => Some((11, 11)),  // Belgium
+        33 => Some((11, 11)),  // France
+        34 => Some((11, 11)),  // Spain
+        36 => Some((11, 11)),  // Hungary
+        39 => Some((12, 13)),  // Italy
+        40 => Some((11, 11)),  // Romania
+        41 => Some((11, 11)),  // Switzerland
+        43 => Some((11, 14)),  // Austria
+        44 => Some((12, 12)),  // UK
+        45 => Some((10, 10)),  // Denmark
+        46 => Some((11, 13)),  // Sweden
+        47 => Some((10, 10)),  // Norway
+        48 => Some((11, 11)),  // Poland
+        49 => Some((11, 14)),  // Germany
+        51 => Some((11, 11)),  // Peru
+        52 => Some((12, 12)),  // Mexico
+        53 => Some((10, 11)),  // Cuba
+        54 => Some((12, 13)),  // Argentina
+        55 => Some((12, 13)),  // Brazil
+        56 => Some((11, 11)),  // Chile
+        57 => Some((12, 12)),  // Colombia
+        58 => Some((12, 12)),  // Venezuela
+        60 => Some((11, 12)),  // Malaysia
+        61 => Some((11, 11)),  // Australia
+        62 => Some((11, 14)),  // Indonesia
+        63 => Some((12, 12)),  // Philippines
+        64 => Some((11, 12)),  // New Zealand
+        65 => Some((10, 10)),  // Singapore
+        66 => Some((11, 11)),  // Thailand
+        81 => Some((12, 13)),  // Japan
+        82 => Some((12, 13)),  // South Korea
+        84 => Some((11, 12)),  // Vietnam
+        86 => Some((13, 13)),  // China
+        90 => Some((12, 12)),  // Turkey
+        91 => Some((12, 12)),  // India
+        92 => Some((12, 12)),  // Pakistan
+        93 => Some((11, 12)),  // Afghanistan
+        94 => Some((11, 11)),  // Sri Lanka
+        95 => Some((10, 12)),  // Myanmar
+        98 => Some((12, 12)),  // Iran
+
+        // 3-digit country codes
+        212 => Some((12, 12)), // Morocco
+        213 => Some((12, 12)), // Algeria
+        216 => Some((11, 11)), // Tunisia
+        230 => Some((11, 11)), // Mauritius
+        234 => Some((13, 13)), // Nigeria
+        254 => Some((12, 12)), // Kenya
+        255 => Some((12, 12)), // Tanzania
+        256 => Some((12, 12)), // Uganda
+        260 => Some((12, 12)), // Zambia
+        263 => Some((12, 12)), // Zimbabwe
+        351 => Some((12, 12)), // Portugal
+        352 => Some((12, 12)), // Luxembourg
+        353 => Some((12, 12)), // Ireland
+        354 => Some((10, 10)), // Iceland
+        356 => Some((11, 11)), // Malta
+        358 => Some((12, 13)), // Finland
+        359 => Some((12, 12)), // Bulgaria
+        370 => Some((11, 11)), // Lithuania
+        371 => Some((11, 11)), // Latvia
+        372 => Some((11, 12)), // Estonia
+        373 => Some((11, 11)), // Moldova
+        374 => Some((11, 11)), // Armenia
+        375 => Some((12, 12)), // Belarus
+        380 => Some((12, 12)), // Ukraine
+        381 => Some((12, 12)), // Serbia
+        385 => Some((11, 12)), // Croatia
+        386 => Some((11, 11)), // Slovenia
+        387 => Some((11, 11)), // Bosnia
+        389 => Some((11, 11)), // North Macedonia
+        420 => Some((12, 12)), // Czech Republic
+        421 => Some((12, 12)), // Slovakia
+        852 => Some((11, 11)), // Hong Kong
+        853 => Some((11, 11)), // Macau
+        855 => Some((11, 12)), // Cambodia
+        856 => Some((12, 12)), // Laos
+        880 => Some((13, 13)), // Bangladesh
+        886 => Some((12, 12)), // Taiwan
+        960 => Some((10, 10)), // Maldives
+        961 => Some((11, 11)), // Lebanon
+        962 => Some((12, 12)), // Jordan
+        963 => Some((12, 12)), // Syria
+        964 => Some((12, 12)), // Iraq
+        965 => Some((11, 11)), // Kuwait
+        966 => Some((12, 12)), // Saudi Arabia
+        967 => Some((12, 12)), // Yemen
+        968 => Some((11, 11)), // Oman
+        970 => Some((12, 12)), // Palestine
+        971 => Some((12, 12)), // UAE
+        972 => Some((12, 12)), // Israel
+        973 => Some((11, 11)), // Bahrain
+        974 => Some((11, 11)), // Qatar
+        975 => Some((11, 11)), // Bhutan
+        976 => Some((11, 11)), // Mongolia
+        977 => Some((12, 12)), // Nepal
+        992 => Some((12, 12)), // Tajikistan
+        993 => Some((12, 12)), // Turkmenistan
+        994 => Some((12, 12)), // Azerbaijan
+        995 => Some((12, 12)), // Georgia
+        996 => Some((12, 12)), // Kyrgyzstan
+        998 => Some((12, 12)), // Uzbekistan
+        _ => None,
+    }
+}
+
+/// International phone number without leading '+' — validated against
+/// E.164 country codes and their expected total digit counts.
+pub fn phone_intl_no_plus_check(number: &str) -> bool {
+    let digits: Vec<u32> = number
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .filter_map(|c| c.to_digit(10))
+        .collect();
+
+    let len = digits.len();
+    if len < 10 || len > 15 {
+        return false;
+    }
+
+    // Try 1-digit country code
+    let cc1 = digits[0] as u16;
+    if let Some((min_len, max_len)) = e164_country_length(cc1) {
+        if len >= min_len && len <= max_len {
+            // NANP (country code 1): area code must start with 2-9
+            if cc1 == 1 && digits[1] < 2 {
+                return false;
+            }
+            return true;
+        }
+    }
+
+    // Try 2-digit country code
+    let cc2 = digits[0] as u16 * 10 + digits[1] as u16;
+    if let Some((min_len, max_len)) = e164_country_length(cc2) {
+        if len >= min_len && len <= max_len {
+            return true;
+        }
+    }
+
+    // Try 3-digit country code
+    if len >= 3 {
+        let cc3 = digits[0] as u16 * 100 + digits[1] as u16 * 10 + digits[2] as u16;
+        if let Some((min_len, max_len)) = e164_country_length(cc3) {
+            if len >= min_len && len <= max_len {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 /// Check if a string has high entropy (likely a secret/password)
 /// Threshold: 3.5 bits per character (higher than ScrubDuck's 3.2 to reduce false positives)
 pub fn high_entropy_check(s: &str) -> bool {
@@ -660,5 +825,36 @@ mod tests {
         assert!(!iccid_check("89442000112310440"));
         // Bad Luhn check digit
         assert!(!iccid_check("8944200011231044048"));
+    }
+
+    #[test]
+    fn test_valid_phone_intl_no_plus() {
+        // User-provided UK examples
+        assert!(phone_intl_no_plus_check("447508804412"));
+        assert!(phone_intl_no_plus_check("441183888123"));
+        // US (country code 1, area code 202)
+        assert!(phone_intl_no_plus_check("12025551234"));
+        // India (country code 91)
+        assert!(phone_intl_no_plus_check("919876543210"));
+        // France (country code 33)
+        assert!(phone_intl_no_plus_check("33612345678"));
+        // Ireland (3-digit country code 353)
+        assert!(phone_intl_no_plus_check("353861234567"));
+        // Singapore (country code 65, 10 digits total)
+        assert!(phone_intl_no_plus_check("6591234567"));
+    }
+
+    #[test]
+    fn test_invalid_phone_intl_no_plus() {
+        // Random 12-digit number, 88 is not a country code
+        assert!(!phone_intl_no_plus_check("880000000000"));
+        // US with invalid area code (starts with 0)
+        assert!(!phone_intl_no_plus_check("10025551234"));
+        // Too short (9 digits)
+        assert!(!phone_intl_no_plus_check("447508804"));
+        // Wrong length for UK (44 expects 12, this is 13)
+        assert!(!phone_intl_no_plus_check("4475088044121"));
+        // Not a valid country code prefix
+        assert!(!phone_intl_no_plus_check("9999999999"));
     }
 }

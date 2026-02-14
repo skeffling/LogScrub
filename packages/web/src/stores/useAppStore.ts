@@ -251,6 +251,7 @@ const DEFAULT_RULES: Record<string, Rule> = {
   phone_us: { label: 'Phone (US)', enabled: true, strategy: 'label' },
   phone_uk: { label: 'Phone (UK)', enabled: true, strategy: 'label' },
   phone_intl: { label: 'Phone (Intl)', enabled: true, strategy: 'label' },
+  phone_intl_no_plus: { label: 'Phone (Intl, No +)', enabled: false, strategy: 'label' },
   ssn: { label: 'SSN', enabled: true, strategy: 'label' },
   us_itin: { label: 'US ITIN', enabled: false, strategy: 'label' },
   uk_nhs: { label: 'UK NHS Number', enabled: false, strategy: 'label' },

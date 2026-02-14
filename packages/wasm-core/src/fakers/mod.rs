@@ -287,7 +287,7 @@ pub fn generate_realistic(
         "mac_address" => fake_mac_address(original),
         "hostname" => fake_hostname(original),
         "url" | "url_credentials" => fake_url(original),
-        "phone_us" | "phone_uk" | "phone_intl" => fake_phone(original),
+        "phone_us" | "phone_uk" | "phone_intl" | "phone_intl_no_plus" => fake_phone(original),
         "uuid" => fake_uuid(original),
         "credit_card" => fake_credit_card(original, count),
         "ssn" => fake_ssn(original, count),

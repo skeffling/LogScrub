@@ -13,6 +13,7 @@ export const BUILTIN_PATTERNS: Record<string, string> = {
   phone_us: String.raw`\b(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b`,
   phone_uk: String.raw`\b(?:0[1-9][0-9]{8,9}|0[1-9][0-9]{2,4}[\s-][0-9]{3,4}[\s-]?[0-9]{3,4})\b`,
   phone_intl: String.raw`\+[1-9][0-9]{1,3}[\s-]?[0-9]{6,14}\b`,
+  phone_intl_no_plus: String.raw`\b[1-9][0-9]{9,14}\b`,
   uuid: String.raw`(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b`,
   iban: String.raw`\b[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{7}(?:[A-Z0-9]?){0,16}\b`,
   aws_access_key: String.raw`\b(?:AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}\b`,

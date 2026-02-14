@@ -47,6 +47,9 @@ fn get_pattern_priority(id: &str) -> u8 {
         | "gps_coordinates" | "passport" | "drivers_license" | "money"
         | "uk_sort_code" | "uk_bank_account" | "vin" => 60,
 
+        // Below average: validated but higher false-positive risk
+        "phone_intl_no_plus" => 55,
+
         // Below average: API keys and secrets
         "aws_access_key" | "aws_secret_key" | "stripe_key" | "gcp_api_key" | "github_token"
         | "bearer_token" | "slack_token" | "npm_token" | "sendgrid_key" | "twilio_key"
@@ -164,6 +167,10 @@ static PHONE_UK_REGEX: Lazy<Regex> = Lazy::new(|| {
 
 static PHONE_INTL_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\+[1-9][0-9]{1,3}[\s-]?[0-9]{6,14}\b").unwrap());
+
+// International phone without '+' prefix: 10-15 digits, validated via E.164 country codes
+static PHONE_INTL_NO_PLUS_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[1-9][0-9]{9,14}\b").unwrap());
 
 static UUID_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b").unwrap()
@@ -555,6 +562,11 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
             id: "phone_intl",
             regex: &PHONE_INTL_REGEX,
             validator: None,
+        },
+        PatternDef {
+            id: "phone_intl_no_plus",
+            regex: &PHONE_INTL_NO_PLUS_REGEX,
+            validator: Some(validators::phone_intl_no_plus_check),
         },
         PatternDef {
             id: "uuid",

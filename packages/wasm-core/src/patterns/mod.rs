@@ -34,7 +34,7 @@ fn get_pattern_priority(id: &str) -> u8 {
         "credit_card" | "iban" => 100,
 
         // Very high: validated national IDs
-        "ssn" | "uk_nhs" | "uk_nino" | "au_tfn" | "sg_nric" | "es_nif" | "es_nie" | "us_itin" | "in_pan" | "ca_sin" => 90,
+        "ssn" | "uk_nhs" | "uk_nino" | "au_tfn" | "sg_nric" | "es_nif" | "es_nie" | "us_itin" | "in_pan" | "ca_sin" | "iccid" => 90,
 
         // High: network identifiers
         "ipv4" | "ipv6" | "mac_address" | "btc_address" | "eth_address" => 80,
@@ -314,6 +314,10 @@ static CA_SIN_REGEX: Lazy<Regex> =
 // Vehicle Identification Number: 17 alphanumeric (no I, O, Q)
 static VIN_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\b[A-HJ-NPR-Z0-9]{17}\b").unwrap());
+
+// ICCID (SIM card): starts with 89, 18-22 digits, Luhn-validated
+static ICCID_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b89[0-9]{16,20}\b").unwrap());
 
 // Spain Patterns
 // NIF/DNI: 8 digits + check letter
@@ -746,6 +750,11 @@ static PATTERNS: Lazy<Vec<PatternDef>> = Lazy::new(|| {
             id: "vin",
             regex: &VIN_REGEX,
             validator: Some(validators::vin_check),
+        },
+        PatternDef {
+            id: "iccid",
+            regex: &ICCID_REGEX,
+            validator: Some(validators::iccid_check),
         },
         PatternDef {
             id: "es_nif",

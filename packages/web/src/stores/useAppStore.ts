@@ -262,6 +262,7 @@ const DEFAULT_RULES: Record<string, Rule> = {
   sg_nric: { label: 'Singapore NRIC', enabled: false, strategy: 'label' },
   ca_sin: { label: 'Canadian SIN', enabled: false, strategy: 'label' },
   vin: { label: 'VIN', enabled: false, strategy: 'label' },
+  iccid: { label: 'ICCID (SIM Card)', enabled: false, strategy: 'label' },
   credit_card: { label: 'Credit Cards', enabled: true, strategy: 'redact' },
   iban: { label: 'IBAN', enabled: true, strategy: 'label' },
   uuid: { label: 'UUIDs', enabled: true, strategy: 'label' },

@@ -50,6 +50,7 @@ export const BUILTIN_PATTERNS: Record<string, string> = {
   sg_nric: String.raw`(?i)\b[STFGM][0-9]{7}[A-Z]\b`,
   ca_sin: String.raw`\b[0-9]{3}[- ]?[0-9]{3}[- ]?[0-9]{3}\b`,
   vin: String.raw`\b[A-HJ-NPR-Z0-9]{17}\b`,
+  iccid: String.raw`\b89[0-9]{16,20}\b`,
   high_entropy_secret: String.raw`['"][A-Za-z0-9!@#$%^&*_+\-]{8,64}['"]`,
   db_connection: String.raw`(?i)(?:mongodb|postgres|postgresql|mysql|redis|amqp|mssql)://[^\s]+`,
   basic_auth: String.raw`(?i)basic\s+[a-z0-9+/]+=*`,

@@ -417,6 +417,42 @@ pub fn es_nie_check(nie: &str) -> bool {
     check_letter == expected
 }
 
+/// ICCID (E.118) validation: starts with 89, 18-22 digits, Luhn check digit
+pub fn iccid_check(iccid: &str) -> bool {
+    let digits: Vec<u32> = iccid
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .filter_map(|c| c.to_digit(10))
+        .collect();
+
+    if digits.len() < 18 || digits.len() > 22 {
+        return false;
+    }
+
+    // Must start with 89 (MII for telecommunications)
+    if digits[0] != 8 || digits[1] != 9 {
+        return false;
+    }
+
+    // Luhn algorithm
+    let mut sum = 0;
+    let mut double = false;
+
+    for digit in digits.iter().rev() {
+        let mut d = *digit;
+        if double {
+            d *= 2;
+            if d > 9 {
+                d -= 9;
+            }
+        }
+        sum += d;
+        double = !double;
+    }
+
+    sum % 10 == 0
+}
+
 /// Check if a string has high entropy (likely a secret/password)
 /// Threshold: 3.5 bits per character (higher than ScrubDuck's 3.2 to reduce false positives)
 pub fn high_entropy_check(s: &str) -> bool {
@@ -605,5 +641,24 @@ mod tests {
         assert!(!es_nie_check("A0000000T"));
         // Too short
         assert!(!es_nie_check("X000000T"));
+    }
+
+    #[test]
+    fn test_valid_iccid() {
+        // User-provided examples
+        assert!(iccid_check("8944200011231044047"));
+        assert!(iccid_check("8944491000000007077"));
+        // 20-digit ICCID
+        assert!(iccid_check("89014103211118510720"));
+    }
+
+    #[test]
+    fn test_invalid_iccid() {
+        // Wrong prefix (not 89)
+        assert!(!iccid_check("1234567890123456789"));
+        // Too short (17 digits)
+        assert!(!iccid_check("89442000112310440"));
+        // Bad Luhn check digit
+        assert!(!iccid_check("8944200011231044048"));
     }
 }

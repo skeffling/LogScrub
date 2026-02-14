@@ -1,7 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useAppStore } from '../stores/useAppStore'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useAppStore, type ReplacementStrategy } from '../stores/useAppStore'
 import { AVAILABLE_MODELS } from '../utils/nerModels'
 import { getCurrentDevice, getModelCacheStatus, deleteModelCache, getCachedModelSize, formatBytes } from '../utils/nerDetection'
+
+const STRATEGY_OPTIONS: { value: ReplacementStrategy; label: string; description: string }[] = [
+  { value: 'label', label: 'Label', description: 'Replace with type labels like [EMAIL-1]' },
+  { value: 'realistic', label: 'Fake', description: 'Replace with realistic fake data' },
+  { value: 'redact', label: 'Redact', description: 'Replace with solid blocks ████████' },
+  { value: 'template', label: 'Template', description: 'Replace using a custom template format' },
+]
 
 export function SettingsPanel() {
   const {
@@ -16,6 +23,10 @@ export function SettingsPanel() {
     setTerminalStyle,
     themeMode,
     setThemeMode,
+    rules,
+    setAllStrategy,
+    globalTemplate,
+    setGlobalTemplate,
     // ML state
     mlModelId,
     setMlModelId,
@@ -26,6 +37,16 @@ export function SettingsPanel() {
     analyzeText,
     input
   } = useAppStore()
+
+  const [editingTemplate, setEditingTemplate] = useState(globalTemplate)
+
+  // Determine the current "dominant" strategy — if all rules share one, show it selected
+  const currentStrategy = useMemo<ReplacementStrategy | null>(() => {
+    const strategies = Object.values(rules).map(r => r.strategy)
+    if (strategies.length === 0) return null
+    const first = strategies[0]
+    return strategies.every(s => s === first) ? first : null
+  }, [rules])
 
   const [modelCacheStatus, setModelCacheStatus] = useState<Record<string, boolean>>({})
   const [modelCacheSizes, setModelCacheSizes] = useState<Record<string, number>>({})
@@ -107,6 +128,71 @@ export function SettingsPanel() {
             >
               Reset Rules to Defaults
             </button>
+          </div>
+
+          <hr className="dark:border-gray-700" />
+
+          {/* Replacement Strategy */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white">Replacement Strategy</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Set the replacement strategy for all rules at once</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {STRATEGY_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setAllStrategy(opt.value)
+                    if (opt.value === 'template') setEditingTemplate(globalTemplate)
+                  }}
+                  className={`flex flex-col items-start gap-0.5 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                    currentStrategy === opt.value
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <span className="font-medium">{opt.label}</span>
+                  <span className="text-[11px] leading-tight opacity-75">{opt.description}</span>
+                </button>
+              ))}
+            </div>
+            {currentStrategy !== null && currentStrategy !== 'label' && currentStrategy !== 'template' && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                All rules set to {STRATEGY_OPTIONS.find(o => o.value === currentStrategy)?.label}
+              </p>
+            )}
+            {currentStrategy === null && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                Rules have mixed strategies. Select one above to apply to all.
+              </p>
+            )}
+            {/* Template config — show when template is the current strategy */}
+            {currentStrategy === 'template' && (
+              <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Template Format</label>
+                  <input
+                    type="text"
+                    value={editingTemplate}
+                    onChange={(e) => setEditingTemplate(e.target.value)}
+                    onBlur={() => { if (editingTemplate !== globalTemplate) setGlobalTemplate(editingTemplate) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { setGlobalTemplate(editingTemplate); (e.target as HTMLInputElement).blur() } }}
+                    className="w-full px-3 py-1.5 border dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-700 dark:text-white"
+                    placeholder="[{TYPE}-{n}]"
+                  />
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  Preview: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{editingTemplate.replace('{n}', '1').replace('{type}', 'email').replace('{TYPE}', 'EMAIL').replace('{len}', '15')}</code>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                  <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{n}'}</code> Counter</div>
+                  <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{type}'}</code> Type name</div>
+                  <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{TYPE}'}</code> TYPE (upper)</div>
+                  <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{len}'}</code> Original length</div>
+                </div>
+              </div>
+            )}
           </div>
 
           <hr className="dark:border-gray-700" />

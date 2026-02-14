@@ -30,7 +30,7 @@ function App() {
     replacements, syntaxHighlight, setSyntaxHighlight,
     timeShift, setTimeShift,
     setReplacements,
-    documentType, lineCountWarning, syntaxError, syntaxValidFormat,
+    documentType, lineCountWarning, syntaxError, setSyntaxError, syntaxValidFormat,
     rules, toggleRule, setRuleStrategy, customRules, addCustomRule,
     // ML state
     mlLoadingState, mlNameDetectionEnabled, mlExplicitlyConfigured, mlModelCached,
@@ -999,6 +999,15 @@ function App() {
                       {syntaxError.message}
                     </span>
                   </div>
+                  <button
+                    onClick={() => setSyntaxError(null)}
+                    className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-300 flex-shrink-0 p-0.5"
+                    title="Dismiss"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               )}
               {lineCountWarning && (

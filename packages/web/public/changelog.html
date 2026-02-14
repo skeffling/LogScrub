@@ -46,6 +46,30 @@
   <h1>Changelog</h1>
   <p class="subtitle">Release history and notable changes</p>
 
+  <h2>v0.6.0 <span class="date">February 2026</span></h2>
+  <ul>
+    <li><span class="tag tag-new">New</span> <strong>ML Name Detection</strong> &mdash; in-browser machine learning model detects person names, locations, and organizations that pattern-based rules miss. Runs entirely in the browser with WebGPU acceleration.</li>
+    <li><span class="tag tag-new">New</span> ML model cache management &mdash; download once, reuse across sessions. Delete cached models from Settings.</li>
+    <li><span class="tag tag-new">New</span> Auto-load cached ML models on startup with guided banners for new users</li>
+    <li><span class="tag tag-new">New</span> CSV/XLSX name column detection &mdash; automatically finds person names in structured data</li>
+    <li><span class="tag tag-new">New</span> ICCID (SIM card) detection with Luhn checksum validation (E.118 format)</li>
+    <li><span class="tag tag-new">New</span> International phone detection without <code>+</code> prefix &mdash; validates against ~100 E.164 country codes with per-country digit length checks</li>
+    <li><span class="tag tag-new">New</span> Canadian SIN and VIN detection patterns with checksum/check-digit validation</li>
+    <li><span class="tag tag-new">New</span> Spanish NIF/DNI and NIE detection with mod-23 validation</li>
+    <li><span class="tag tag-new">New</span> Global Replacement Strategy selector in Settings &mdash; set Label/Fake/Redact/Template for all rules at once with inline template editor</li>
+    <li><span class="tag tag-new">New</span> PII type filter dropdown in scrubbed output pane to focus on specific detection types</li>
+    <li><span class="tag tag-new">New</span> Click-to-reveal popover on replacement tokens &mdash; click <code>[EMAIL-1]</code> to see original value, type, and occurrence count</li>
+    <li><span class="tag tag-new">New</span> Rule source badges and strategy pills in Stats panel</li>
+    <li><span class="tag tag-new">New</span> Help page shows expandable regex patterns and validation details for every detection rule</li>
+    <li><span class="tag tag-improve">Improve</span> Redesigned UI &mdash; removed sidebar, replaced with Rulesets &amp; Settings tabs in the scrubbed output pane</li>
+    <li><span class="tag tag-improve">Improve</span> Display Options (theme, terminal style) moved from About modal to Settings pane</li>
+    <li><span class="tag tag-improve">Improve</span> Toolbar reorganized &mdash; Clear All replaced with Reset, downloads collapsed into dropdown menu</li>
+    <li><span class="tag tag-improve">Improve</span> Diff, Sync Scroll, and Stats disabled until a scrub has been run</li>
+    <li><span class="tag tag-improve">Improve</span> Enabling/disabling rules in Rulesets instantly updates Original pane highlights without re-running analysis</li>
+    <li><span class="tag tag-fix">Fix</span> Syntax error banner now has a dismiss button for non-JSON files that trigger false validation</li>
+    <li><span class="tag tag-fix">Fix</span> PCAP processing moved to Web Worker to prevent UI freezes on large captures</li>
+  </ul>
+
   <h2>v0.5.0 <span class="date">January 2026</span></h2>
   <ul>
     <li><span class="tag tag-new">New</span> Automatic syntax validation for JSON, XML, CSV, YAML, and TOML files</li>

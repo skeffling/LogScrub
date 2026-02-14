@@ -110,6 +110,10 @@ interface AppState {
   analysisStats: DetectionStats
   analysisMatches: DetectionMatches
   analysisCompleted: boolean
+  // Full (unfiltered) results from last analysis — used to recalc when rules are toggled
+  _fullAnalysisReplacements: ReplacementInfo[]
+  _fullAnalysisStats: DetectionStats
+  _fullAnalysisMatches: DetectionMatches
   suggestions: RuleSuggestion[]
   activeMatches: RuleSuggestion[]
   unmatchedRules: Array<{ id: string; label: string }>
@@ -532,6 +536,37 @@ function getWorker(): Worker {
 
 let cancelRequested = false
 
+/** Recalculate the enabled analysis subset from the full (unfiltered) analysis results. */
+function recalcEnabledAnalysis(
+  fullReplacements: ReplacementInfo[],
+  fullStats: DetectionStats,
+  fullMatches: DetectionMatches,
+  rules: Record<string, Rule>,
+  customRules: CustomRule[],
+  plainTextPatterns: PlainTextPattern[]
+) {
+  const isEnabled = (id: string) => {
+    const rule = rules[id]
+    if (rule) return rule.enabled
+    const cr = customRules.find(r => r.id === id)
+    if (cr) return cr.enabled
+    const pt = plainTextPatterns.find(p => p.id === id)
+    if (pt) return pt.enabled
+    return false
+  }
+
+  const analysisReplacements = fullReplacements.filter(r => isEnabled(r.pii_type))
+  const analysisStats: DetectionStats = {}
+  const analysisMatches: DetectionMatches = {}
+  for (const [id, count] of Object.entries(fullStats)) {
+    if (isEnabled(id)) {
+      analysisStats[id] = count
+      if (fullMatches[id]) analysisMatches[id] = fullMatches[id]
+    }
+  }
+  return { analysisReplacements, analysisStats, analysisMatches }
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   input: '',
   output: '',
@@ -564,6 +599,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   analysisStats: {},
   analysisMatches: {},
   analysisCompleted: false,
+  _fullAnalysisReplacements: [],
+  _fullAnalysisStats: {},
+  _fullAnalysisMatches: {},
   suggestions: [],
   activeMatches: [],
   unmatchedRules: [],
@@ -602,7 +640,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isBatchProcessing: false,
   batchProgress: { current: 0, total: 0, currentFileName: '' },
 
-  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, analysisLogs: [], contextMatches: [], syntaxError: null, syntaxValidFormat: null }),
+  setInput: (input) => set({ input, analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, _fullAnalysisReplacements: [], _fullAnalysisStats: {}, _fullAnalysisMatches: {}, analysisLogs: [], contextMatches: [], syntaxError: null, syntaxValidFormat: null }),
   setOutput: (output) => set({ output }),
   setStats: (stats) => set({ stats }),
   setMatches: (matches) => set({ matches }),
@@ -850,7 +888,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!text.trim()) return
 
     cancelRequested = false
-    set({ isProcessing: true, processingProgress: 0, canCancel: true, analysisReplacements: [], analysisStats: {}, analysisCompleted: false })
+    set({ isProcessing: true, processingProgress: 0, canCancel: true, analysisReplacements: [], analysisStats: {}, analysisCompleted: false, _fullAnalysisReplacements: [], _fullAnalysisStats: {}, _fullAnalysisMatches: {} })
 
     try {
       const { rules, customRules, plainTextPatterns, consistencyMode, preservePrivateIPs, timeShift, labelFormat, globalTemplate, fileName } = get()
@@ -1577,6 +1615,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           analysisStats: enabledStats,
           analysisMatches: enabledMatches,
           analysisCompleted: true,
+          _fullAnalysisReplacements: allReplacements,
+          _fullAnalysisStats: stats,
+          _fullAnalysisMatches: matches,
           suggestions,
           activeMatches,
           unmatchedRules,
@@ -1591,7 +1632,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  clearAnalysis: () => set({ analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, suggestions: [], activeMatches: [], unmatchedRules: [], showSuggestions: false, contextMatches: [] }),
+  clearAnalysis: () => set({ analysisReplacements: [], analysisStats: {}, analysisMatches: {}, analysisCompleted: false, _fullAnalysisReplacements: [], _fullAnalysisStats: {}, _fullAnalysisMatches: {}, suggestions: [], activeMatches: [], unmatchedRules: [], showSuggestions: false, contextMatches: [] }),
 
   dismissSuggestions: () => set({ showSuggestions: false, suggestionsInitialTab: null }),
   setShowSuggestions: (show, initialTab) => set({ showSuggestions: show, showSettings: false, suggestionsInitialTab: initialTab ?? null }),
@@ -1600,7 +1641,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 
   enableSuggestedRule: (id) => {
-    const { rules, customRules, plainTextPatterns, suggestions, activeMatches } = get()
+    const { rules, customRules, plainTextPatterns, suggestions, activeMatches, _fullAnalysisReplacements, _fullAnalysisStats, _fullAnalysisMatches } = get()
     const suggestion = suggestions.find(s => s.id === id)
     if (!suggestion) return
 
@@ -1610,10 +1651,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (rules[id]) {
       const newRules = { ...rules, [id]: { ...rules[id], enabled: true } }
       saveRulesToStorage(newRules)
+      const recalc = recalcEnabledAnalysis(_fullAnalysisReplacements, _fullAnalysisStats, _fullAnalysisMatches, newRules, customRules, plainTextPatterns)
       set({
         rules: newRules,
         suggestions: newSuggestions,
-        activeMatches: newActiveMatches
+        activeMatches: newActiveMatches,
+        ...recalc
       })
     } else {
       const customIdx = customRules.findIndex(r => r.id === id)
@@ -1621,10 +1664,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         const updated = [...customRules]
         updated[customIdx] = { ...updated[customIdx], enabled: true }
         saveCustomRulesToStorage(updated)
+        const recalc = recalcEnabledAnalysis(_fullAnalysisReplacements, _fullAnalysisStats, _fullAnalysisMatches, rules, updated, plainTextPatterns)
         set({
           customRules: updated,
           suggestions: newSuggestions,
-          activeMatches: newActiveMatches
+          activeMatches: newActiveMatches,
+          ...recalc
         })
       } else {
         const plainIdx = plainTextPatterns.findIndex(p => p.id === id)
@@ -1632,10 +1677,12 @@ export const useAppStore = create<AppState>((set, get) => ({
           const updated = [...plainTextPatterns]
           updated[plainIdx] = { ...updated[plainIdx], enabled: true }
           savePlainTextPatternsToStorage(updated)
+          const recalc = recalcEnabledAnalysis(_fullAnalysisReplacements, _fullAnalysisStats, _fullAnalysisMatches, rules, customRules, updated)
           set({
             plainTextPatterns: updated,
             suggestions: newSuggestions,
-            activeMatches: newActiveMatches
+            activeMatches: newActiveMatches,
+            ...recalc
           })
         }
       }
@@ -1643,7 +1690,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   disableActiveMatch: (id) => {
-    const { rules, customRules, plainTextPatterns, activeMatches, suggestions } = get()
+    const { rules, customRules, plainTextPatterns, activeMatches, suggestions, _fullAnalysisReplacements, _fullAnalysisStats, _fullAnalysisMatches } = get()
     const match = activeMatches.find(m => m.id === id)
     if (!match) return
 
@@ -1653,10 +1700,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (rules[id]) {
       const newRules = { ...rules, [id]: { ...rules[id], enabled: false } }
       saveRulesToStorage(newRules)
+      const recalc = recalcEnabledAnalysis(_fullAnalysisReplacements, _fullAnalysisStats, _fullAnalysisMatches, newRules, customRules, plainTextPatterns)
       set({
         rules: newRules,
         activeMatches: newActiveMatches,
-        suggestions: newSuggestions
+        suggestions: newSuggestions,
+        ...recalc
       })
     } else {
       const customIdx = customRules.findIndex(r => r.id === id)
@@ -1664,10 +1713,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         const updated = [...customRules]
         updated[customIdx] = { ...updated[customIdx], enabled: false }
         saveCustomRulesToStorage(updated)
+        const recalc = recalcEnabledAnalysis(_fullAnalysisReplacements, _fullAnalysisStats, _fullAnalysisMatches, rules, updated, plainTextPatterns)
         set({
           customRules: updated,
           activeMatches: newActiveMatches,
-          suggestions: newSuggestions
+          suggestions: newSuggestions,
+          ...recalc
         })
       } else {
         const plainIdx = plainTextPatterns.findIndex(p => p.id === id)
@@ -1675,10 +1726,12 @@ export const useAppStore = create<AppState>((set, get) => ({
           const updated = [...plainTextPatterns]
           updated[plainIdx] = { ...updated[plainIdx], enabled: false }
           savePlainTextPatternsToStorage(updated)
+          const recalc = recalcEnabledAnalysis(_fullAnalysisReplacements, _fullAnalysisStats, _fullAnalysisMatches, rules, customRules, updated)
           set({
             plainTextPatterns: updated,
             activeMatches: newActiveMatches,
-            suggestions: newSuggestions
+            suggestions: newSuggestions,
+            ...recalc
           })
         }
       }
@@ -1686,7 +1739,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   enableAllSuggested: () => {
-    const { rules, customRules, plainTextPatterns, suggestions, activeMatches } = get()
+    const { rules, customRules, plainTextPatterns, suggestions, activeMatches, _fullAnalysisReplacements, _fullAnalysisStats, _fullAnalysisMatches } = get()
     const suggestedIds = new Set(suggestions.map(s => s.id))
 
     const newRules = { ...rules }
@@ -1710,13 +1763,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     // Move all suggestions to activeMatches
     const newActiveMatches = [...activeMatches, ...suggestions].sort((a, b) => b.count - a.count)
 
+    const recalc = recalcEnabledAnalysis(_fullAnalysisReplacements, _fullAnalysisStats, _fullAnalysisMatches, newRules, newCustomRules, newPlainText)
     set({
       rules: newRules,
       customRules: newCustomRules,
       plainTextPatterns: newPlainText,
       suggestions: [],
       activeMatches: newActiveMatches,
-      showSuggestions: false
+      showSuggestions: false,
+      ...recalc
     })
   },
 
@@ -1942,7 +1997,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       analysisReplacements: [],
       analysisStats: {},
       analysisMatches: {},
-      analysisCompleted: false
+      analysisCompleted: false,
+      _fullAnalysisReplacements: [],
+      _fullAnalysisStats: {},
+      _fullAnalysisMatches: {}
     })
   },
 
@@ -2052,7 +2110,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       analysisStats: {},
       analysisMatches: {},
       analysisReplacements: [],
-      analysisCompleted: false
+      analysisCompleted: false,
+      _fullAnalysisReplacements: [],
+      _fullAnalysisStats: {},
+      _fullAnalysisMatches: {}
     })
   },
 

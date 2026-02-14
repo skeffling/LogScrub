@@ -6,7 +6,7 @@ const DEFAULT_ML_MODEL_ID = 'Xenova/distilbert-base-NER'
 import type { FileEntry, AggregatedStats, BatchProgress } from '../types/multiFile'
 import { createEmptyFileEntry, MAX_FILES, MAX_TOTAL_SIZE } from '../types/multiFile'
 
-export type ReplacementStrategy = 'label' | 'realistic' | 'redact' | 'template'
+export type ReplacementStrategy = 'label' | 'realistic' | 'realistic_country' | 'redact' | 'template'
 export type ThemeMode = 'light' | 'dark' | 'auto'
 export type DocumentType = 'pdf' | 'xlsx' | 'docx' | 'odt' | 'ods' | null
 export type MLLoadingState = 'idle' | 'loading' | 'ready' | 'error'

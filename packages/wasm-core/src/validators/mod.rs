@@ -453,6 +453,34 @@ pub fn iccid_check(iccid: &str) -> bool {
     sum % 10 == 0
 }
 
+/// Returns how many leading digits form a valid E.164 country code (1, 2, or 3).
+/// Tries longest match first (3-digit, then 2-digit, then 1-digit).
+/// Returns 0 if no valid country code is found.
+pub fn e164_cc_length(digits: &[u8]) -> usize {
+    // Try 3-digit country code first
+    if digits.len() >= 3 {
+        let cc3 = digits[0] as u16 * 100 + digits[1] as u16 * 10 + digits[2] as u16;
+        if e164_country_length(cc3).is_some() {
+            return 3;
+        }
+    }
+    // Try 2-digit country code
+    if digits.len() >= 2 {
+        let cc2 = digits[0] as u16 * 10 + digits[1] as u16;
+        if e164_country_length(cc2).is_some() {
+            return 2;
+        }
+    }
+    // Try 1-digit country code
+    if !digits.is_empty() {
+        let cc1 = digits[0] as u16;
+        if e164_country_length(cc1).is_some() {
+            return 1;
+        }
+    }
+    0
+}
+
 /// E.164 country code lookup: returns (min_total_digits, max_total_digits) for known codes.
 fn e164_country_length(code: u16) -> Option<(usize, usize)> {
     match code {

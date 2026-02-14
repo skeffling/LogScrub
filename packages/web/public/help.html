@@ -788,8 +788,13 @@
             </div>
             <div class="strategy-card">
               <h4>Fake</h4>
-              <p>Replaces with realistic fake data.</p>
+              <p>Replaces with realistic fake data. Preserves structural prefixes (e.g. ICCID <code>89</code>, BTC <code>bc1</code>).</p>
               <code>john@example.com</code> → <code>maria.wilson@example.org</code>
+            </div>
+            <div class="strategy-card">
+              <h4>Fake (Country)</h4>
+              <p>Fake data that preserves country-specific prefixes like phone country codes and TLDs.</p>
+              <code>+447508804412</code> → <code>+447291635804</code>
             </div>
             <div class="strategy-card">
               <h4>Redact</h4>
@@ -839,6 +844,31 @@
           <div class="callout info">
             <div class="callout-title">Deterministic Generation</div>
             <p>Fake data is generated using a seeded random number generator based on the original value. This means the same input (e.g., <code>john@example.com</code>) will always produce the same fake output across multiple runs. Combined with Consistency Mode, this ensures your scrubbed data maintains referential integrity.</p>
+          </div>
+
+          <h3>Fake (Country) — Preserve Country Prefixes</h3>
+          <p>The <strong>Fake (Country)</strong> strategy extends the Fake strategy by preserving country-specific prefixes. This is useful when you need to keep geographic context (e.g. which country a phone number belongs to) while still anonymizing the rest of the data.</p>
+
+          <div class="table-wrapper">
+            <table>
+              <tr><th>PII Type</th><th>What's Preserved</th><th>Example</th></tr>
+              <tr><td><strong>International Phone (+)</strong></td><td><code>+</code> and country code digits</td><td><code>+44</code>7508804412 → <code>+44</code>7291635804</td></tr>
+              <tr><td><strong>International Phone (no +)</strong></td><td>Country code digits</td><td><code>44</code>7508804412 → <code>44</code>7291635804</td></tr>
+              <tr><td><strong>US Phone</strong></td><td><code>+1</code> or <code>1</code> prefix</td><td><code>+1</code>-555-234-5678 → <code>+1</code>-832-671-9042</td></tr>
+              <tr><td><strong>UK Phone</strong></td><td>Leading <code>0</code></td><td><code>0</code>7508804412 → <code>0</code>8291635804</td></tr>
+              <tr><td><strong>ICCID</strong></td><td><code>89</code> + country code (5 digits total)</td><td><code>89442</code>00011231044047 → <code>89442</code>73829156308291</td></tr>
+              <tr><td><strong>IBAN</strong></td><td>First 2 letters (country code)</td><td><code>GB</code>82WEST12345698765432 → <code>GB</code>47XKRJ83920147562918</td></tr>
+              <tr><td><strong>Email</strong></td><td>Domain TLD</td><td>user@company<code>.co.uk</code> → jsmith@inbox<code>.co.uk</code></td></tr>
+              <tr><td><strong>Hostname</strong></td><td>TLD</td><td>server.example<code>.co.uk</code> → web42<code>.co.uk</code></td></tr>
+              <tr><td><strong>URL</strong></td><td>Domain TLD</td><td>https://app.example<code>.de</code>/api → https://demo<code>.de</code>/users/4821</td></tr>
+              <tr><td><strong>MAC Address</strong></td><td>OUI (first 3 octets)</td><td><code>AA:BB:CC</code>:11:22:33 → <code>AA:BB:CC</code>:7F:3A:E2</td></tr>
+              <tr><td><strong>Credit Card</strong></td><td>BIN (first 6 digits)</td><td><code>411111</code>1111111111 → <code>411111</code>8294736150</td></tr>
+            </table>
+          </div>
+
+          <div class="callout info">
+            <div class="callout-title">Fake vs Fake (Country)</div>
+            <p>The base <strong>Fake</strong> strategy preserves invariant structural prefixes (e.g. <code>89</code> on all ICCIDs, <code>bc1</code> on Bech32 Bitcoin addresses) since these are the same regardless of country. <strong>Fake (Country)</strong> goes further by also preserving country-specific prefixes like phone country codes, IBAN country letters, and domain TLDs. For all PII types not listed above, Fake (Country) behaves identically to Fake.</p>
           </div>
 
           <h3>Consistency Mode</h3>
@@ -2897,7 +2927,7 @@ Value: MyS3cr3tP@ss!</div>
           <h3>What's Included</h3>
           <p>The generated explanation includes:</p>
           <ul>
-            <li><strong>Replacement strategies</strong> — Describes each strategy used (Label, Fake, Redact, Template)</li>
+            <li><strong>Replacement strategies</strong> — Describes each strategy used (Label, Fake, Fake (Country), Redact, Template)</li>
             <li><strong>Consistency mode status</strong> — Tells the AI whether same tokens mean same values</li>
             <li><strong>Detected types table</strong> — Lists each PII type found with its replacement strategy and example format</li>
             <li><strong>Interpretation guidelines</strong> — Instructions for how the AI should reference replacements</li>

@@ -257,6 +257,13 @@ fn generate_replacement(
                 fakers::generate_realistic(pii_type, original, *count, &mut cache.borrow_mut())
             })
         }
+        "realistic_country" => {
+            let count = counters.entry(format!("{}_realistic_country", pii_type)).or_insert(0);
+            *count += 1;
+            REALISTIC_CACHE.with(|cache| {
+                fakers::generate_realistic_country(pii_type, original, *count, &mut cache.borrow_mut())
+            })
+        }
         "redact" => "\u{2588}".repeat(original.len().min(16)),
         _ => format!("{}{}{}", label_prefix, pii_type.to_uppercase(), label_suffix),
     }

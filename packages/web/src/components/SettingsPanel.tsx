@@ -6,6 +6,7 @@ import { getCurrentDevice, getModelCacheStatus, deleteModelCache, getCachedModel
 const STRATEGY_OPTIONS: { value: ReplacementStrategy; label: string; description: string }[] = [
   { value: 'label', label: 'Label', description: 'Replace with type labels like [EMAIL-1]' },
   { value: 'realistic', label: 'Fake', description: 'Replace with realistic fake data' },
+  { value: 'realistic_country', label: 'Fake (Country)', description: 'Fake data preserving country codes and TLDs' },
   { value: 'redact', label: 'Redact', description: 'Replace with solid blocks ████████' },
   { value: 'template', label: 'Template', description: 'Replace using a custom template format' },
 ]

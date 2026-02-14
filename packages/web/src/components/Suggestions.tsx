@@ -9,6 +9,7 @@ type Tab = 'active' | 'suggestions' | 'custom' | 'context'
 const STRATEGY_OPTIONS: { value: ReplacementStrategy; label: string }[] = [
   { value: 'label', label: 'Label' },
   { value: 'realistic', label: 'Fake' },
+  { value: 'realistic_country', label: 'Fake (Country)' },
   { value: 'redact', label: 'Redact' },
   { value: 'template', label: 'Template' },
 ]
@@ -628,7 +629,7 @@ export function Suggestions() {
                             disabled={!pattern.enabled}
                             className="text-xs border dark:border-gray-600 rounded px-1.5 py-1 disabled:opacity-50 bg-white dark:bg-gray-700 dark:text-gray-300"
                           >
-                            {STRATEGY_OPTIONS.filter(opt => opt.value !== 'realistic' && opt.value !== 'template').map(opt => (
+                            {STRATEGY_OPTIONS.filter(opt => opt.value !== 'realistic' && opt.value !== 'realistic_country' && opt.value !== 'template').map(opt => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
                           </select>

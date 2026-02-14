@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pattern Matching Rules - 90+ Detection Patterns | LogScrub</title>
-  <meta name="description" content="LogScrub includes 90+ built-in regex patterns for detecting PII: emails, IPs, phone numbers, credit cards, API keys, and more. Learn about all detection rules and how to create custom patterns.">
+  <title>Pattern Matching Rules - 100+ Detection Patterns | LogScrub</title>
+  <meta name="description" content="LogScrub includes 100+ built-in regex patterns for detecting PII: emails, IPs, phone numbers, credit cards, API keys, and more. Learn about all detection rules and how to create custom patterns.">
   <meta name="keywords" content="PII detection patterns, regex rules, data masking patterns, log scrubbing rules, email detection, IP detection, credit card detection">
   <link rel="icon" type="image/svg+xml" href="/shield.svg">
   <style>
@@ -175,7 +175,7 @@
     <div class="hero">
       <h1>Pattern Matching Rules</h1>
       <p>High-performance Rust/WebAssembly engine with comprehensive regex patterns for detecting sensitive data in any text format.</p>
-      <div class="stat">90+ Built-in Patterns</div>
+      <div class="stat">100+ Built-in Patterns</div>
     </div>
 
     <h2>Detection Categories</h2>
@@ -187,7 +187,8 @@
           <li>Email Message-IDs</li>
           <li>Phone numbers (US format)</li>
           <li>Phone numbers (UK format)</li>
-          <li>Phone numbers (International)</li>
+          <li>Phone numbers (International, with +)</li>
+          <li>Phone numbers (International, no +) <span class="validated">E.164</span></li>
         </ul>
       </div>
 
@@ -208,6 +209,7 @@
         <ul>
           <li>Credit cards <span class="validated">Luhn</span></li>
           <li>IBANs <span class="validated">MOD-97</span></li>
+          <li>ICCIDs (SIM cards) <span class="validated">Luhn</span></li>
           <li>UK Sort Codes</li>
           <li>UK Bank Accounts</li>
           <li>Bitcoin addresses</li>
@@ -241,9 +243,11 @@
         <h3><span class="icon">🌍</span> Identity (International)</h3>
         <ul>
           <li>Australian TFN <span class="validated">Checksum</span></li>
+          <li>Canadian SIN <span class="validated">Luhn</span></li>
           <li>India PAN</li>
           <li>Singapore NRIC <span class="validated">Checksum</span></li>
           <li>Spain NIF/NIE <span class="validated">Checksum</span></li>
+          <li>VIN (Vehicle ID) <span class="validated">Check Digit</span></li>
         </ul>
       </div>
 
@@ -256,7 +260,12 @@
           <li>GitHub Tokens</li>
           <li>OpenAI API Keys</li>
           <li>Anthropic API Keys</li>
+          <li>xAI API Keys</li>
+          <li>Cerebras API Keys</li>
           <li>Slack Tokens</li>
+          <li>NPM Tokens</li>
+          <li>SendGrid Keys</li>
+          <li>Twilio Keys</li>
           <li>GCP API Keys</li>
           <li>Bearer Tokens</li>
           <li>JWTs</li>
@@ -266,7 +275,8 @@
       <div class="category">
         <h3><span class="icon">🔐</span> Secrets</h3>
         <ul>
-          <li>Generic secrets (high entropy)</li>
+          <li>Generic secrets (key=value)</li>
+          <li>High entropy strings</li>
           <li>Private keys (PEM format)</li>
           <li>Basic auth credentials</li>
           <li>Database connection strings</li>
@@ -293,6 +303,17 @@
         <ul>
           <li>Unix paths (/home/user/...)</li>
           <li>Windows paths (C:\Users\...)</li>
+        </ul>
+      </div>
+
+      <div class="category">
+        <h3><span class="icon">📞</span> VoIP / SIP</h3>
+        <ul>
+          <li>SIP usernames &amp; display names</li>
+          <li>SIP URIs &amp; contacts</li>
+          <li>SIP Call-IDs &amp; branch params</li>
+          <li>SIP User-Agent &amp; Via headers</li>
+          <li>SIP realm, nonce, response</li>
         </ul>
       </div>
 
@@ -362,6 +383,26 @@
           <td>Spain NIF/NIE</td>
           <td>Check Letter</td>
           <td>Mod 23 with letter table</td>
+        </tr>
+        <tr>
+          <td>Canadian SIN</td>
+          <td>Luhn Algorithm</td>
+          <td>Mod 10 check digit validation</td>
+        </tr>
+        <tr>
+          <td>VIN</td>
+          <td>Check Digit</td>
+          <td>Position 9 transliteration check (ISO 3779)</td>
+        </tr>
+        <tr>
+          <td>ICCID</td>
+          <td>Luhn Algorithm</td>
+          <td>Validates check digit, verifies 89 prefix</td>
+        </tr>
+        <tr>
+          <td>Phone (Intl, no +)</td>
+          <td>E.164 Validation</td>
+          <td>Validates country code and expected digit count</td>
         </tr>
       </tbody>
     </table>
@@ -438,9 +479,14 @@
           <td>Complete visual redaction</td>
         </tr>
         <tr>
-          <td><strong>Realistic</strong></td>
+          <td><strong>Fake</strong></td>
           <td><code>john.smith@example.com</code></td>
           <td>Realistic-looking fake data</td>
+        </tr>
+        <tr>
+          <td><strong>Fake (Country)</strong></td>
+          <td><code>+44</code>7291635804</td>
+          <td>Fake data preserving country codes and TLDs</td>
         </tr>
         <tr>
           <td><strong>Template</strong></td>
@@ -452,7 +498,7 @@
 
     <div class="cta">
       <h3>Start detecting PII in your logs</h3>
-      <p>90+ patterns ready to use. No configuration needed.</p>
+      <p>100+ patterns ready to use. No configuration needed.</p>
       <a href="./" class="btn">Launch LogScrub</a>
     </div>
 

@@ -29,6 +29,7 @@ export function SettingsPanel() {
     globalTemplate,
     setGlobalTemplate,
     // ML state
+    mlNameDetectionEnabled,
     mlModelId,
     setMlModelId,
     mlLoadingState,
@@ -271,8 +272,21 @@ export function SettingsPanel() {
               </p>
             </div>
 
+            <label className="flex items-center justify-between gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700">
+              <div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Enable ML Detection</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Run ML model to find names, locations, and organizations during analysis</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={mlNameDetectionEnabled}
+                onChange={(e) => setMlNameDetection(e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
+              />
+            </label>
+
             {/* Model Selection */}
-            <div className="space-y-3">
+            <div className={`space-y-3 ${!mlNameDetectionEnabled ? 'opacity-40 pointer-events-none' : ''}`}>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Model</label>
               <div className="grid gap-3">
                 {AVAILABLE_MODELS.map(model => {

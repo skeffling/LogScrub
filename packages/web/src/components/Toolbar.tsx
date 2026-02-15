@@ -189,7 +189,7 @@ export const Toolbar = memo(function Toolbar({
                 : 'Sync scrolling between original and sanitized panes'
           }
         >
-          Sync Scroll
+          ScrollSync
         </ToggleButton>
 
         <ToolbarSeparator />

@@ -596,7 +596,7 @@ function App() {
                     onClick={() => output && lineFilter === 'all' && setSyncScroll(!syncScroll)}
                     title={!output ? 'Run Scrub first' : lineFilter !== 'all' ? 'Disabled while filtering lines' : 'Sync scrolling between original and sanitized panes'}
                   >
-                    Sync Scroll
+                    ScrollSync
                   </ToggleButton>
 
                   <div className="h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1" aria-hidden="true" />

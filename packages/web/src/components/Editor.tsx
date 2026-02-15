@@ -2524,14 +2524,14 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
               Settings
             </button>
           </div>
-          <div className="flex gap-2 pr-1">
+          <div className="flex items-center gap-2 pr-1">
           {!showRulesets && !showSettings && (
             <>
             {output && piiTypeCounts.length > 0 && (
               <select
                 value={piiTypeFilter || ''}
                 onChange={(e) => setPiiTypeFilter(e.target.value || null)}
-                className="text-xs bg-white dark:bg-gray-700 border dark:border-gray-600 rounded px-1.5 py-0.5 text-gray-700 dark:text-gray-300"
+                className="text-[10px] border dark:border-gray-600 rounded px-0.5 py-0 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 leading-tight"
               >
                 <option value="">All PII types</option>
                 {piiTypeCounts.map(([type, count]) => (

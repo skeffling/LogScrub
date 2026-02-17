@@ -26,6 +26,8 @@ interface EditorProps {
   gpxTransposedContinent?: string | null
   syntaxValidFormat?: ValidatedFormat
   onMetadataStrippingChange?: (willStrip: boolean) => void
+  showCropButton?: boolean
+  onCropClick?: () => void
   showRulesets?: boolean
   rulesetsPanel?: React.ReactNode
   onCloseRulesets?: () => void
@@ -660,7 +662,7 @@ function dismissDonationForever() {
   } catch {}
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, gpxTransposedContinent, syntaxValidFormat, onMetadataStrippingChange, showRulesets, rulesetsPanel, onCloseRulesets, onToggleRulesets, showSettings, settingsPanel, onCloseSettings, onToggleSettings }, ref) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ input, output, onInputChange, onView, showDiff: showDiffProp = true, syncScroll: syncScrollProp = true, lineFilter: lineFilterProp = 'all', onLineFilterChange, gpxTransposedContinent, syntaxValidFormat, onMetadataStrippingChange, showCropButton, onCropClick, showRulesets, rulesetsPanel, onCloseRulesets, onToggleRulesets, showSettings, settingsPanel, onCloseSettings, onToggleSettings }, ref) {
   const { fileName, setFileName, replacements, analysisReplacements, terminalStyle, syntaxHighlight, stats, rules, consistencyMode, labelFormat, globalTemplate, documentType, setDocumentType, files, selectedFileId, isMultiFileMode, selectFile, addFilesFromZip } = useAppStore()
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showAIExplain, setShowAIExplain] = useState(false)
@@ -2310,6 +2312,18 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
                 Paste
+              </button>
+            )}
+            {showCropButton && input && (
+              <button
+                onClick={onCropClick}
+                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                title="Crop log to a specific time window"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 2v4M6 10v12M18 2v12M18 18v4M2 6h4m4 0h12M2 18h12m4 0h4" />
+                </svg>
+                Crop
               </button>
             )}
             {documentType && (

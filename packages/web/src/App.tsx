@@ -7,6 +7,7 @@ import { SipTraceModal } from './components/SipTraceModal'
 import { EmailHopsModal } from './components/EmailHopsModal'
 import { SpamReportModal, detectSpamReports } from './components/SpamReportModal'
 import { GpxTransposeModal, isGpxFile } from './components/GpxTransposeModal'
+import { CropModal } from './components/CropModal'
 import { DetectionBanner } from './components/DetectionBanner'
 import { FullscreenViewer } from './components/FullscreenViewer'
 import { BUILTIN_PRESETS } from './data/presets'
@@ -62,6 +63,7 @@ function App() {
   const [showEmailHopsModal, setShowEmailHopsModal] = useState(false)
   const [showSpamReportModal, setShowSpamReportModal] = useState(false)
   const [showGpxModal, setShowGpxModal] = useState(false)
+  const [showCropModal, setShowCropModal] = useState(false)
   const [gpxTransposedContinent, setGpxTransposedContinent] = useState<string | null>(null)
   const [showTimeShift, setShowTimeShift] = useState(false)
   const [lineFilter, setLineFilter] = useState<'all' | 'changed' | 'unchanged'>('all')
@@ -1031,6 +1033,8 @@ function App() {
                 gpxTransposedContinent={gpxTransposedContinent}
                 syntaxValidFormat={syntaxValidFormat}
                 onMetadataStrippingChange={setWillStripMetadata}
+                showCropButton={hasTimestamps}
+                onCropClick={() => setShowCropModal(true)}
                 showRulesets={showSuggestions}
                 rulesetsPanel={<Suggestions />}
                 onCloseRulesets={dismissSuggestions}
@@ -1094,6 +1098,17 @@ function App() {
         gpxContent={input}
         onTranspose={handleGpxTranspose}
       />
+
+      {showCropModal && (
+        <CropModal
+          input={input}
+          onClose={() => setShowCropModal(false)}
+          onCrop={(croppedText) => {
+            setInput(croppedText)
+            setShowCropModal(false)
+          }}
+        />
+      )}
     </div>
   )
 }

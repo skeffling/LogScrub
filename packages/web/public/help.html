@@ -658,6 +658,7 @@
           <div class="nav-section-title">Advanced</div>
           <a href="#organizing-rules">Organizing Rules</a>
           <a href="#time-shift">Time Shift</a>
+          <a href="#log-crop">Log Crop</a>
           <a href="#analyze-mode">Analyze Mode</a>
           <a href="#ml-detection">ML Name Detection</a>
           <a href="#syntax-validation">Syntax Validation</a>
@@ -720,6 +721,7 @@
           <ul>
             <li><strong>Consistency Mode</strong> ensures the same email always becomes <code>[EMAIL-1]</code>, so you can still trace a user's journey</li>
             <li><strong>Time Shift</strong> lets you anonymize timestamps while preserving the relative timing between events</li>
+            <li><strong>Log Crop</strong> trims log files to a specific time window, so you only share the relevant portion</li>
             <li><strong>Selective Rules</strong> let you keep non-sensitive data like UUIDs or timestamps when needed for debugging</li>
           </ul>
         </section>
@@ -2450,6 +2452,37 @@ User [EMAIL-3] logged in</div>
           <div class="tip">
             <div class="callout-title">Tip</div>
             <p>Use "Line Start" scope with date/time detection rules enabled. Log timestamps get shifted while content dates like DOBs get scrubbed to <code>[DATE-1]</code>.</p>
+          </div>
+        </section>
+
+        <section id="log-crop">
+          <h2>Log Crop</h2>
+          <p>When working with large log files that span many hours or days, you often only need a specific time window. The Crop tool lets you trim a log file to a precise time range, keeping only the lines you need.</p>
+
+          <div class="tip">
+            <div class="callout-title">Note</div>
+            <p>The Crop button appears above the Original pane when LogScrub detects timestamps in your input. It uses the same timestamp formats supported by Time Shift.</p>
+          </div>
+
+          <h3>How to Use</h3>
+          <ol>
+            <li>Paste or upload a log file with timestamps</li>
+            <li>Click the <strong>Crop</strong> link above the Original pane</li>
+            <li>Review the detected time range, duration, and line count</li>
+            <li>Select the time window you want to keep</li>
+            <li>Click <strong>Crop</strong> to trim the log</li>
+          </ol>
+
+          <h3>Custom Range</h3>
+          <p>Set a specific start and end time to keep. Any lines with timestamps outside this range are removed. Lines without timestamps (such as stack traces or continuation lines) are kept if they follow a line within the selected range.</p>
+
+          <h3>Start + Duration</h3>
+          <p>Select a start time and then choose a duration preset. This is useful when you know the approximate start of an incident and want to capture a fixed window of time.</p>
+          <p>Available presets: 1 minute, 5 minutes, 15 minutes, 30 minutes, 1 hour, 2 hours, 4 hours, 8 hours, 12 hours, and 24 hours.</p>
+
+          <div class="tip">
+            <div class="callout-title">Tip</div>
+            <p>Cropping replaces the original text. If you need to go back, use your browser's undo or re-paste the original log. Crop before scrubbing for faster processing on large files.</p>
           </div>
         </section>
 

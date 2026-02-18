@@ -189,6 +189,11 @@ const TIMESTAMP_PATTERNS: Array<{ regex: RegExp; parser: (m: RegExpExecArray) =>
     format: 'clf-datetime'
   },
   {
+    regex: /\(([A-Za-z]{3}),\s+(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\s+(\d{2}):(\d{2}):(\d{2})\)/g,
+    parser: (m) => new Date(parseInt(m[4]), parseMonth(m[3]), parseInt(m[2]), parseInt(m[5]), parseInt(m[6]), parseInt(m[7])),
+    format: 'chat-transcript'
+  },
+  {
     regex: /([A-Za-z]{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})/g,
     parser: (m) => {
       const now = new Date()
@@ -238,6 +243,8 @@ function formatTimestamp(date: Date, format: string, formatDetails?: TimestampFo
       return `[${pad(date.getDate())}/${MONTH_NAMES[date.getMonth()]}/${date.getFullYear()}:${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} +0000]`
     case 'clf-datetime':
       return `${pad(date.getDate())}/${MONTH_NAMES[date.getMonth()]}/${date.getFullYear()}:${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} +0000`
+    case 'chat-transcript':
+      return `(${DAY_NAMES[date.getDay()]}, ${pad(date.getDate())} ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())})`
     case 'syslog':
       return `${MONTH_NAMES[date.getMonth()]} ${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     case 'us-datetime':

@@ -158,6 +158,7 @@ export function detectLanguage(text: string): Language {
     /^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}/m,  // ISO timestamp
     /^\[\d{1,2}\/[A-Za-z]{3}\/\d{4}:\d{2}:\d{2}:\d{2}/m,  // Apache CLF
     /^[A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}/m,  // Syslog
+    /^\([A-Za-z]{3},\s+\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\)/m,  // Chat transcript
     /\b(?:INFO|WARN|ERROR|DEBUG|TRACE|FATAL|NOTICE)\b/i,  // Log levels
   ]
   if (logPatterns.some(p => p.test(trimmed))) {

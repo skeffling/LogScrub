@@ -169,6 +169,24 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
     return { kept, removed: lines.length - kept }
   }, [keptLines, lines.length])
 
+  // Compute selection range for the visual indicator (percentage-based)
+  const selectionRange = useMemo(() => {
+    if (!keptLines || lines.length === 0) return null
+    let firstKept = -1
+    let lastKept = -1
+    for (let i = 0; i < keptLines.length; i++) {
+      if (keptLines[i]) {
+        if (firstKept === -1) firstKept = i
+        lastKept = i
+      }
+    }
+    if (firstKept === -1) return null
+    return {
+      topPct: (firstKept / lines.length) * 100,
+      heightPct: ((lastKept - firstKept + 1) / lines.length) * 100,
+    }
+  }, [keptLines, lines.length])
+
   const handleCrop = () => {
     if (!keptLines) return
     const croppedLines = lines.filter((_, i) => keptLines[i])
@@ -206,8 +224,31 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
   const relevantPresets = DURATION_PRESETS.filter(p => p.minutes < totalMinutes)
 
   return (
-    <Modal onClose={onClose} title="Crop Log" maxWidth="max-w-lg">
-      <div className="space-y-5">
+    <Modal onClose={onClose} title="Crop Log" maxWidth="max-w-xl">
+      <div className="flex gap-5">
+        {/* Visual file indicator */}
+        <div className="flex flex-col items-center flex-shrink-0">
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 mb-1">File</span>
+          <div className="relative w-5 flex-1 min-h-[200px] rounded-full bg-blue-200 dark:bg-blue-900/60 overflow-hidden">
+            {selectionRange && (
+              <div
+                className="absolute left-0 right-0 bg-green-500 dark:bg-green-400 rounded-full transition-all duration-200"
+                style={{
+                  top: `${selectionRange.topPct}%`,
+                  height: `${Math.max(selectionRange.heightPct, 2)}%`,
+                }}
+              />
+            )}
+          </div>
+          {preview && preview.kept > 0 && preview.kept < lines.length && (
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+              {Math.round((preview.kept / lines.length) * 100)}%
+            </span>
+          )}
+        </div>
+
+        {/* Controls */}
+        <div className="flex-1 space-y-5">
         {/* Log info */}
         <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-1.5">
           <div className="flex justify-between text-sm">
@@ -387,7 +428,8 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
             Crop
           </button>
         </div>
-      </div>
+        </div>{/* end controls */}
+      </div>{/* end flex row */}
     </Modal>
   )
 }

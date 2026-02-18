@@ -103,6 +103,7 @@ interface AppState {
   fileName: string | null
   savedPresets: RulePreset[]
   processingProgress: number
+  processingStage: string
   canCancel: boolean
   isAnalyzing: boolean
   analysisStage: string
@@ -594,6 +595,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   fileName: null,
   savedPresets: loadPresetsFromStorage(),
   processingProgress: 0,
+  processingStage: '',
   canCancel: false,
   isAnalyzing: false,
   analysisStage: '',
@@ -890,7 +892,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!text.trim()) return
 
     cancelRequested = false
-    set({ isProcessing: true, processingProgress: 0, canCancel: true, analysisReplacements: [], analysisStats: {}, analysisCompleted: false, _fullAnalysisReplacements: [], _fullAnalysisStats: {}, _fullAnalysisMatches: {} })
+    const willRunML = get().mlNameDetectionEnabled && get().mlLoadingState === 'ready'
+    set({ isProcessing: true, processingProgress: 0, processingStage: 'Running pattern detection...', canCancel: true, analysisReplacements: [], analysisStats: {}, analysisCompleted: false, _fullAnalysisReplacements: [], _fullAnalysisStats: {}, _fullAnalysisMatches: {} })
 
     try {
       const { rules, customRules, plainTextPatterns, consistencyMode, preservePrivateIPs, timeShift, labelFormat, globalTemplate, fileName } = get()
@@ -917,7 +920,10 @@ export const useAppStore = create<AppState>((set, get) => ({
             w.removeEventListener('message', handler)
             reject(new Error(e.data.payload))
           } else if (e.data.type === 'progress') {
-            set({ processingProgress: e.data.payload })
+            // When ML will run after worker, rescale worker progress to 0-70%
+            const rawProgress = e.data.payload as number
+            const scaledProgress = willRunML ? Math.round(rawProgress * 0.7) : rawProgress
+            set({ processingProgress: scaledProgress })
           } else if (e.data.type === 'syntax_error') {
             set({ syntaxError: e.data.payload, syntaxValidFormat: null })
           } else if (e.data.type === 'syntax_valid') {
@@ -954,8 +960,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         console.log('[ML NER] processText check:', { mlNameDetectionEnabled, mlLoadingState })
         if (mlNameDetectionEnabled && mlLoadingState === 'ready') {
           try {
+            set({ processingStage: 'Running ML name detection...', processingProgress: 72 })
             const { runNER } = await import('../utils/nerDetection')
-            const nerResult = await runNER(text)
+            const nerResult = await runNER(text, (mlProgress) => {
+              // ML progress maps to 72-92% of overall progress
+              set({ processingProgress: 72 + Math.round(mlProgress * 0.2) })
+            })
+            set({ processingStage: 'Applying ML detections...', processingProgress: 93 })
             console.log('[ML NER] processText: runNER returned', nerResult.entities.length, 'entities')
 
             // Collect ML replacements (on original text positions)
@@ -1243,7 +1254,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     } catch {
     } finally {
-      set({ isProcessing: false, processingProgress: 0, canCancel: false })
+      set({ isProcessing: false, processingProgress: 0, processingStage: '', canCancel: false })
     }
   },
 
@@ -1276,7 +1287,11 @@ export const useAppStore = create<AppState>((set, get) => ({
             w.removeEventListener('message', handler)
             reject(new Error(e.data.payload))
           } else if (e.data.type === 'progress') {
-            set({ processingProgress: e.data.payload })
+            // When ML will run after worker, rescale worker progress to 0-70%
+            const rawProgress = e.data.payload as number
+            const willRunMLAnalyze = get().mlNameDetectionEnabled && get().mlLoadingState === 'ready'
+            const scaledProgress = willRunMLAnalyze ? Math.round(rawProgress * 0.7) : rawProgress
+            set({ processingProgress: scaledProgress })
           } else if (e.data.type === 'log') {
             const { analysisLogs } = get()
             set({ analysisLogs: [...analysisLogs, e.data.payload] })
@@ -1304,10 +1319,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         const { mlNameDetectionEnabled, mlLoadingState } = get()
         console.log('[ML NER] analyzeText check:', { mlNameDetectionEnabled, mlLoadingState })
         if (mlNameDetectionEnabled && mlLoadingState === 'ready') {
-          set({ analysisStage: 'Running ML name detection...' })
+          set({ analysisStage: 'Running ML name detection...', processingProgress: 72 })
           try {
             const { runNER } = await import('../utils/nerDetection')
-            const nerResult = await runNER(text)
+            const nerResult = await runNER(text, (mlProgress) => {
+              set({ processingProgress: 72 + Math.round(mlProgress * 0.2) })
+            })
+            set({ processingProgress: 93 })
             console.log('[ML NER] runNER returned:', nerResult.entities.length, 'entities in', nerResult.processingTimeMs.toFixed(0) + 'ms')
 
             // Group entities by type

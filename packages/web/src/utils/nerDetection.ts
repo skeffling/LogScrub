@@ -292,15 +292,58 @@ export function unloadNERPipeline(): void {
  * The model returns raw tokens with B-XXX/I-XXX labels and token indices.
  * We manually aggregate these into complete entities with character positions.
  */
-export async function runNER(text: string): Promise<NERResult> {
+/**
+ * Split text into chunks at line boundaries for progressive NER processing.
+ * Each chunk is at most maxChars long, split at the nearest newline.
+ */
+function chunkText(text: string, maxChars: number = 4000): Array<{ text: string; offset: number }> {
+  const chunks: Array<{ text: string; offset: number }> = []
+  let pos = 0
+
+  while (pos < text.length) {
+    let end = Math.min(pos + maxChars, text.length)
+    // Find nearest newline before end (don't split mid-line)
+    if (end < text.length) {
+      const newline = text.lastIndexOf('\n', end)
+      if (newline > pos) end = newline + 1
+    }
+    chunks.push({ text: text.slice(pos, end), offset: pos })
+    pos = end
+  }
+
+  return chunks
+}
+
+export async function runNER(text: string, onProgress?: (progress: number) => void): Promise<NERResult> {
   if (!pipeline) {
     throw new Error('NER pipeline not loaded. Call loadNERPipeline first.')
   }
 
   const startTime = performance.now()
 
-  // Run inference - model returns raw tokens
-  const rawEntities = await pipeline(text)
+  // Split into chunks for progress reporting
+  const chunks = chunkText(text)
+  const allRawEntities: unknown[] = []
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i]
+    const chunkEntities = await pipeline(chunk.text)
+
+    // Offset entity positions to match original text
+    if (Array.isArray(chunkEntities)) {
+      for (const entity of chunkEntities as unknown[]) {
+        const e = entity as { start?: number; end?: number }
+        if (typeof e.start === 'number') e.start += chunk.offset
+        if (typeof e.end === 'number') e.end += chunk.offset
+        allRawEntities.push(entity)
+      }
+    }
+
+    // Report progress after each chunk
+    onProgress?.(((i + 1) / chunks.length) * 100)
+  }
+
+  const rawEntities = allRawEntities
 
   console.log('[ML NER] Raw pipeline output:', Array.isArray(rawEntities) ? (rawEntities as unknown[]).length + ' tokens' : typeof rawEntities)
   if (Array.isArray(rawEntities) && (rawEntities as unknown[]).length > 0) {

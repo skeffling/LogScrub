@@ -40,11 +40,13 @@ function formatDuration(ms: number): string {
 }
 
 export function CropModal({ onClose, input, onCrop }: CropModalProps) {
-  const [mode, setMode] = useState<'range' | 'duration'>('range')
+  const [mode, setMode] = useState<'range' | 'duration' | 'lines'>('range')
   const [rangeStart, setRangeStart] = useState('')
   const [rangeEnd, setRangeEnd] = useState('')
   const [durationStart, setDurationStart] = useState('')
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null)
+  const [linesStart, setLinesStart] = useState('')
+  const [lineCount, setLineCount] = useState('')
 
   const lines = useMemo(() => input.split('\n'), [input])
 
@@ -84,10 +86,11 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
       if (!rangeStart) setRangeStart(startStr)
       if (!rangeEnd) setRangeEnd(endStr)
       if (!durationStart) setDurationStart(startStr)
+      if (!linesStart) setLinesStart(startStr)
     }
   }, [logRange.first, logRange.last]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Compute the crop range based on current mode
+  // Compute the crop range based on current mode (null for 'lines' mode)
   const cropRange = useMemo(() => {
     if (mode === 'range') {
       const start = rangeStart ? new Date(rangeStart) : null
@@ -96,7 +99,7 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
         return { start, end }
       }
       return null
-    } else {
+    } else if (mode === 'duration') {
       const start = durationStart ? new Date(durationStart) : null
       if (start && selectedDuration !== null && !isNaN(start.getTime())) {
         const end = new Date(start.getTime() + selectedDuration * 60 * 1000)
@@ -104,36 +107,47 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
       }
       return null
     }
+    return null
   }, [mode, rangeStart, rangeEnd, durationStart, selectedDuration])
 
-  // Preview: count lines kept/removed
-  const preview = useMemo(() => {
-    if (!cropRange) return null
-
+  // Compute which lines to keep
+  const keptLines = useMemo((): boolean[] | null => {
     const firstTimestampIdx = effectiveTimestamps.findIndex(ts => ts !== null)
-    let kept = 0
-    for (let i = 0; i < lines.length; i++) {
-      const ts = effectiveTimestamps[i]
-      if (ts === null) {
-        // Leading lines before any timestamp — include if first timestamped line is in range
-        if (i < firstTimestampIdx || firstTimestampIdx === -1) {
-          const firstTs = effectiveTimestamps[firstTimestampIdx]
-          if (firstTs && firstTs >= cropRange.start && firstTs <= cropRange.end) {
-            kept++
-          }
+
+    if (mode === 'lines') {
+      // Lines mode: find starting line, then keep N lines
+      const start = linesStart ? new Date(linesStart) : null
+      const count = parseInt(lineCount)
+      if (!start || isNaN(start.getTime()) || !count || count <= 0) return null
+
+      // Find first line at or after the start time
+      let startLineIdx = -1
+      for (let i = 0; i < effectiveTimestamps.length; i++) {
+        const ts = effectiveTimestamps[i]
+        if (ts && ts >= start) {
+          startLineIdx = i
+          break
         }
-        continue
       }
-      if (ts >= cropRange.start && ts <= cropRange.end) kept++
+      if (startLineIdx === -1) return null
+
+      // Include leading lines before any timestamp if starting from the first timestamp
+      const kept = new Array(lines.length).fill(false)
+      if (startLineIdx <= firstTimestampIdx && firstTimestampIdx >= 0) {
+        for (let i = 0; i < firstTimestampIdx; i++) kept[i] = true
+      }
+
+      let remaining = count
+      for (let i = startLineIdx; i < lines.length && remaining > 0; i++) {
+        kept[i] = true
+        remaining--
+      }
+      return kept
     }
 
-    return { kept, removed: lines.length - kept }
-  }, [cropRange, effectiveTimestamps, lines])
+    // Time-range modes (range / duration)
+    if (!cropRange) return null
 
-  const handleCrop = () => {
-    if (!cropRange) return
-
-    const firstTimestampIdx = effectiveTimestamps.findIndex(ts => ts !== null)
     const kept: boolean[] = effectiveTimestamps.map(ts => {
       if (ts === null) return false
       return ts >= cropRange.start && ts <= cropRange.end
@@ -145,8 +159,19 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
         kept[i] = true
       }
     }
+    return kept
+  }, [mode, cropRange, effectiveTimestamps, lines.length, linesStart, lineCount])
 
-    const croppedLines = lines.filter((_, i) => kept[i])
+  // Preview: count lines kept/removed
+  const preview = useMemo(() => {
+    if (!keptLines) return null
+    const kept = keptLines.filter(Boolean).length
+    return { kept, removed: lines.length - kept }
+  }, [keptLines, lines.length])
+
+  const handleCrop = () => {
+    if (!keptLines) return
+    const croppedLines = lines.filter((_, i) => keptLines[i])
     if (croppedLines.length > 0) {
       onCrop(croppedLines.join('\n'))
     }
@@ -173,8 +198,12 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
   }
 
   const totalDuration = logRange.last.getTime() - logRange.first.getTime()
+  const totalMinutes = totalDuration / 60000
   const timestampedLineCount = lineTimestamps.filter(ts => ts !== null).length
-  const canCrop = cropRange && preview && preview.kept > 0 && preview.kept < lines.length
+  const canCrop = keptLines && preview && preview.kept > 0 && preview.kept < lines.length
+
+  // Only show duration presets shorter than the total log duration
+  const relevantPresets = DURATION_PRESETS.filter(p => p.minutes < totalMinutes)
 
   return (
     <Modal onClose={onClose} title="Crop Log" maxWidth="max-w-lg">
@@ -223,10 +252,20 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
           >
             Start + Duration
           </button>
+          <button
+            onClick={() => setMode('lines')}
+            className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
+              mode === 'lines'
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
+            Start + Lines
+          </button>
         </div>
 
         {/* Inputs */}
-        {mode === 'range' ? (
+        {mode === 'range' && (
           <div className="space-y-3">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Keep from</label>
@@ -249,7 +288,8 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
               />
             </div>
           </div>
-        ) : (
+        )}
+        {mode === 'duration' && (
           <div className="space-y-3">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Start from</label>
@@ -267,7 +307,7 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Duration</label>
               <div className="flex flex-wrap gap-2">
-                {DURATION_PRESETS.map((preset) => (
+                {relevantPresets.map((preset) => (
                   <button
                     key={preset.minutes}
                     onClick={() => setSelectedDuration(preset.minutes)}
@@ -281,6 +321,32 @@ export function CropModal({ onClose, input, onCrop }: CropModalProps) {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+        {mode === 'lines' && (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Start from</label>
+              <input
+                type="datetime-local"
+                value={linesStart}
+                onChange={(e) => setLinesStart(e.target.value)}
+                step="1"
+                className="w-full px-3 py-2 text-sm border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Number of lines to keep</label>
+              <input
+                type="number"
+                value={lineCount}
+                onChange={(e) => setLineCount(e.target.value)}
+                min="1"
+                max={lines.length}
+                placeholder={`1 - ${lines.length.toLocaleString()}`}
+                className="w-full px-3 py-2 text-sm border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
             </div>
           </div>
         )}

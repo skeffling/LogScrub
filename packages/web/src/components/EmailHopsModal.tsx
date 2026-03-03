@@ -411,7 +411,7 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
                         {/* Label for origin server */}
                         {hop.from === 'origin' && (
                           <div className="mt-1 text-xs text-green-600 dark:text-green-400">
-                            Sending server
+                            Sending host
                           </div>
                         )}
                         {/* Label for final destination */}

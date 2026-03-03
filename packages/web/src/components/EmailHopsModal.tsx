@@ -17,6 +17,8 @@ interface EmailHop {
   rawBlock: string // original Received header content
   tls: TlsInfo | null // encryption info if present
   protocol: string | null // e.g., SMTP, ESMTP, ESMTPS, LMTP, LMTPS, HTTPREST
+  serverSoftware: string | null // e.g., "Exim 4.98.2", "Postfix"
+  ip: string | null // IP address of this server
 }
 
 interface EmailHopsModalProps {
@@ -26,6 +28,7 @@ interface EmailHopsModalProps {
 
 function parseReceivedHeaders(headers: string): EmailHop[] {
   const hops: EmailHop[] = []
+  const fromIps: (string | null)[] = []
 
   // Split headers into individual header blocks
   // A header starts at beginning of line with Name: and continues on indented lines
@@ -125,17 +128,50 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
       }
     }
 
-    // Extract protocol (e.g., SMTP, ESMTP, ESMTPS, LMTP, LMTPS, HTTPREST)
-    // Pattern: "with PROTOCOL" after the "by" clause
-    const protocolMatch = receivedBlock.match(/\bwith\s+([A-Z][A-Z0-9]*)/i)
+    // Extract protocol - use whitelist to avoid matching "with cipher" in TLS clauses
+    const protocolMatch = receivedBlock.match(/\bwith\s+(SMTP|ESMTP|ESMTPS|ESMTPA|ESMTPSA|LMTP|LMTPS|HTTP|HTTPREST|LOCAL)\b/i)
     const protocol = protocolMatch ? protocolMatch[1].toUpperCase() : null
 
-    hops.push({ from, by, timestamp, rawTimestamp, delay: null, timezone, rawBlock: receivedBlock, tls, protocol })
+    // Extract IP address from the "from" clause (usually in brackets like [1.2.3.4] or [2001:db8::1])
+    const fromBySegment = receivedBlock.match(/from\s+([\s\S]*?)(?:\bby\b|$)/i)
+    const fromClause = fromBySegment ? fromBySegment[1] : ''
+    const ipMatch = fromClause.match(/\[([\da-fA-F.:]+)\]/)
+    const fromIp = ipMatch ? ipMatch[1] : null
+
+    // Detect mail server software
+    let serverSoftware: string | null = null
+    const eximMatch = receivedBlock.match(/\(Exim\s+([\d.]+)\)/i)
+    if (eximMatch) {
+      serverSoftware = `Exim ${eximMatch[1]}`
+    } else if (/\(Postfix/i.test(receivedBlock)) {
+      serverSoftware = 'Postfix'
+    } else {
+      const sendmailMatch = receivedBlock.match(/Sendmail[/ ]([\d.]+)/i)
+      if (sendmailMatch) {
+        serverSoftware = `Sendmail ${sendmailMatch[1]}`
+      } else if (/Microsoft/i.test(receivedBlock)) {
+        serverSoftware = 'Microsoft Exchange'
+      } else if (/\bqmail\b/i.test(receivedBlock)) {
+        serverSoftware = 'qmail'
+      } else if (/Dovecot/i.test(receivedBlock)) {
+        serverSoftware = 'Dovecot'
+      } else if (/\(Haraka\)/i.test(receivedBlock)) {
+        serverSoftware = 'Haraka'
+      } else if (/OpenSMTPD/i.test(receivedBlock)) {
+        serverSoftware = 'OpenSMTPD'
+      } else if (/Zimbra/i.test(receivedBlock)) {
+        serverSoftware = 'Zimbra'
+      }
+    }
+
+    fromIps.push(fromIp)
+    hops.push({ from, by, timestamp, rawTimestamp, delay: null, timezone, rawBlock: receivedBlock, tls, protocol, serverSoftware, ip: null })
   }
 
   // Received headers are in reverse order (most recent first)
   // So we reverse to get chronological order
   hops.reverse()
+  fromIps.reverse()
 
   // Build the actual flow: origin server → receiving servers
   // Each Received header shows: from=sender, by=receiver
@@ -155,7 +191,9 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
         timezone: sentDate?.timezone ?? null,
         rawBlock: sentDate ? `Date: ${dateHeader!.content}` : `Origin server: ${firstHop.from}`,
         tls: null,
-        protocol: null
+        protocol: null,
+        serverSoftware: null,
+        ip: null
       })
     }
 
@@ -163,6 +201,16 @@ function parseReceivedHeaders(headers: string): EmailHop[] {
     for (const hop of hops) {
       flow.push(hop)
     }
+  }
+
+  // Assign IP addresses to flow entries
+  // The IP in a Received header's "from" clause belongs to the "from" server
+  // With origin: flow[i].ip = fromIps[i] (origin gets first hop's fromIp)
+  // Without origin: flow[i].ip = fromIps[i+1] (each server's IP comes from the next hop)
+  const hasOrigin = flow.length > hops.length
+  for (let i = 0; i < flow.length; i++) {
+    const ipIndex = hasOrigin ? i : i + 1
+    flow[i].ip = ipIndex < fromIps.length ? fromIps[ipIndex] : null
   }
 
   // Calculate delays between hops
@@ -286,9 +334,11 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
               <div key={i}>
                 {/* Arrow with protocol, TLS indicator, and delay (between hops) */}
                 {i > 0 && (
-                  <div className="flex items-center py-2">
+                  <div className="flex items-center py-1.5">
                     <div className="w-8 flex justify-center">
-                      <div className="w-0.5 h-6 bg-gray-300 dark:bg-gray-600" />
+                      <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
                     </div>
                     <div className="ml-4 flex items-center gap-2">
                       {hop.protocol && (
@@ -341,6 +391,22 @@ export function EmailHopsModal({ rawHeaders, onClose }: EmailHopsModalProps) {
                         <div className="font-mono text-sm font-medium text-gray-900 dark:text-white truncate" title={hop.by}>
                           {hop.by}
                         </div>
+
+                        {/* IP address and server software */}
+                        {(hop.ip || hop.serverSoftware) && (
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {hop.ip && (
+                              <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                                {hop.ip}
+                              </span>
+                            )}
+                            {hop.serverSoftware && (
+                              <span className="px-1.5 py-0.5 text-[11px] font-medium bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded">
+                                {hop.serverSoftware}
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         {/* Label for origin server */}
                         {hop.from === 'origin' && (

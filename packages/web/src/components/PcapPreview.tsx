@@ -91,6 +91,7 @@ interface ProtocolStats {
   tls_client_hello: number
   netbios: number
   smb: number
+  pppoe: number
 }
 
 interface PortStats {
@@ -850,6 +851,12 @@ export function PcapPreview({ file, onClose }: PcapPreviewProps) {
                             <span className="text-gray-600 dark:text-gray-400">ARP</span>
                             <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.arp}</span>
                           </div>
+                          {preAnalysis.protocols.pppoe > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600 dark:text-gray-400">PPPoE</span>
+                              <span className="font-mono text-gray-900 dark:text-gray-100">{preAnalysis.protocols.pppoe}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 

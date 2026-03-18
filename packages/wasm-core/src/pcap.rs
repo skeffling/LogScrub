@@ -70,6 +70,8 @@ pub struct ProtocolStats {
     pub netbios: usize,
     /// SMB/CIFS packets (port 445)
     pub smb: usize,
+    /// PPPoE packets (ethertype 0x8863/0x8864)
+    pub pppoe: usize,
 }
 
 /// Port usage statistics
@@ -1531,9 +1533,10 @@ impl PcapAnonymizer {
             }
         }
 
-        // Try to parse the packet as IP
-        match SlicedPacket::from_ethernet(&data) {
-            Ok(parsed) => {
+        // Try to parse the packet as IP (handles PPPoE too)
+        let (parsed_result, _is_pppoe) = slice_packet_auto(&data);
+        match parsed_result {
+            Some(parsed) => {
                 // Anonymize Ethernet MACs (first 12 bytes: dst[6] + src[6])
                 if self.config.anonymize_mac && data.len() >= 14 {
                     let dst_mac: [u8; 6] = data[0..6].try_into().unwrap();
@@ -2009,10 +2012,8 @@ impl PcapAnonymizer {
                     }
                 }
             }
-            Err(e) => {
-                stats
-                    .errors
-                    .push(format!("Failed to parse packet: {}", e));
+            None => {
+                // Could not parse packet (PPP control protocol or unknown format)
             }
         }
 
@@ -2034,9 +2035,10 @@ impl PcapAnonymizer {
             return (false, None);
         }
 
-        // Try to parse the packet
-        match SlicedPacket::from_ethernet(data) {
-            Ok(parsed) => {
+        // Try to parse the packet (handles PPPoE too)
+        let (parsed_result, _) = slice_packet_auto(data);
+        match parsed_result {
+            Some(parsed) => {
                 let mut matches = false;
                 let mut reason: Option<&'static str> = None;
 
@@ -2131,7 +2133,7 @@ impl PcapAnonymizer {
 
                 (should_filter, if should_filter { reason } else { None })
             }
-            Err(_) => {
+            None => {
                 // Can't parse packet - check if we should filter non-IP
                 if filter.protocol.remove_non_ip {
                     (true, Some("protocol"))
@@ -2206,7 +2208,54 @@ fn find_ip_offset(data: &[u8]) -> Option<usize> {
             }
             Some(22)
         }
+        0x8864 => {
+            // PPPoE Session: 6 bytes PPPoE header + 2 bytes PPP protocol
+            if data.len() < 22 {
+                return None;
+            }
+            let ppp_proto = u16::from_be_bytes([data[20], data[21]]);
+            match ppp_proto {
+                0x0021 | 0x0057 => Some(22), // IPv4 or IPv6
+                _ => None, // PPP control protocols (LCP, IPCP, etc.) have no IP layer
+            }
+        }
         _ => None,
+    }
+}
+
+/// Check if packet is PPPoE with an IP payload, returns the PPP protocol if so
+fn get_pppoe_ppp_proto(data: &[u8]) -> Option<u16> {
+    if data.len() < 22 {
+        return None;
+    }
+    let ethertype = u16::from_be_bytes([data[12], data[13]]);
+    if ethertype == 0x8864 {
+        Some(u16::from_be_bytes([data[20], data[21]]))
+    } else {
+        None
+    }
+}
+
+/// Parse a packet that may be Ethernet or PPPoE-encapsulated.
+/// For PPPoE with IP payload, uses SlicedPacket::from_ip on the inner data.
+/// Returns (parsed, is_pppoe)
+fn slice_packet_auto(data: &[u8]) -> (Option<SlicedPacket<'_>>, bool) {
+    if let Some(ppp_proto) = get_pppoe_ppp_proto(data) {
+        match ppp_proto {
+            0x0021 | 0x0057 => {
+                // IPv4 or IPv6 inside PPPoE
+                if let Ok(parsed) = SlicedPacket::from_ip(&data[22..]) {
+                    return (Some(parsed), true);
+                }
+                (None, true)
+            }
+            _ => (None, true), // PPP control protocol, no IP
+        }
+    } else {
+        match SlicedPacket::from_ethernet(data) {
+            Ok(parsed) => (Some(parsed), false),
+            Err(_) => (None, false),
+        }
     }
 }
 
@@ -2760,8 +2809,12 @@ pub fn pre_analyze_pcap(data: &[u8]) -> Result<PcapAnalysisReport, String> {
             }
         }
 
-        // Parse with etherparse for detailed analysis
-        if let Ok(parsed) = SlicedPacket::from_ethernet(pkt_data) {
+        // Parse with etherparse for detailed analysis (handles PPPoE too)
+        let (parsed_opt, is_pppoe) = slice_packet_auto(pkt_data);
+        if is_pppoe {
+            report.protocols.pppoe += 1;
+        }
+        if let Some(parsed) = parsed_opt {
             match &parsed.net {
                 Some(NetSlice::Ipv4(ipv4)) => {
                     report.protocols.ipv4 += 1;
@@ -2862,7 +2915,8 @@ pub fn pre_analyze_pcap(data: &[u8]) -> Result<PcapAnalysisReport, String> {
     let mut has_tls_certs = false;
 
     for pkt_data in &packets {
-        if let Ok(parsed) = SlicedPacket::from_ethernet(pkt_data) {
+        let (parsed_opt, _) = slice_packet_auto(pkt_data);
+        if let Some(parsed) = parsed_opt {
             if let Some(transport) = &parsed.transport {
                 let (src_port, dst_port) = match transport {
                     TransportSlice::Tcp(tcp) => (tcp.source_port(), tcp.destination_port()),
@@ -3125,6 +3179,8 @@ fn parse_packet_layers(data: &[u8]) -> ParsedPacket {
         0x0806 => "ARP".to_string(),
         0x86DD => "IPv6".to_string(),
         0x8100 => "VLAN".to_string(),
+        0x8863 => "PPPoE Discovery".to_string(),
+        0x8864 => "PPPoE Session".to_string(),
         _ => format!("0x{:04x}", ethertype_raw),
     };
 
@@ -3149,8 +3205,9 @@ fn parse_packet_layers(data: &[u8]) -> ParsedPacket {
         return parsed;
     }
 
-    // Parse IP and above with etherparse
-    if let Ok(sliced) = SlicedPacket::from_ethernet(data) {
+    // Parse IP and above with etherparse (handles PPPoE too)
+    let (sliced_opt, _) = slice_packet_auto(data);
+    if let Some(sliced) = sliced_opt {
         match &sliced.net {
             Some(NetSlice::Ipv4(ipv4)) => {
                 let header = ipv4.header();

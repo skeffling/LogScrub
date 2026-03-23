@@ -306,6 +306,7 @@ const DEFAULT_RULES: Record<string, Rule> = {
   time: { label: 'Time', enabled: false, strategy: 'label' },
   datetime_iso: { label: 'DateTime (ISO)', enabled: false, strategy: 'label' },
   datetime_clf: { label: 'DateTime (CLF)', enabled: false, strategy: 'label' },
+  datetime_human: { label: 'DateTime (Human)', enabled: false, strategy: 'label' },
   timestamp_unix: { label: 'Unix Timestamp', enabled: false, strategy: 'label' },
   sql_tables: { label: 'SQL Tables', enabled: false, strategy: 'label' },
   sql_strings: { label: 'SQL Strings', enabled: false, strategy: 'label' },

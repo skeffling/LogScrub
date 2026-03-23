@@ -612,7 +612,7 @@ self.onmessage = async (e: MessageEvent) => {
 
       log(`Processing ${text.length.toLocaleString()} characters with ${rules.length} rules`)
 
-      const TIMESTAMP_RULES = ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'timestamp_unix']
+      const TIMESTAMP_RULES = ['date_mdy', 'date_dmy', 'date_iso', 'time', 'datetime_iso', 'datetime_clf', 'datetime_human', 'timestamp_unix']
       const filteredRules = (timeShift?.enabled
         ? rules.filter(r => !TIMESTAMP_RULES.includes(r.id))
         : rules

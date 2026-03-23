@@ -1423,7 +1423,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
       return { content: content.trim(), name: baseName, docType: 'xlsx' }
     }
 
-    // Handle PDF files via mupdf
+    // Handle PDF files via mupdf, with Scribe.js OCR fallback for scanned/image-based PDFs
     if (ext.endsWith('.pdf')) {
       // Configure mupdf WASM location before importing
       ;(globalThis as Record<string, unknown>).$libmupdf_wasm_Module = {
@@ -1445,8 +1445,23 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
 
       doc.destroy()
 
+      // Check if PDF is scanned/image-based (little or no extractable text)
+      const trimmed = content.trim()
+      const avgCharsPerPage = trimmed.length / Math.max(pageCount, 1)
+      if (avgCharsPerPage < 50) {
+        // Fall back to Scribe.js OCR for image-based PDFs
+        console.log(`PDF has ~${Math.round(avgCharsPerPage)} chars/page — running OCR via Scribe.js`)
+        const scribe = (await import('scribe.js-ocr')).default
+        await scribe.init({ ocr: true })
+        await scribe.importFiles([file])
+        await scribe.recognize()
+        const ocrContent = await scribe.exportData('txt') as string
+        const baseName = file.name.replace(/\.pdf$/i, '.txt')
+        return { content: ocrContent.trim(), name: baseName, docType: 'pdf' }
+      }
+
       const baseName = file.name.replace(/\.pdf$/i, '.txt')
-      return { content: content.trim(), name: baseName, docType: 'pdf' }
+      return { content: trimmed, name: baseName, docType: 'pdf' }
     }
 
     // Handle image files via Scribe.js OCR

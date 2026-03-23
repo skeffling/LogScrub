@@ -42,39 +42,86 @@ export function parseHocr(hocrHtml: string): HocrPage {
     }
   }
 
-  // Extract all words with bounding boxes
-  const wordSpans = doc.querySelectorAll('.ocrx_word')
+  // Extract words grouped by line to preserve line breaks
   const words: HocrWord[] = []
   let offset = 0
+  const textParts: string[] = []
 
-  wordSpans.forEach((span) => {
-    const text = span.textContent || ''
-    if (!text.trim()) return
+  const lines = doc.querySelectorAll('.ocr_line')
+  if (lines.length > 0) {
+    // Walk line-by-line, inserting \n between lines and spaces between words
+    lines.forEach((line, lineIdx) => {
+      if (lineIdx > 0) {
+        textParts.push('\n')
+        offset += 1
+      }
 
-    const title = span.getAttribute('title') || ''
-    const bboxMatch = title.match(/bbox\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
-    if (!bboxMatch) return
+      const lineWords = line.querySelectorAll('.ocrx_word')
+      let firstInLine = true
+      lineWords.forEach((span) => {
+        const text = span.textContent || ''
+        if (!text.trim()) return
 
-    // Add space separator between words (except for the first word)
-    if (offset > 0) offset += 1
+        const title = span.getAttribute('title') || ''
+        const bboxMatch = title.match(/bbox\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
+        if (!bboxMatch) return
 
-    words.push({
-      text,
-      bbox: {
-        x1: parseInt(bboxMatch[1], 10),
-        y1: parseInt(bboxMatch[2], 10),
-        x2: parseInt(bboxMatch[3], 10),
-        y2: parseInt(bboxMatch[4], 10),
-      },
-      textStart: offset,
-      textEnd: offset + text.length,
+        if (!firstInLine) {
+          textParts.push(' ')
+          offset += 1
+        }
+        firstInLine = false
+
+        words.push({
+          text,
+          bbox: {
+            x1: parseInt(bboxMatch[1], 10),
+            y1: parseInt(bboxMatch[2], 10),
+            x2: parseInt(bboxMatch[3], 10),
+            y2: parseInt(bboxMatch[4], 10),
+          },
+          textStart: offset,
+          textEnd: offset + text.length,
+        })
+
+        textParts.push(text)
+        offset += text.length
+      })
     })
+  } else {
+    // Fallback: no line elements, just collect all words with spaces
+    const wordSpans = doc.querySelectorAll('.ocrx_word')
+    wordSpans.forEach((span) => {
+      const text = span.textContent || ''
+      if (!text.trim()) return
 
-    offset += text.length
-  })
+      const title = span.getAttribute('title') || ''
+      const bboxMatch = title.match(/bbox\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
+      if (!bboxMatch) return
 
-  // Build fullText from words to ensure alignment
-  const fullText = words.map(w => w.text).join(' ')
+      if (offset > 0) {
+        textParts.push(' ')
+        offset += 1
+      }
+
+      words.push({
+        text,
+        bbox: {
+          x1: parseInt(bboxMatch[1], 10),
+          y1: parseInt(bboxMatch[2], 10),
+          x2: parseInt(bboxMatch[3], 10),
+          y2: parseInt(bboxMatch[4], 10),
+        },
+        textStart: offset,
+        textEnd: offset + text.length,
+      })
+
+      textParts.push(text)
+      offset += text.length
+    })
+  }
+
+  const fullText = textParts.join('')
 
   return { words, fullText, width: pageWidth, height: pageHeight }
 }

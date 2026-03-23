@@ -9,6 +9,8 @@ import { Modal } from './Modal'
 import { DocumentPreview } from './DocumentPreview'
 import { MetadataDialog, DocumentMetadata } from './MetadataDialog'
 import { PcapPreview } from './PcapPreview'
+import { ImageRedactor, type ImageRedactorHandle } from './ImageRedactor'
+import { parseHocr, type HocrPage } from '../utils/hocrParser'
 import { extractOfficeMetadata, extractOpenDocumentMetadata, extractPdfMetadata, hasMetadata, generateMinimalCoreXml, generateMinimalAppXml, generateMinimalMetaXml } from '../utils/metadataExtractor'
 import { TYPE_LABELS } from './Stats'
 
@@ -674,6 +676,10 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const [documentFile, setDocumentFile] = useState<File | null>(null)
   const [showDocumentPreview, setShowDocumentPreview] = useState(true)
   const [pcapFile, setPcapFile] = useState<File | null>(null)
+  const [imageHocrPage, setImageHocrPage] = useState<HocrPage | null>(null)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const imageRedactorRef = useRef<ImageRedactorHandle>(null)
+  const scrubbedImageRedactorRef = useRef<ImageRedactorHandle>(null)
   const [scrubbedDocFile, setScrubbedDocFile] = useState<File | null>(null)
   const [showScrubbedPreview, setShowScrubbedPreview] = useState(true)
   const [previewHeight, setPreviewHeight] = useState(() => loadEditorPreference('previewHeight', 256))
@@ -1090,11 +1096,13 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
       : documentType === 'ods' ? 'LibreOffice spreadsheet'
       : documentType === 'docx' ? 'Word document'
       : documentType === 'odt' ? 'LibreOffice document'
+      : documentType === 'image' ? 'image file'
       : 'log file'
 
     const docTypeShort = documentType === 'pdf' ? 'document'
       : documentType === 'xlsx' || documentType === 'ods' ? 'spreadsheet'
       : documentType === 'docx' || documentType === 'odt' ? 'document'
+      : documentType === 'image' ? 'image'
       : 'log'
 
     // Get detected types with counts and their strategies
@@ -1441,6 +1449,23 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
       return { content: content.trim(), name: baseName, docType: 'pdf' }
     }
 
+    // Handle image files via Scribe.js OCR
+    const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.bmp', '.webp', '.tiff', '.tif']
+    if (IMAGE_EXTENSIONS.some(e => ext.endsWith(e))) {
+      const scribe = (await import('scribe.js-ocr')).default
+      await scribe.init({ ocr: true })
+      await scribe.importFiles([file])
+      await scribe.recognize()
+      const hocr = await scribe.exportData('hocr')
+      const hocrPage = parseHocr(hocr as string)
+
+      // Store image URL and hOCR data for redaction overlay
+      setImageUrl(URL.createObjectURL(file))
+      setImageHocrPage(hocrPage)
+
+      return { content: hocrPage.fullText, name: file.name, docType: 'image' as DocumentType }
+    }
+
     if (ext.endsWith('.zip') || ext.endsWith('.gz') || ext.endsWith('.gzip')) {
       await ensureWasm()
       const buffer = await file.arrayBuffer()
@@ -1506,15 +1531,21 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
         const { content, name, docType } = await processCompressedFile(file)
         onInputChange(content)
         setFileName(name)
-        setDocumentFile(docType ? file : null)
+        setDocumentFile(docType && docType !== 'image' ? file : null)
         setDocumentType(docType)
         setPreviewPage(0)
         // Reset metadata preference for new file
         setStripMetadataPreference(null)
         setDocumentMetadata(null)
+        // Clear image state if not an image
+        if (docType !== 'image') {
+          if (imageUrl) URL.revokeObjectURL(imageUrl)
+          setImageUrl(null)
+          setImageHocrPage(null)
+        }
 
         // Check for metadata in document files
-        if (docType && file) {
+        if (docType && docType !== 'image' && file) {
           const metadata = await extractMetadataFromFile(file, docType)
           if (metadata && hasMetadata(metadata)) {
             setDocumentMetadata(metadata)
@@ -1687,7 +1718,15 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
 
   // Download in original format with PII replaced/redacted
   const handleDownloadOriginalFormat = async () => {
-    if (!output || !documentFile || !documentType) return
+    if (!output || !documentType) return
+
+    // Image export via canvas
+    if (documentType === 'image' && scrubbedImageRedactorRef.current) {
+      scrubbedImageRedactorRef.current.exportImage()
+      return
+    }
+
+    if (!documentFile) return
 
     // Use stored preference (true = strip, false = keep, null = no metadata)
     const shouldStrip = stripMetadataPreference === true
@@ -2094,16 +2133,22 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
         const { content, name, docType } = await processCompressedFile(file)
         onInputChange(content)
         setFileName(name)
-        setDocumentFile(docType ? file : null)
+        setDocumentFile(docType && docType !== 'image' ? file : null)
         setDocumentType(docType)
         setPreviewPage(0)
         // Reset metadata preference for new file
         setStripMetadataPreference(null)
         setDocumentMetadata(null)
         setPcapFile(null)
+        // Clear image state if not an image
+        if (docType !== 'image') {
+          if (imageUrl) URL.revokeObjectURL(imageUrl)
+          setImageUrl(null)
+          setImageHocrPage(null)
+        }
 
         // Check for metadata in document files
-        if (docType && file) {
+        if (docType && docType !== 'image' && file) {
           const metadata = await extractMetadataFromFile(file, docType)
           if (metadata && hasMetadata(metadata)) {
             setDocumentMetadata(metadata)
@@ -2287,7 +2332,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
               <input
                 type="file"
                 onChange={handleFileUpload}
-                accept=".log,.txt,.json,.xml,.csv,.zip,.gz,.gzip,.pdf,.xlsx,.docx,.odt,.ods,.gpx,.fit,.pcap,.pcapng"
+                accept=".log,.txt,.json,.xml,.csv,.zip,.gz,.gzip,.pdf,.xlsx,.docx,.odt,.ods,.gpx,.fit,.pcap,.pcapng,.png,.jpg,.jpeg,.bmp,.webp,.tiff,.tif"
                 className="hidden"
               />
             </label>
@@ -2338,22 +2383,33 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
           </div>
         </div>
         
-        {showDocumentPreview && documentType && documentFile && (
+        {showDocumentPreview && documentType && (documentFile || (documentType === 'image' && imageUrl && imageHocrPage)) && (
           <div
             ref={originalPreviewRef}
             className="flex-shrink-0 border dark:border-gray-600 rounded-lg overflow-hidden mb-2 relative"
             style={{ height: previewHeight }}
           >
-            <DocumentPreview
-              file={documentFile}
-              fileType={documentType}
-              page={syncScrollProp ? previewPage : undefined}
-              onPageChange={syncScrollProp ? setPreviewPage : undefined}
-              scrollTop={syncScrollProp ? previewScrollTop : undefined}
-              scrollLeft={syncScrollProp ? previewScrollLeft : undefined}
-              onScroll={syncScrollProp ? (top, left) => { setPreviewScrollTop(top); setPreviewScrollLeft(left) } : undefined}
-              replacements={replacements.length > 0 ? replacements : analysisReplacements}
-            />
+            {documentType === 'image' && imageUrl && imageHocrPage ? (
+              <ImageRedactor
+                ref={imageRedactorRef}
+                imageUrl={imageUrl}
+                hocrPage={imageHocrPage}
+                replacements={[]}
+                showRedactions={false}
+                fileName={fileName || undefined}
+              />
+            ) : documentFile ? (
+              <DocumentPreview
+                file={documentFile}
+                fileType={documentType as Exclude<DocumentType, 'image'>}
+                page={syncScrollProp ? previewPage : undefined}
+                onPageChange={syncScrollProp ? setPreviewPage : undefined}
+                scrollTop={syncScrollProp ? previewScrollTop : undefined}
+                scrollLeft={syncScrollProp ? previewScrollLeft : undefined}
+                onScroll={syncScrollProp ? (top, left) => { setPreviewScrollTop(top); setPreviewScrollLeft(left) } : undefined}
+                replacements={replacements.length > 0 ? replacements : analysisReplacements}
+              />
+            ) : null}
             <div
               className="absolute bottom-0 left-0 right-0 h-3 cursor-row-resize bg-gray-300/50 dark:bg-gray-600/50 hover:bg-blue-500/40 active:bg-blue-500/50 transition-colors flex items-center justify-center"
               onMouseDown={(e) => {
@@ -2580,12 +2636,12 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
                 <button
                   onClick={handleDownloadOriginalFormat}
                   className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
-                  title={`Download as ${documentType.toUpperCase()} with PII ${documentType === 'pdf' ? 'redacted' : 'replaced'}`}
+                  title={`Download as ${documentType === 'image' ? 'PNG' : documentType.toUpperCase()} with PII ${documentType === 'pdf' || documentType === 'image' ? 'redacted' : 'replaced'}`}
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Download {documentType.toUpperCase()}
+                  Download {documentType === 'image' ? 'PNG' : documentType.toUpperCase()}
                 </button>
               ) : (
                 <>
@@ -2663,21 +2719,32 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
           </div>
         </div>
 
-        {showScrubbedPreview && scrubbedDocFile && documentType && (
+        {showScrubbedPreview && documentType && (scrubbedDocFile || (documentType === 'image' && imageUrl && imageHocrPage && replacements.length > 0)) && (
           <div
             ref={scrubbedPreviewRef}
             className="flex-shrink-0 border dark:border-gray-600 rounded-lg overflow-hidden mb-2 relative"
             style={{ height: previewHeight }}
           >
-            <DocumentPreview
-              file={scrubbedDocFile}
-              fileType={documentType}
-              page={syncScrollProp ? previewPage : undefined}
-              onPageChange={syncScrollProp ? setPreviewPage : undefined}
-              scrollTop={syncScrollProp ? previewScrollTop : undefined}
-              scrollLeft={syncScrollProp ? previewScrollLeft : undefined}
-              onScroll={syncScrollProp ? (top, left) => { setPreviewScrollTop(top); setPreviewScrollLeft(left) } : undefined}
-            />
+            {documentType === 'image' && imageUrl && imageHocrPage ? (
+              <ImageRedactor
+                ref={scrubbedImageRedactorRef}
+                imageUrl={imageUrl}
+                hocrPage={imageHocrPage}
+                replacements={replacements}
+                showRedactions={true}
+                fileName={fileName || undefined}
+              />
+            ) : scrubbedDocFile ? (
+              <DocumentPreview
+                file={scrubbedDocFile}
+                fileType={documentType as Exclude<DocumentType, 'image'>}
+                page={syncScrollProp ? previewPage : undefined}
+                onPageChange={syncScrollProp ? setPreviewPage : undefined}
+                scrollTop={syncScrollProp ? previewScrollTop : undefined}
+                scrollLeft={syncScrollProp ? previewScrollLeft : undefined}
+                onScroll={syncScrollProp ? (top, left) => { setPreviewScrollTop(top); setPreviewScrollLeft(left) } : undefined}
+              />
+            ) : null}
             <div
               className="absolute bottom-0 left-0 right-0 h-3 cursor-row-resize bg-gray-300/50 dark:bg-gray-600/50 hover:bg-blue-500/40 active:bg-blue-500/50 transition-colors flex items-center justify-center"
               onMouseDown={(e) => {
@@ -2908,7 +2975,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
         </Modal>
       )}
 
-      {showMetadataDialog && documentMetadata && documentType && (
+      {showMetadataDialog && documentMetadata && documentType && documentType !== 'image' && (
         <MetadataDialog
           metadata={documentMetadata}
           documentType={documentType}

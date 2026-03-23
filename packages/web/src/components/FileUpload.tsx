@@ -94,7 +94,7 @@ export function FileUpload({ onFilesAdded }: FileUploadProps) {
       <input
         type="file"
         onChange={handleInputChange}
-        accept=".log,.txt,.json,.xml,.csv,.sql,.zip,.pcap,.pcapng,.gpx,.fit"
+        accept=".log,.txt,.json,.xml,.csv,.sql,.zip,.pcap,.pcapng,.gpx,.fit,.png,.jpg,.jpeg,.bmp,.webp,.tiff,.tif"
         className="hidden"
         id="file-upload"
         multiple
@@ -119,7 +119,7 @@ export function FileUpload({ onFilesAdded }: FileUploadProps) {
               <span className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500">Upload files</span> or drag and drop
             </p>
             <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-              .log, .txt, .json, .xml, .csv, .sql, .zip, .pcap, .gpx, .fit (multiple files supported)
+              .log, .txt, .json, .xml, .csv, .sql, .zip, .pcap, .gpx, .fit, images (multiple files supported)
             </p>
           </>
         )}

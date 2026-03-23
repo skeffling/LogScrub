@@ -8,7 +8,7 @@ import { createEmptyFileEntry, MAX_FILES, MAX_TOTAL_SIZE } from '../types/multiF
 
 export type ReplacementStrategy = 'label' | 'realistic' | 'realistic_country' | 'redact' | 'template'
 export type ThemeMode = 'light' | 'dark' | 'auto'
-export type DocumentType = 'pdf' | 'xlsx' | 'docx' | 'odt' | 'ods' | null
+export type DocumentType = 'pdf' | 'xlsx' | 'docx' | 'odt' | 'ods' | 'image' | null
 export type MLLoadingState = 'idle' | 'loading' | 'ready' | 'error'
 
 export type SyntaxFormat = 'json' | 'xml' | 'csv' | 'yaml' | 'toml'

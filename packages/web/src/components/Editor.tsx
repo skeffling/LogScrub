@@ -1077,12 +1077,37 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
 
   const handlePaste = async () => {
     try {
+      // Check for image data in clipboard first
+      const clipboardItems = await navigator.clipboard.read()
+      for (const item of clipboardItems) {
+        const imageType = item.types.find(t => t.startsWith('image/'))
+        if (imageType) {
+          const blob = await item.getType(imageType)
+          const file = new File([blob], `pasted-image.${imageType.split('/')[1] || 'png'}`, { type: imageType })
+          const { content, name, docType } = await processCompressedFile(file)
+          onInputChange(content)
+          setFileName(name)
+          setDocumentFile(docType && docType !== 'image' ? file : null)
+          setDocumentType(docType)
+          setPreviewPage(0)
+          setStripMetadataPreference(null)
+          setDocumentMetadata(null)
+          return
+        }
+      }
+      // Fall back to text paste
       const text = await navigator.clipboard.readText()
       if (text) {
         onInputChange(text)
       }
     } catch {
-      // Clipboard access denied or not available
+      // Clipboard access denied or not available — try text-only fallback
+      try {
+        const text = await navigator.clipboard.readText()
+        if (text) onInputChange(text)
+      } catch {
+        // Clipboard not available
+      }
     }
   }
 
@@ -2476,6 +2501,32 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
               onChange={(e) => onInputChange(e.target.value)}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
+              onPaste={(e) => {
+                // Intercept paste if clipboard contains an image
+                const items = e.clipboardData?.items
+                if (items) {
+                  for (const item of items) {
+                    if (item.type.startsWith('image/')) {
+                      e.preventDefault()
+                      const file = item.getAsFile()
+                      if (file) {
+                        const named = new File([file], `pasted-image.${item.type.split('/')[1] || 'png'}`, { type: item.type })
+                        processCompressedFile(named).then(({ content, name, docType }) => {
+                          onInputChange(content)
+                          setFileName(name)
+                          setDocumentFile(docType && docType !== 'image' ? named : null)
+                          setDocumentType(docType)
+                          setPreviewPage(0)
+                          setStripMetadataPreference(null)
+                          setDocumentMetadata(null)
+                        }).catch(err => console.error('Image paste error:', err))
+                      }
+                      return
+                    }
+                  }
+                }
+                // Text paste handled normally by textarea
+              }}
               onScroll={(e) => {
                 if (lineGutterRef.current) {
                   lineGutterRef.current.scrollTop = e.currentTarget.scrollTop
@@ -2645,7 +2696,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
                 ))}
               </select>
             )}
-            {scrubbedDocFile && (
+            {(scrubbedDocFile || (documentType === 'image' && imageUrl && imageHocrPage && replacements.length > 0)) && (
               <button
                 onClick={() => setShowScrubbedPreview(!showScrubbedPreview)}
                 className={`text-xs ${showScrubbedPreview ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'} hover:text-blue-700 dark:hover:text-blue-300`}

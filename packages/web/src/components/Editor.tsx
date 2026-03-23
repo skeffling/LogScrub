@@ -678,6 +678,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor({ in
   const [pcapFile, setPcapFile] = useState<File | null>(null)
   const [imageHocrPage, setImageHocrPage] = useState<HocrPage | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [ocrStatus, setOcrStatus] = useState<string | null>(null)
   const imageRedactorRef = useRef<ImageRedactorHandle>(null)
   const scrubbedImageRedactorRef = useRef<ImageRedactorHandle>(null)
   const [scrubbedDocFile, setScrubbedDocFile] = useState<File | null>(null)
@@ -1451,11 +1452,14 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
       if (avgCharsPerPage < 50) {
         // Fall back to Scribe.js OCR for image-based PDFs
         console.log(`PDF has ~${Math.round(avgCharsPerPage)} chars/page — running OCR via Scribe.js`)
+        setOcrStatus('Scanned PDF detected — loading OCR engine...')
         const scribe = (await import('scribe.js-ocr')).default
         await scribe.init({ ocr: true })
+        setOcrStatus('Extracting text from scanned PDF...')
         await scribe.importFiles([file])
         await scribe.recognize()
         const ocrContent = await scribe.exportData('txt') as string
+        setOcrStatus(null)
         const baseName = file.name.replace(/\.pdf$/i, '.txt')
         return { content: ocrContent.trim(), name: baseName, docType: 'pdf' }
       }
@@ -1467,16 +1471,20 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
     // Handle image files via Scribe.js OCR
     const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.bmp', '.webp', '.tiff', '.tif']
     if (IMAGE_EXTENSIONS.some(e => ext.endsWith(e))) {
+      setOcrStatus('Loading OCR engine...')
       const scribe = (await import('scribe.js-ocr')).default
       await scribe.init({ ocr: true })
+      setOcrStatus('Extracting text from image...')
       await scribe.importFiles([file])
       await scribe.recognize()
+      setOcrStatus('Processing results...')
       const hocr = await scribe.exportData('hocr')
       const hocrPage = parseHocr(hocr as string)
 
       // Store image URL and hOCR data for redaction overlay
       setImageUrl(URL.createObjectURL(file))
       setImageHocrPage(hocrPage)
+      setOcrStatus(null)
 
       return { content: hocrPage.fullText, name: file.name, docType: 'image' as DocumentType }
     }
@@ -1569,6 +1577,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
         }
       } catch (err) {
         console.error('File load error:', err)
+        setOcrStatus(null)
         alert('Failed to read file. Make sure it\'s a valid file.')
       }
     }
@@ -2171,6 +2180,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
           }
         }
       } catch {
+        setOcrStatus(null)
         alert('Failed to read file. Make sure it\'s a valid text, zip, or gzip file.')
       }
     }
@@ -2475,7 +2485,18 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
               className={`flex-1 min-w-0 ${input ? 'py-2 px-3' : 'p-4'} font-mono text-sm resize-none focus:outline-none leading-5 ${paneBg} ${paneText}`}
               style={input ? { lineHeight: `${LINE_HEIGHT}px` } : undefined}
             />
-            {!input && (
+            {ocrStatus && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 z-10">
+                <div className="flex flex-col items-center gap-3">
+                  <svg className="w-8 h-8 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{ocrStatus}</p>
+                </div>
+              </div>
+            )}
+            {!input && !ocrStatus && (
               <div className={`absolute inset-0 p-4 pointer-events-none ${terminalStyle ? 'text-[#858585]' : 'text-gray-600 dark:text-gray-400'}`}>
                 <div className="font-mono text-sm space-y-2">
                   <p className="font-semibold">Getting Started:</p>

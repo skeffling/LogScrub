@@ -2338,7 +2338,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
             )}
             <label
               className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer"
-              title="Upload a file (.txt, .log, .json, .csv, .pdf, .docx, .xlsx, .gpx, .fit, .pcap, .zip, .gz). Compressed files are automatically extracted."
+              title="Upload a file (.txt, .log, .json, .csv, .pdf, .docx, .xlsx, .gpx, .fit, .pcap, .png, .jpg, .zip, .gz). Compressed files are automatically extracted."
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -2480,7 +2480,7 @@ The following replacement tokens appear in this ${docTypeShort}. When you see th
                 <div className="font-mono text-sm space-y-2">
                   <p className="font-semibold">Getting Started:</p>
                   <p>1. Paste logs here, or use <span className="text-blue-600 dark:text-blue-400">Upload</span>/drag & drop</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 ml-3">Supports: txt, log, json, csv, sql, pdf, docx, xlsx, odt, ods, gpx, fit, pcap, zip, gz</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 ml-3">Supports: txt, log, json, csv, sql, pdf, docx, xlsx, odt, ods, gpx, fit, pcap, images (png, jpg, bmp, webp, tiff), zip, gz</p>
                   <p>2. Click <span className="text-purple-600 dark:text-purple-400">Analyze</span> to detect PII and get rule suggestions</p>
                   <p>3. Open <span className="text-purple-600 dark:text-purple-400">Rulesets</span> to enable/disable rules and review matches</p>
                   <p>4. Click <span className="text-blue-600 dark:text-blue-400">Scrub</span> to apply replacements</p>

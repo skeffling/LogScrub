@@ -44,6 +44,11 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         app: resolve(__dirname, 'app.html')
+      },
+      onwarn(warning, defaultHandler) {
+        // Suppress Node module externalization warnings from dual-environment libs (scribe.js, mupdf)
+        if (warning.message?.includes('has been externalized for browser compatibility')) return
+        defaultHandler(warning)
       }
     }
   }
